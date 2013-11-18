@@ -18,6 +18,8 @@
 \usepackage[urlcolor=blue,colorlinks=true]{hyperref}
 \usepackage{multirow}
 \usepackage{leftidx}
+\usepackage{url}
+\usepackage[margin=1in]{geometry}
 \usepackage[backend=bibtex,
 style=numeric
 %style=alphabetic
@@ -25,31 +27,30 @@ style=numeric
 ]{biblatex}
 \addbibresource{Sources.bib}
 
-\title{Conversion of RGBD Images to Textured Triangle Meshes with GPU}
+\title{Conversion of RGB-D Images to Textured Triangle Meshes with GPU}
 \author{Dalton Banks, Collin Boots}
 \date{Nov 18, 2013}
 \begin{document}
    \maketitle
 
-
 \section{Background} 
-Previous work has demonstrated the diverse capabilities of RGBD cameras, from generating highly accurate 3D surface models \cite{KinectFusion} to reliable 3D pose estimation \cite{Endres,Taguchi}. However, many algorithms attempt to store the generated environment as a RGB 3D point cloud, which is not easily adaptable to dynamic environments, requires very large quantities of memory to store large environments, and provides no intuition to higher perception processes about distinct objects beyond a volumetric approximation. Other approaches have been able to store and merge the surface data more efficiently, but still regard the environement as a unified whole rather than discrete objects. By extracting meaningful geometry from the RGB-D in the form of triangle meshes instead, a large number of advantages can be realized.
+Previous work has demonstrated the diverse capabilities of RGBD cameras, from highly accurate 3D surface mapping \cite{KinectFusion} to reliable 3D pose estimation \cite{Endres,Taguchi}. However, many algorithms attempt to store the generated environment as a RGB 3D point cloud, which is not easily adaptable to dynamic environments, is highly memory intensive for large environments, and provides no intuition to higher perception processes about distinct objects beyond a volumetric approximation. By instead extracting meaningful geometry from the RGB-D data in the form of triangle meshes, several advantages can be realized, including:
 
 \begin{enumerate}
-\item High storage efficiency
-\item Natural low level object segmentation
-\item Easy to manipulate, modify, and render in real time
-\item Efficient and easy to process intuition of geometry that higher cognitive functions can use for object recognition and manipulation tasks.
-\item Straightforward tradeoff between simplicity and accuracy with mesh resolution
+\item Greater storage efficiency
+\item Ease of manipulation and modification
+\item Efficient real-time rendering
+\item Geometric representation conducive to low-level object segmentation as well as higher-order object recognition and manipulation tasks
+\item Straightforward tradeoff between simplicity and accuracy in mesh resolution.
 \end{enumerate}
 
 \section{Project Scope}
-For this project, a segment of the pipeline will be implemented utilizing CUDA/OpenGL powered GPU acceleration (Figure \ref{fig:pipeline}).  Each segment of the pipeline has elements which may benefit from GPU acceleration. Blue segments are trivial functions that are easy to implement in CUDA/OpenGL. The red block represets the actual mesh generatation; this is the most complicated part of the pipeline and the main focus of the project. Green blocks represent stretch goals for the project.
+For this project, a portion of the full model-generation pipeline (Figure \ref{fig:pipeline}) will be implemented utilizing CUDA/OpenGL-based GPU acceleration.  Each segment of the pipeline has elements which may benefit from GPU acceleration. The red block represets the actual mesh generatation; this is the most complicated part of the pipeline and the main focus of the project. Blue segments are trivial functions, and green blocks represent stretch goals for the project.
 
 \begin{figure}[!ht]
     \centering
     \includegraphics[scale=1.0]{pipelineflowchart.png}
-    \caption{Pipeline Overview}
+    \caption{Mesh model generation pipeline}
     \label{fig:pipeline}
 \end{figure}
 
