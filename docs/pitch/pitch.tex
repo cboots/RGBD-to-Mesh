@@ -34,7 +34,11 @@ style=numeric
    \maketitle
 
 \section{Background} 
+<<<<<<< HEAD
 Previous work has demonstrated the diverse capabilities of RGBD cameras, from highly accurate 3D surface mapping \cite{KinectFusion} to reliable 3D pose estimation \cite{Endres,Taguchi}. However, many algorithms attempt to store the generated environment as a RGB 3D point cloud, which is not easily adaptable to dynamic environments, is highly memory intensive for large environments, and provides no intuition to higher perception processes about distinct objects beyond a volumetric approximation. By instead extracting meaningful geometry from the RGB-D data in the form of triangle meshes, several advantages can be realized, including:
+=======
+Previous work has demonstrated the diverse capabilities of RGBD cameras, from generating highly accurate 3D surface models to reliable 3D pose estimation. However, many algorithms attempt to store the generated environment as a RGB 3D point cloud, which is not easily adaptable to dynamic environments, requires very large quantities of memory to store large environments, and provides no intuition to higher perception processes about distinct objects beyond a volumetric approximation. Other approaches have been able to store and merge the surface data more efficiently, but still regard the environement as a unified whole rather than discrete objects. By extracting meaningful geometry from the RGB-D in the form of triangle meshes instead, a large number of advantages can be realized.
+>>>>>>> a5d1b88a404f083f05628a173441da42f9b37ac3
 
 \begin{enumerate}
 \item Greater storage efficiency
@@ -45,7 +49,11 @@ Previous work has demonstrated the diverse capabilities of RGBD cameras, from hi
 \end{enumerate}
 
 \section{Project Scope}
+<<<<<<< HEAD
 For this project, a portion of the full model-generation pipeline (Figure \ref{fig:pipeline}) will be implemented utilizing CUDA/OpenGL-based GPU acceleration.  Each segment of the pipeline has elements which may benefit from GPU acceleration. The red block represets the actual mesh generatation; this is the most complicated part of the pipeline and the main focus of the project. Blue segments are trivial functions, and green blocks represent stretch goals for the project.
+=======
+For this project, a segment of the pipeline will be implemented utilizing CUDA/OpenGL powered GPU acceleration (Figure \ref{fig:pipeline}).  Each segment of the pipeline has elements which may benefit from GPU acceleration. Blue segments are trivial functions that are easy to implement in CUDA/OpenGL. The red block represets the actual mesh generatation; this is the most complicated part of the pipeline and the main focus of the project. Green blocks represent stretch goals for the project, and are not strictly needed for the pipeline to function. A finished demo of the project would include side by side comparison of the raw kinect data and rendered mesh.
+>>>>>>> a5d1b88a404f083f05628a173441da42f9b37ac3
 
 \begin{figure}[!ht]
     \centering
@@ -54,5 +62,10 @@ For this project, a portion of the full model-generation pipeline (Figure \ref{f
     \label{fig:pipeline}
 \end{figure}
 
+<<<<<<< HEAD
 \printbibliography
 \end{document}
+=======
+%\printbibliography
+\end{document}
+>>>>>>> a5d1b88a404f083f05628a173441da42f9b37ac3
