@@ -117,6 +117,7 @@ int main()
 	}
 
 	VideoStream depth;
+	VideoStream color;
 
 	if (device.getSensorInfo(SENSOR_DEPTH) != NULL)
 	{
@@ -132,11 +133,26 @@ int main()
 		printf("Couldn't start the depth stream\n%s\n", OpenNI::getExtendedError());
 	}
 
+	
+	if (device.getSensorInfo(SENSOR_COLOR) != NULL)
+	{
+		rc = color.create(device, SENSOR_COLOR);
+		if (rc != STATUS_OK)
+		{
+			printf("Couldn't create color stream\n%s\n", OpenNI::getExtendedError());
+		}
+	}
+	rc = color.start();
+	if (rc != STATUS_OK)
+	{
+		printf("Couldn't start the color stream\n%s\n", OpenNI::getExtendedError());
+	}
 
-	PrintCallback depthPrinter;
+	PrintCallback depthPrinter,colorPrinter;
 
 	// Register to new frame
 	depth.addNewFrameListener(&depthPrinter);
+	color.addNewFrameListener(&colorPrinter);
 
 	// Wait while we're getting frames through the printer
 	while (!wasKeyboardHit())
@@ -145,10 +161,12 @@ int main()
 	}
 
 	depth.removeNewFrameListener(&depthPrinter);
-
+	color.removeNewFrameListener(&depthPrinter);
 
 	depth.stop();
 	depth.destroy();
+	color.stop();
+	color.destroy();
 	device.close();
 	OpenNI::shutdown();
 

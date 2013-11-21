@@ -22,6 +22,8 @@
 #define _ONI_SAMPLE_VIEWER_H_
 
 #include <OpenNI.h>
+#include <iostream>
+using namespace std;
 
 #define MAX_DEPTH 10000
 
