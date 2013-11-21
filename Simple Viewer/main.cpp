@@ -37,7 +37,7 @@ int main(int argc, char** argv)
 	{
 		deviceURI = argv[1];
 	}
-
+	
 	rc = openni::OpenNI::initialize();
 
 	printf("After initialization:\n%s\n", openni::OpenNI::getExtendedError());
