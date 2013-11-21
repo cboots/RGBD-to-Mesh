@@ -5,6 +5,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SimpleViewer", "Simple View
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EventBasedRead", "EventBasedRead\EventBasedRead.vcxproj", "{BDA3BF24-5555-4BF9-83E5-7B56134EDD40}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RGBD-to-Mesh", "RGBD-to-Mesh\RGBD-to-Mesh.vcxproj", "{190FE85B-189F-4244-BCDF-2279229D32A8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -29,6 +31,14 @@ Global
 		{BDA3BF24-5555-4BF9-83E5-7B56134EDD40}.Release|Win32.Build.0 = Release|Win32
 		{BDA3BF24-5555-4BF9-83E5-7B56134EDD40}.Release|x64.ActiveCfg = Release|x64
 		{BDA3BF24-5555-4BF9-83E5-7B56134EDD40}.Release|x64.Build.0 = Release|x64
+		{190FE85B-189F-4244-BCDF-2279229D32A8}.Debug|Win32.ActiveCfg = Debug|Win32
+		{190FE85B-189F-4244-BCDF-2279229D32A8}.Debug|Win32.Build.0 = Debug|Win32
+		{190FE85B-189F-4244-BCDF-2279229D32A8}.Debug|x64.ActiveCfg = Debug|x64
+		{190FE85B-189F-4244-BCDF-2279229D32A8}.Debug|x64.Build.0 = Debug|x64
+		{190FE85B-189F-4244-BCDF-2279229D32A8}.Release|Win32.ActiveCfg = Release|Win32
+		{190FE85B-189F-4244-BCDF-2279229D32A8}.Release|Win32.Build.0 = Release|Win32
+		{190FE85B-189F-4244-BCDF-2279229D32A8}.Release|x64.ActiveCfg = Release|x64
+		{190FE85B-189F-4244-BCDF-2279229D32A8}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
