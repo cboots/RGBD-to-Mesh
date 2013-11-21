@@ -20,6 +20,11 @@
 *****************************************************************************/
 #include <OpenNI.h>
 #include "Viewer.h"
+#include <iostream>
+
+using namespace std;
+
+void pause();
 
 int main(int argc, char** argv)
 {
@@ -42,6 +47,7 @@ int main(int argc, char** argv)
 	{
 		printf("SimpleViewer: Device open failed:\n%s\n", openni::OpenNI::getExtendedError());
 		openni::OpenNI::shutdown();
+		pause();
 		return 1;
 	}
 
@@ -79,6 +85,8 @@ int main(int argc, char** argv)
 	{
 		printf("SimpleViewer: No valid streams. Exiting\n");
 		openni::OpenNI::shutdown();
+
+		pause();
 		return 2;
 	}
 
@@ -91,4 +99,14 @@ int main(int argc, char** argv)
 		return 3;
 	}
 	sampleViewer.run();
+	
+	pause();
+}
+
+
+void pause()
+{
+	char ch;
+	cout << "Press any key to continue..." << endl;
+	cin >> ch;
 }
