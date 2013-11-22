@@ -13,6 +13,9 @@ class ONIKinectDevice :
 {
 protected:
 	Device mDevice;
+	VideoStream mDepthStream;
+	VideoStream mColorStream;
+
 public:
 	ONIKinectDevice(void);
 	~ONIKinectDevice(void);
@@ -21,7 +24,7 @@ public:
 	DeviceStatus connect(void)	   override;//Connect to any device
 	DeviceStatus disconnect(void)  override;//Disconnect from current device
 	DeviceStatus shutdown(void) override;
-	/*
+	
 	bool hasDepthStream() override;
 	bool hasColorStream() override;
 
@@ -30,7 +33,7 @@ public:
 
 	bool destroyColorStream()  override;
 	bool destroyDepthStream()  override;
-	*/
+	
 
 };
 
