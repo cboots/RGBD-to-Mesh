@@ -3,11 +3,21 @@
 
 RGBDFrame::RGBDFrame(void)
 {
+	init();
+}
+
+RGBDFrame::RGBDFrame(int width, int height)
+{
+	init();
+	setResolution(width, height);
 }
 
 
 RGBDFrame::~RGBDFrame(void)
 {
+	//Clear arrays;
+	mDepthData.reset();
+	mColorData.reset();
 }
 
 

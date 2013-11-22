@@ -45,6 +45,7 @@ protected:
 	void init();
 public:
 	RGBDFrame(void);
+	RGBDFrame(int width, int height);
 	~RGBDFrame(void);
 
 	//Set Resolution must be called before accessing data arrays.
