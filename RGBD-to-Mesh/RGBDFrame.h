@@ -53,7 +53,8 @@ public:
 	//Data is not presevered during resizing.
 	//As soon as this function returns, both color and depth arrays are initialized.
 	//Depth and color arrays must be the same resolution.
-	void setResolution(int width, int height);
+	//You can pass an optional variable that will forec reallocation of the memory array
+	void setResolution(int width, int height, bool forceAlloc = false);
 
 	//Writes 0 to all elements of depth image
 	void clearDepthImage(void);
@@ -80,7 +81,24 @@ public:
 		return mDepthData;
 	}
 
+
+	inline void setColorPixel(int x, int y, ColorPixel pixel)
+	{
+		if(x >= 0 && y >= 0 && x < mXRes && y < mYRes)
+		{
+			mColorData[getLinearIndex(x,y)] = pixel;
+		}
+	}
+
 	
+	inline void setDepthPixel(int x, int y, DepthPixel pixel)
+	{
+		if(x >= 0 && y >= 0 && x < mXRes && y < mYRes)
+		{
+			mDepthData[getLinearIndex(x,y)] = pixel;
+		}
+	}
+
 	inline void setHasDepth(bool hasDepth)
 	{
 		mHasDepth = hasDepth;
@@ -130,5 +148,11 @@ public:
 	{
 		return mColorTime;
 	}
+
+	inline int getLinearIndex(int x, int y)
+	{
+		return x+y*mXRes;
+	}
+
 };
 

@@ -33,9 +33,10 @@ void RGBDFrame::init(void)
 
 }
 
-void RGBDFrame::setResolution(int width, int height)
+//forceAlloc is default false.
+void RGBDFrame::setResolution(int width, int height, bool forceAlloc /*=false*/)
 {
-	if(width != mXRes || height != mYRes)
+	if(width != mXRes || height != mYRes || forceAlloc)
 	{
 		if(width > 0 && height > 0){
 			//Resolution changed, reallocate
@@ -49,13 +50,13 @@ void RGBDFrame::setResolution(int width, int height)
 
 void RGBDFrame::clearDepthImage(void)
 {
-
+	DepthPixel clear = {0};
 	if(mDepthData != NULL){
 		for(int y = 0; y < mYRes; y++)
 		{
 			for(int x = 0; x < mXRes; x++)
 			{
-				mDepthData[x+y*mXRes].depth = 0;
+				mDepthData[getLinearIndex(x,y)] = clear;
 			}
 		}
 	}
@@ -63,15 +64,14 @@ void RGBDFrame::clearDepthImage(void)
 
 void RGBDFrame::clearColorImage(void)
 {
+	ColorPixel clear = {0,0,0};
 
 	if(mColorData != NULL){
 		for(int y = 0; y < mYRes; y++)
 		{
 			for(int x = 0; x < mXRes; x++)
 			{
-				mColorData[x+y*mXRes].r = 0;
-				mColorData[x+y*mXRes].g = 0;
-				mColorData[x+y*mXRes].b = 0;
+				mColorData[getLinearIndex(x,y)] = clear;
 			}
 		}
 	}
