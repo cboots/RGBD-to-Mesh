@@ -6,3 +6,24 @@
 *.out
 *.run.xml
 *.swp
+
+/RGBD-to-Mesh/x64/Release/*.tlog
+
+/RGBD-to-Mesh/x64/Release
+/EventBasedRead/Debug/*.tlog
+/EventBasedRead/Debug
+
+/EventBasedRead/x64/Release/*.tlog
+/Simple Viewer/x64/Release
+
+/x64/Release
+
+/EventBasedRead/x64/Release
+
+/AllProjects.v11.suo
+/EventBasedRead/EventBasedRead.opensdf
+/EventBasedRead/EventBasedRead.sdf
+/Simple Viewer/SimpleViewer.opensdf
+/Simple Viewer/SimpleViewer.sdf
+/Simple Viewer/SimpleViewer.v11.suo
+/docs/pitch/pitch.synctex.gz

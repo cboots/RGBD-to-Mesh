@@ -99,6 +99,27 @@ public:
 		}
 	}
 
+	inline DepthPixel getDepthPixel(int x, int y)
+	{
+		if(x >= 0 && y >= 0 && x < mXRes && y < mYRes)
+		{
+			return	mDepthData[getLinearIndex(x,y)];
+		}
+		
+		return DepthPixel();
+	}
+
+	
+	inline ColorPixel getColorPixel(int x, int y)
+	{
+		if(x >= 0 && y >= 0 && x < mXRes && y < mYRes)
+		{
+			return	mColorData[getLinearIndex(x,y)];
+		}
+		
+		return ColorPixel();
+	}
+
 	inline void setHasDepth(bool hasDepth)
 	{
 		mHasDepth = hasDepth;
