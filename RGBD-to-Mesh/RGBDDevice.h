@@ -1,8 +1,13 @@
 #pragma once
 class RGBDDevice
 {
-public:
+private:
 	RGBDDevice(void);
-	~RGBDDevice(void);
+public:
+	virtual ~RGBDDevice(void) = 0;
 };
+
+
+//Even virtual destructors MUST exist
+RGBDDevice::~RGBDDevice(void){ }
 
