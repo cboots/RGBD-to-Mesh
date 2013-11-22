@@ -4,7 +4,7 @@
 #include <vector>
 #include <algorithm>
 
-enum ImageRegistrationMode
+enum RGBDImageRegistrationMode
 {
 	REGISTRATION_OFF = 0,
 	REGISTRATION_DEPTH_TO_COLOR = 1
@@ -59,7 +59,7 @@ public:
 	virtual DeviceStatus initialize(void) = 0;
 	virtual DeviceStatus connect(void) = 0;
 	virtual DeviceStatus disconnect(void) = 0;
-
+	virtual DeviceStatus shutdown(void) = 0;
 
 	//Override to enable streams
 	inline virtual bool hasDepthStream() {return false;}
@@ -70,10 +70,16 @@ public:
 	//Return true if successful (false usually means this device doesn't support the functionality)
 	inline virtual bool createDepthStream() { return false;}
 
+	
 	//Return true if successful (false usually means this device doesn't support the functionality)
-	inline virtual bool setImageRegistrationMode(ImageRegistrationMode) {return false;}
+	inline virtual bool destroyColorStream() { return false;}
+	//Return true if successful (false usually means this device doesn't support the functionality)
+	inline virtual bool destroyDepthStream() { return false;}
 
-	inline virtual ImageRegistrationMode getImageRegistrationMode(void) {return REGISTRATION_OFF;}
+	//Return true if successful (false usually means this device doesn't support the functionality)
+	inline virtual bool setImageRegistrationMode(RGBDImageRegistrationMode) {return false;}
+
+	inline virtual RGBDImageRegistrationMode getImageRegistrationMode(void) {return REGISTRATION_OFF;}
 
 	void addNewRGBDFrameListener(NewRGBDFrameListener* listener);
 	void addDeviceConnectedListener(DeviceConnectedListener* listener);
