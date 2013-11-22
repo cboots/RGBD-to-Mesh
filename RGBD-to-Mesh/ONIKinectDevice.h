@@ -6,5 +6,6 @@ class ONIKinectDevice :
 public:
 	ONIKinectDevice(void);
 	~ONIKinectDevice(void);
+
 };
 
