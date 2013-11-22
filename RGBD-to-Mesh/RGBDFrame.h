@@ -2,9 +2,8 @@
 //Contains type definitions for RGBD frame storage and manipulation.
 
 #include <stdint.h>
-#include <memory>
-
-using namespace std;
+#include "boost/shared_ptr.hpp"
+#include "boost/shared_array.hpp"
 
 //Pixel data format
 typedef struct
@@ -28,9 +27,9 @@ typedef uint64_t timestamp;
 
 //Forward declaration
 class RGBDFrame;
-typedef shared_ptr<RGBDFrame> frame_ptr;
-typedef shared_ptr<DepthPixel[]> depth_array_ptr;
-typedef shared_ptr<ColorPixel[]> color_array_ptr;
+typedef boost::shared_ptr<RGBDFrame> RGBDFramePtr;
+typedef boost::shared_array<DepthPixel> DepthPixelArray;
+typedef boost::shared_array<ColorPixel> ColorPixelArray;
 
 class RGBDFrame
 {
@@ -39,25 +38,43 @@ protected:
 	timestamp mDepthTime, mColorTime;
 	bool mHasDepth, mHasColor;
 
-	depth_array_ptr mDepthData;
-	color_array_ptr mColorData;
+	DepthPixelArray mDepthData;
+	ColorPixelArray mColorData;
 
+
+	void init();
 public:
 	RGBDFrame(void);
 	~RGBDFrame(void);
 
-
+	//Set Resolution must be called before accessing data arrays.
+	//This method will reallocate a new array if the size has changed.
+	//Data is not presevered during resizing.
+	//As soon as this function returns, both color and depth arrays are initialized.
+	//Depth and color arrays must be the same resolution.
 	void setResolution(int width, int height);
-	void clearDepthImage();
-	void clearColorImage();
-	
 
-	inline color_array_ptr getColorArray()
+	//Writes 0 to all elements of depth image
+	void clearDepthImage(void);
+
+	//Writes 0 to all elements of color image
+	void clearColorImage(void);
+	
+	
+	//Returns managed pointer to color data array.
+	//If setResolution has not been called yet, this function cannot be used.
+	//This array can be accessed regardless of the state of hasColor.
+	//Arrays are stored in row major order.
+	inline ColorPixelArray getColorArray()
 	{
 		return mColorData;
 	}
 
-	inline depth_array_ptr getDepthArray()
+	//Returns managed pointer to depth data array.
+	//If setResolution has not been called yet, this function cannot be used.
+	//This array can be accessed regardless of the state of hasDepth.
+	//Arrays are stored in row major order.
+	inline DepthPixelArray getDepthArray()
 	{
 		return mDepthData;
 	}
@@ -72,7 +89,6 @@ public:
 	{
 		mHasDepth = hasColor;
 	}
-
 
 	inline bool hasDepth()
 	{
