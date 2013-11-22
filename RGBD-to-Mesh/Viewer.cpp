@@ -101,6 +101,10 @@ openni::Status SampleViewer::init(int argc, char **argv)
 		{
 			m_width = depthWidth;
 			m_height = depthHeight;
+			
+			printf("Color and depth same resolution: D: %dx%d, C: %dx%d\n",
+				depthWidth, depthHeight,
+				colorWidth, colorHeight);
 		}
 		else
 		{

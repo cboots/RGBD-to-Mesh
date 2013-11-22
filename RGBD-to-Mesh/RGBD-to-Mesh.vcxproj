@@ -172,10 +172,20 @@ xcopy /D /F /Y "$(ProjectDir)\glut64.dll" "$(OutDir)"
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="LogDevice.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="ONIKinectDevice.cpp" />
+    <ClCompile Include="RGBDDevice.cpp" />
+    <ClCompile Include="RGBDFrame.cpp" />
+    <ClCompile Include="RGBDFrameFactory.cpp" />
     <ClCompile Include="Viewer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="LogDevice.h" />
+    <ClInclude Include="ONIKinectDevice.h" />
+    <ClInclude Include="RGBDDevice.h" />
+    <ClInclude Include="RGBDFrame.h" />
+    <ClInclude Include="RGBDFrameFactory.h" />
     <ClInclude Include="Viewer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
