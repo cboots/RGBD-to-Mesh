@@ -25,12 +25,24 @@ void RGBDFrame::init(void)
 {
 	mXRes = 0;
 	mYRes = 0;
+	//NULL Pointers
+	mDepthData = DepthPixelArray();
+	mColorData = ColorPixelArray();
 	
 	mDepthTime = 0;
 	mColorTime = 0;
 	mHasDepth = false;
 	mHasColor = false;
 
+}
+
+
+void RGBDFrame::resetMetaData(void)
+{	
+	mDepthTime = 0;
+	mColorTime = 0;
+	mHasDepth = false;
+	mHasColor = false;
 }
 
 //forceAlloc is default false.
@@ -44,6 +56,13 @@ void RGBDFrame::setResolution(int width, int height, bool forceAlloc /*=false*/)
 			mYRes = height;
 			mDepthData = DepthPixelArray(new DepthPixel[width*height]);
 			mColorData = ColorPixelArray(new ColorPixel[width*height]);
+		}else{
+			//width and height invalid. Clear
+			mXRes = 0;
+			mYRes = 0;
+			//Null pointers
+			mDepthData = DepthPixelArray();
+			mColorData = ColorPixelArray();
 		}
 	}
 }

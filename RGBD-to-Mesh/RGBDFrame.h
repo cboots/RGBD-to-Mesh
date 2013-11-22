@@ -51,9 +51,13 @@ public:
 	//Set Resolution must be called before accessing data arrays.
 	//This method will reallocate a new array if the size has changed.
 	//Data is not presevered during resizing.
-	//As soon as this function returns, both color and depth arrays are initialized.
+	//
+	//As soon as this function returns, both color and depth arrays have been allocated.
 	//Depth and color arrays must be the same resolution.
 	//You can pass an optional variable that will forec reallocation of the memory array
+	//
+	//Passing invalid width or height (either <= 0) will result in the image memory being nullified.
+	//Other processes with DepthPixelArray or ColorPixelArray references may still use the data safely, but it will be deleted when the reference goes out of scope.
 	void setResolution(int width, int height, bool forceAlloc = false);
 
 	//Writes 0 to all elements of depth image
@@ -62,6 +66,8 @@ public:
 	//Writes 0 to all elements of color image
 	void clearColorImage(void);
 	
+	//Resets all metadata parameters. Does not affect resolution or image data
+	void resetMetaData(void);
 	
 	//Returns managed pointer to color data array.
 	//If setResolution has not been called yet, this function cannot be used.
