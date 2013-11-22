@@ -24,6 +24,9 @@ DeviceStatus ONIKinectDevice::initialize(void)
 		return DEVICESTATUS_ERROR;
 	}else{
 		onMessage("OpenNI device initialized\n");
+		OpenNI::addDeviceConnectedListener(this);
+		OpenNI::addDeviceDisconnectedListener(this);
+		OpenNI::addDeviceStateChangedListener(this);
 		return DEVICESTATUS_OK;
 	}
 }
@@ -139,3 +142,32 @@ bool ONIKinectDevice::destroyDepthStream()
 	return true;
 }
 
+
+
+void ONIKinectDevice::onDeviceStateChanged(const DeviceInfo* pInfo, DeviceState state)
+{
+	std::ostringstream out; 
+	out << "Device \"" << pInfo->getUri() << "\" error state changed to " << state << "\n";
+	onMessage(out.str());
+}
+
+void ONIKinectDevice::onDeviceConnected(const DeviceInfo* pInfo)
+{
+	onConnect();
+	std::ostringstream out; 
+	out << "Device \"" << pInfo->getUri() << "\" connected\n";
+	onMessage(out.str());
+}
+
+void ONIKinectDevice::onDeviceDisconnected(const DeviceInfo* pInfo)
+{
+	onDisconnect();
+	std::ostringstream out; 
+	out << "Device \"" << pInfo->getUri() << "\" disconnected\n";
+	onMessage(out.str());
+}
+
+void ONIKinectDevice::onNewFrame(VideoStream&)
+{
+
+}

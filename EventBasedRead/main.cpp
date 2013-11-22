@@ -161,7 +161,7 @@ int main()
 	}
 
 	depth.removeNewFrameListener(&depthPrinter);
-	color.removeNewFrameListener(&depthPrinter);
+	color.removeNewFrameListener(&colorPrinter);
 
 	depth.stop();
 	depth.destroy();

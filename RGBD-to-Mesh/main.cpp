@@ -90,6 +90,7 @@ int main(int argc, char** argv)
 		return 3;
 	}
 
+	printf("Streams created succesfully\n");
 	/*
 
 

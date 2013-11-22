@@ -9,7 +9,12 @@ using namespace std;
 using namespace openni;
 
 class ONIKinectDevice :
-	public RGBDDevice
+	public RGBDDevice,
+	//Event listeners
+	public OpenNI::DeviceConnectedListener,
+	public OpenNI::DeviceDisconnectedListener,
+	public OpenNI::DeviceStateChangedListener,
+	public VideoStream::NewFrameListener
 {
 protected:
 	Device mDevice;
@@ -19,12 +24,12 @@ protected:
 public:
 	ONIKinectDevice(void);
 	~ONIKinectDevice(void);
-	
+
 	DeviceStatus initialize(void)  override;//Initialize 
 	DeviceStatus connect(void)	   override;//Connect to any device
 	DeviceStatus disconnect(void)  override;//Disconnect from current device
 	DeviceStatus shutdown(void) override;
-	
+
 	bool hasDepthStream() override;
 	bool hasColorStream() override;
 
@@ -33,7 +38,12 @@ public:
 
 	bool destroyColorStream()  override;
 	bool destroyDepthStream()  override;
-	
+
+	//Event handlers
+	void onDeviceStateChanged(const DeviceInfo* pInfo, DeviceState state);
+	void onDeviceConnected(const DeviceInfo* pInfo);
+	void onDeviceDisconnected(const DeviceInfo* pInfo);
+	void onNewFrame(VideoStream& stream);
 
 };
 
