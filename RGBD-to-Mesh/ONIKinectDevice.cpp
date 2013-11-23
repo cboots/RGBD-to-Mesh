@@ -194,7 +194,7 @@ void ONIKinectDevice::onNewDepthFrame(VideoFrameRef frame)
 		{
 			//Data array valid. Fill it
 			//TODO: Use more efficient method of transfering memory. (like memcopy, or plain linear indexing?)
-			DepthPixelArray data = mRGBDFrameDepth->getDepthArray();
+			DPixelArray data = mRGBDFrameDepth->getDepthArray();
 			//TODO: Enable cropping
 
 			const openni::DepthPixel* pDepth = (const openni::DepthPixel*)frame.getData();

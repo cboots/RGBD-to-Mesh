@@ -20,7 +20,7 @@ typedef struct
 {
 	/* Depth value of this pixel */
 	uint16_t depth;
-} DepthPixel;
+} DPixel;
 
 typedef uint64_t timestamp;
 
@@ -28,7 +28,7 @@ typedef uint64_t timestamp;
 //Forward declaration
 class RGBDFrame;
 typedef boost::shared_ptr<RGBDFrame> RGBDFramePtr;
-typedef boost::shared_array<DepthPixel> DepthPixelArray;
+typedef boost::shared_array<DPixel> DPixelArray;
 typedef boost::shared_array<ColorPixel> ColorPixelArray;
 
 class RGBDFrame
@@ -38,7 +38,7 @@ protected:
 	timestamp mDepthTime, mColorTime;
 	bool mHasDepth, mHasColor;
 
-	DepthPixelArray mDepthData;
+	DPixelArray mDepthData;
 	ColorPixelArray mColorData;
 
 
@@ -57,7 +57,7 @@ public:
 	//You can pass an optional variable that will forec reallocation of the memory array
 	//
 	//Passing invalid width or height (either <= 0) will result in the image memory being nullified.
-	//Other processes with DepthPixelArray or ColorPixelArray references may still use the data safely, but it will be deleted when the reference goes out of scope.
+	//Other processes with DPixelArray or ColorPixelArray references may still use the data safely, but it will be deleted when the reference goes out of scope.
 	void setResolution(int width, int height, bool forceAlloc = false);
 
 	//Writes 0 to all elements of depth image
@@ -82,7 +82,7 @@ public:
 	//If setResolution has not been called yet, this function cannot be used.
 	//This array can be accessed regardless of the state of hasDepth.
 	//Arrays are stored in row major order.
-	inline DepthPixelArray getDepthArray()
+	inline DPixelArray getDepthArray()
 	{
 		return mDepthData;
 	}
@@ -97,7 +97,7 @@ public:
 	}
 
 	
-	inline void setDepthPixel(int x, int y, DepthPixel pixel)
+	inline void setDPixel(int x, int y, DPixel pixel)
 	{
 		if(x >= 0 && y >= 0 && x < mXRes && y < mYRes)
 		{
@@ -105,14 +105,14 @@ public:
 		}
 	}
 
-	inline DepthPixel getDepthPixel(int x, int y)
+	inline DPixel getDPixel(int x, int y)
 	{
 		if(x >= 0 && y >= 0 && x < mXRes && y < mYRes)
 		{
 			return	mDepthData[getLinearIndex(x,y)];
 		}
 		
-		return DepthPixel();
+		return DPixel();
 	}
 
 	
@@ -133,7 +133,7 @@ public:
 
 	inline void setHasColor(bool hasColor)
 	{
-		mHasDepth = hasColor;
+		mHasColor = hasColor;
 	}
 
 	inline bool hasDepth()

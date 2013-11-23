@@ -50,6 +50,15 @@ public:
 	}
 };
 
+class RGBDFrameListener : public RGBDDevice::NewRGBDFrameListener
+{
+public:
+	void onNewRGBDFrame(RGBDFramePtr frame) override
+	{
+		printf("New Frame Recieved: Has Color %d Has Depth %d\n", frame->hasDepth(), frame->hasColor());
+	}
+};
+
 
 int main(int argc, char** argv)
 {
@@ -62,9 +71,11 @@ int main(int argc, char** argv)
 
 	ONIKinectDevice device;
 	RGBDDeviceListener deviceStateListener;
+	RGBDFrameListener frameListener;
 	device.addDeviceConnectedListener(&deviceStateListener);
 	device.addDeviceDisconnectedListener(&deviceStateListener);
 	device.addDeviceMessageListener(&deviceStateListener);
+	device.addNewRGBDFrameListener(&frameListener);
 
 	device.initialize();
 	if(DEVICESTATUS_OK != device.connect())
