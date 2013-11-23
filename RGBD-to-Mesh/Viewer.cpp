@@ -151,26 +151,29 @@ void SampleViewer::display()
 	glOrtho(0, GL_WIN_SIZE_X, GL_WIN_SIZE_Y, 0, -1.0, 1.0);
 
 
-	memset(m_pTexMap, 0, m_nTexMapX*m_nTexMapY*sizeof(openni::RGB888Pixel));
+	
 
 	if(localFrame != NULL){
 		// check if we need to draw image frame to texture
 		if ((m_eViewState == DISPLAY_MODE_OVERLAY ||
 			m_eViewState == DISPLAY_MODE_IMAGE) && localFrame->hasColor())
 		{
+			memset(m_pTexMap, 0, m_nTexMapX*m_nTexMapY*sizeof(openni::RGB888Pixel));
 			const ColorPixelArray colorArray = localFrame->getColorArray();
-			openni::RGB888Pixel* pTex = m_pTexMap;
+			openni::RGB888Pixel* pTexRow = m_pTexMap;
 
 			for (int y = 0; y < localFrame->getYRes(); ++y)
 			{
 
-				for (int x = 0; x <  localFrame->getXRes(); ++x)
+				openni::RGB888Pixel* pTex = pTexRow;
+				for (int x = 0; x <  localFrame->getXRes(); ++x, ++pTex)
 				{
 					int ind = localFrame->getLinearIndex(x,y);
-					pTex[ind].r = colorArray[ind].r;
-					pTex[ind].g = colorArray[ind].g;
-					pTex[ind].b = colorArray[ind].b;
+					pTex->r  = colorArray[ind].r;
+					pTex->g  = colorArray[ind].g;
+					pTex->b  = colorArray[ind].b;
 				}
+			pTexRow += m_nTexMapX;
 			}
 		}
 	}
