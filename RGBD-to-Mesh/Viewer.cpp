@@ -165,33 +165,56 @@ void SampleViewer::display()
 
 	memset(m_pTexMap, 0, m_nTexMapX*m_nTexMapY*sizeof(openni::RGB888Pixel));
 
-	if(localFrame != NULL){
-		// check if we need to draw image frame to texture
-		if ((m_eViewState == DISPLAY_MODE_OVERLAY ||
-			m_eViewState == DISPLAY_MODE_IMAGE) && mColorArray != NULL)
+	// check if we need to draw image frame to texture
+	if ((m_eViewState == DISPLAY_MODE_OVERLAY ||
+		m_eViewState == DISPLAY_MODE_IMAGE) && mColorArray != NULL)
+	{
+		const ColorPixelArray colorArray = mColorArray;
+		ColorPixel* pImageRow = colorArray.get();
+		openni::RGB888Pixel* pTexRow = m_pTexMap;
+		int rowsize = m_width;
+		for (int y = 0; y < m_height; ++y)
 		{
-			const ColorPixelArray colorArray = mColorArray;
-			ColorPixel* pImageRow = colorArray.get();
-			openni::RGB888Pixel* pTexRow = m_pTexMap;
-			int rowsize = m_width;
-			for (int y = 0; y < m_height; ++y)
-			{
 
-				openni::RGB888Pixel* pTex = pTexRow;
-				ColorPixel* pImage = pImageRow;
-				for (int x = 0; x <  m_width; ++x, ++pTex, ++pImage)
-				{
-					ColorPixel color = (*pImage);
-					pTex->r  =  color.r;
-					pTex->g  =  color.g;
-					pTex->b  =  color.b;
-				}
-				pTexRow += m_nTexMapX;
-				pImageRow += rowsize;
+			openni::RGB888Pixel* pTex = pTexRow;
+			ColorPixel* pImage = pImageRow;
+			for (int x = 0; x <  m_width; ++x, ++pTex, ++pImage)
+			{
+				ColorPixel color = (*pImage);
+				pTex->r  =  color.r;
+				pTex->g  =  color.g;
+				pTex->b  =  color.b;
 			}
+			pTexRow += m_nTexMapX;
+			pImageRow += rowsize;
 		}
 	}
 
+	if ((m_eViewState == DISPLAY_MODE_OVERLAY ||
+		m_eViewState == DISPLAY_MODE_DEPTH) && mDepthArray != NULL)
+	{
+		const DPixelArray depthArray = mDepthArray;
+		DPixel* pDepthRow = depthArray.get();
+		openni::RGB888Pixel* pTexRow = m_pTexMap;
+		int rowsize = m_width;
+		for (int y = 0; y < m_height; ++y)
+		{
+			openni::RGB888Pixel* pTex = pTexRow;
+			DPixel* pDepth = pDepthRow;
+			for (int x = 0; x <  m_width; ++x, ++pTex, ++pDepth)
+			{
+				int depth = (*pDepth).depth;
+				if(depth != 0){
+					uint8_t scaledDepth = depth>>5;
+					pTex->r = scaledDepth;
+					pTex->g = scaledDepth;
+					pTex->b = scaledDepth;
+				}
+			}
+			pTexRow += m_nTexMapX;
+			pDepthRow += rowsize;
+		}
+	}
 	/*
 	// check if we need to draw depth frame to texture
 	if ((m_eViewState == DISPLAY_MODE_OVERLAY ||
