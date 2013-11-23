@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include "RGBDFrameFactory.h"
 
 using namespace std;
 using namespace openni;
@@ -64,8 +65,10 @@ protected:
 	Device mDevice;
 	VideoStream mDepthStream;
 	VideoStream mColorStream;
+	RGBDFrameFactory mFrameFactory;
 
 	RGBDFramePtr mRGBDFrame;
+	bool mSyncDepthAndColor;
 public:
 	ONIKinectDevice(void);
 	~ONIKinectDevice(void);
@@ -83,6 +86,14 @@ public:
 
 	bool destroyColorStream()  override;
 	bool destroyDepthStream()  override;
+	
+	bool setImageRegistrationMode(RGBDImageRegistrationMode) override;
+	RGBDImageRegistrationMode getImageRegistrationMode(void) override;
+
+	//Override to implement
+	inline virtual bool getSyncColorAndDepth() override {return mSyncDepthAndColor;}
+	inline virtual bool setSyncColorAndDepth(bool sync) override { mSyncDepthAndColor = sync; return true;}
+
 
 	//Event handlers
 	void onDeviceStateChanged(const DeviceInfo* pInfo, DeviceState state);
@@ -91,6 +102,8 @@ public:
 
 	virtual void onNewDepthFrame(VideoFrameRef frame);
 	virtual void onNewColorFrame(VideoFrameRef frame);
+
+
 
 };
 

@@ -51,7 +51,7 @@ protected:
 	std::vector<DeviceConnectedListener*> mDeviceConnectedListeners;
 	std::vector<DeviceDisconnectedListener*> mDeviceDisconnectedListeners;
 	std::vector<DeviceMessageListener*> mDeviceMessageListeners;
-	bool mWaitForFullFrame;
+
 public:
 	virtual ~RGBDDevice(void){};
 
@@ -78,8 +78,11 @@ public:
 
 	//Return true if successful (false usually means this device doesn't support the functionality)
 	inline virtual bool setImageRegistrationMode(RGBDImageRegistrationMode) {return false;}
-
 	inline virtual RGBDImageRegistrationMode getImageRegistrationMode(void) {return REGISTRATION_OFF;}
+
+	//Override to implement
+	inline virtual bool getSyncColorAndDepth() {return false;}
+	inline virtual bool setSyncColorAndDepth(bool) {return false;}
 
 	void addNewRGBDFrameListener(NewRGBDFrameListener* listener);
 	void addDeviceConnectedListener(DeviceConnectedListener* listener);

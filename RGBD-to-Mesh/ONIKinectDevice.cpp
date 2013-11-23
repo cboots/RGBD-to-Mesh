@@ -177,13 +177,135 @@ void ONIKinectDevice::onNewDepthFrame(VideoFrameRef frame)
 	printf("[%08llu] Depth Frame\n", (long long)frame.getTimestamp());
 
 	//Make sure frame is in right format
-	if(frame.getVideoMode().getPixelFormat() == PIXEL_FORMAT_RGB888)
+	if(frame.getVideoMode().getPixelFormat() == PIXEL_FORMAT_DEPTH_1_MM || 
+		frame.getVideoMode().getPixelFormat() == PIXEL_FORMAT_DEPTH_100_UM )
 	{
-		
+		int width = frame.getVideoMode().getResolutionX();
+		int height = frame.getVideoMode().getResolutionY();
+
+		//Initialize frame if not initialized
+		if(mRGBDFrame == NULL)
+		{
+			mRGBDFrame = mFrameFactory.getRGBDFrame(width,height);
+		}
+
+		if(width == mRGBDFrame->getXRes()  && height == mRGBDFrame->getYRes())
+		{
+			//Data array valid. Fill it
+			//TODO: Use more efficient method of transfering memory. (like memcopy, or plain linear indexing?)
+			DepthPixelArray data = mRGBDFrame->getDepthArray();
+			//TODO: Enable cropping
+
+			const openni::DepthPixel* pDepth = (const openni::DepthPixel*)frame.getData();
+			for(int y = 0; y < height; y++)
+			{
+				for(int x = 0; x < width; x++)
+				{
+					int ind = mRGBDFrame->getLinearIndex(x,y);
+					data[ind].depth = pDepth[ind];
+				}
+			}
+
+			mRGBDFrame->setHasDepth(true);
+			//Check if send
+			if(!mSyncDepthAndColor || mRGBDFrame->hasColor())
+			{
+				//Send it
+				onNewRGBDFrame(mRGBDFrame);
+				mRGBDFrame = NULL;
+			}
+
+		}else{
+			//Size error
+			onMessage("Error: depth and color frames don't match in size\n");	
+		}
+
+	}else{
+		//Format error
+		onMessage("Error: depth format incorrect\n");	
 	}
 }
 
 void ONIKinectDevice::onNewColorFrame(VideoFrameRef frame)
 {
 	printf("[%08llu] Color Frame\n", (long long)frame.getTimestamp());
+
+	//Make sure frame is in right format
+	if(frame.getVideoMode().getPixelFormat() == PIXEL_FORMAT_RGB888)
+	{
+		int width = frame.getVideoMode().getResolutionX();
+		int height = frame.getVideoMode().getResolutionY();
+
+		//Initialize frame if not initialized
+		if(mRGBDFrame == NULL)
+		{
+			mRGBDFrame = mFrameFactory.getRGBDFrame(width,height);
+		}
+
+		if(width == mRGBDFrame->getXRes()  && height == mRGBDFrame->getYRes())
+		{
+			//Data array valid. Fill it
+			//TODO: Use more efficient method of transfering memory. (like memcopy, or plain linear indexing?)
+			ColorPixelArray data = mRGBDFrame->getColorArray();
+			//TODO: Enable cropping
+			
+			const openni::RGB888Pixel* pImage = (const openni::RGB888Pixel*)frame.getData();
+			for(int y = 0; y < height; y++)
+			{
+				for(int x = 0; x < width; x++)
+				{
+					int ind = mRGBDFrame->getLinearIndex(x,y);
+					data[ind].r = pImage[ind].r;
+					data[ind].g = pImage[ind].g;
+					data[ind].b = pImage[ind].b;
+				}
+			}
+
+			mRGBDFrame->setHasDepth(true);
+			//Check if send
+			if(!mSyncDepthAndColor || mRGBDFrame->hasColor())
+			{
+				//Send it
+				onNewRGBDFrame(mRGBDFrame);
+				mRGBDFrame = NULL;
+			}
+
+		}else{
+			//Size error
+			onMessage("Error: depth and color frames don't match in size\n");	
+		}
+
+	}else{
+		//Format error
+		onMessage("Error: depth format incorrect\n");	
+	}
+}
+
+
+
+bool ONIKinectDevice::setImageRegistrationMode(RGBDImageRegistrationMode mode)
+{
+	switch(mode)
+	{
+	case RGBDImageRegistrationMode::REGISTRATION_DEPTH_TO_COLOR:
+		mDevice.setImageRegistrationMode(ImageRegistrationMode::IMAGE_REGISTRATION_DEPTH_TO_COLOR);
+		break;
+	default:
+		mDevice.setImageRegistrationMode(ImageRegistrationMode::IMAGE_REGISTRATION_OFF);
+		break;
+	}
+
+	return true;
+}
+
+RGBDImageRegistrationMode ONIKinectDevice::getImageRegistrationMode(void)
+{
+	ImageRegistrationMode mode = mDevice.getImageRegistrationMode();
+	switch(mode)
+	{
+	case ImageRegistrationMode::IMAGE_REGISTRATION_DEPTH_TO_COLOR:
+		return RGBDImageRegistrationMode::REGISTRATION_DEPTH_TO_COLOR;
+	default:
+		return RGBDImageRegistrationMode::REGISTRATION_OFF;
+	}
 }
