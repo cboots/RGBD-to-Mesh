@@ -88,6 +88,17 @@ public:
 	}
 
 
+	inline void setColorArray(ColorPixelArray data)
+	{
+		mColorData = data;
+	}
+
+	inline void setDepthArray(DPixelArray data)
+	{
+		mDepthData = data;
+	}
+
+
 	inline void setColorPixel(int x, int y, ColorPixel pixel)
 	{
 		if(x >= 0 && y >= 0 && x < mXRes && y < mYRes)

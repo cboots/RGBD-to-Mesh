@@ -216,12 +216,30 @@ void ONIKinectDevice::onNewDepthFrame(VideoFrameRef frame)
 
 			rgbdFrame->setDepthTimestamp(frame.getTimestamp());
 			rgbdFrame->setHasDepth(true);
+
 			//Check if send
-			if(!mSyncDepthAndColor || rgbdFrame->hasColor())
+			if(!mSyncDepthAndColor)
 			{
 				//Send it
 				onNewRGBDFrame(rgbdFrame);
 				rgbdFrame = NULL;
+			}else{
+				//Sync it
+				frameGuard.lock();
+				if(mRGBDFrameSynced == NULL)
+				{
+					//FIRST POST!!!
+					mRGBDFrameSynced = rgbdFrame;
+				}else{
+					//SECOND!!
+					//Send it
+					mRGBDFrameSynced->setDepthArray(rgbdFrame->getDepthArray());
+					mRGBDFrameSynced->setHasDepth(true);
+					onNewRGBDFrame(mRGBDFrameSynced);
+					mRGBDFrameSynced = NULL;
+				}
+				//Unlock scoped
+				frameGuard.unlock();
 			}
 
 		}else{
@@ -272,11 +290,28 @@ void ONIKinectDevice::onNewColorFrame(VideoFrameRef frame)
 			rgbdFrame->setColorTimestamp(frame.getTimestamp());
 			rgbdFrame->setHasColor(true);
 			//Check if send
-			if(!mSyncDepthAndColor || rgbdFrame->hasDepth())
+			if(!mSyncDepthAndColor)
 			{
 				//Send it
 				onNewRGBDFrame(rgbdFrame);
 				rgbdFrame = NULL;
+			}else{
+				//Sync it
+				frameGuard.lock();
+				if(mRGBDFrameSynced == NULL)
+				{
+					//FIRST POST!!!
+					mRGBDFrameSynced = rgbdFrame;
+				}else{
+					//SECOND!!
+					//Send it
+					mRGBDFrameSynced->setColorArray(rgbdFrame->getColorArray());
+					mRGBDFrameSynced->setHasColor(true);
+					onNewRGBDFrame(mRGBDFrameSynced);
+					mRGBDFrameSynced = NULL;
+				}
+				//Unlock scoped
+				frameGuard.unlock();
 			}
 
 		}else{

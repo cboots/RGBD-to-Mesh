@@ -4,6 +4,7 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <mutex>
 #include "RGBDFrameFactory.h"
 
 using namespace std;
@@ -67,8 +68,8 @@ protected:
 	VideoStream mColorStream;
 	RGBDFrameFactory mFrameFactory;
 
-	//RGBDFramePtr mRGBDFrameDepth;
-	//RGBDFramePtr mRGBDFrameColor;
+	std::mutex frameGuard;
+	RGBDFramePtr mRGBDFrameSynced;
 	bool mSyncDepthAndColor;
 public:
 	ONIKinectDevice(void);
