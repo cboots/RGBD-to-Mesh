@@ -84,6 +84,14 @@ public:
 	inline virtual bool getSyncColorAndDepth() {return false;}
 	inline virtual bool setSyncColorAndDepth(bool) {return false;}
 
+	
+	virtual int getDepthResolutionX() = 0;
+	virtual int getDepthResolutionY() = 0;
+	virtual int getColorResolutionX() = 0;
+	virtual int getColorResolutionY() = 0;
+	virtual bool isDepthStreamValid() = 0;
+	virtual bool isColorStreamValid() = 0;
+
 	void addNewRGBDFrameListener(NewRGBDFrameListener* listener);
 	void addDeviceConnectedListener(DeviceConnectedListener* listener);
 	void addDeviceDisconnectedListener(DeviceDisconnectedListener* listener);

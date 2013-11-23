@@ -67,8 +67,8 @@ protected:
 	VideoStream mColorStream;
 	RGBDFrameFactory mFrameFactory;
 
-	RGBDFramePtr mRGBDFrameDepth;
-	RGBDFramePtr mRGBDFrameColor;
+	//RGBDFramePtr mRGBDFrameDepth;
+	//RGBDFramePtr mRGBDFrameColor;
 	bool mSyncDepthAndColor;
 public:
 	ONIKinectDevice(void);
@@ -103,8 +103,13 @@ public:
 
 	virtual void onNewDepthFrame(VideoFrameRef frame);
 	virtual void onNewColorFrame(VideoFrameRef frame);
-
-
+	
+	int getDepthResolutionX() override;
+	int getDepthResolutionY() override;
+	int getColorResolutionX() override;
+	int getColorResolutionY() override;
+	bool isDepthStreamValid() override;
+	bool isColorStreamValid() override;
 
 };
 

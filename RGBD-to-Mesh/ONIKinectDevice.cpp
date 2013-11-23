@@ -177,6 +177,7 @@ void ONIKinectDevice::onNewDepthFrame(VideoFrameRef frame)
 {
 	//printf("[%08llu] Depth Frame\n", (long long)frame.getTimestamp());
 
+	RGBDFramePtr rgbdFrame;
 	//Make sure frame is in right format
 	if(frame.getVideoMode().getPixelFormat() == PIXEL_FORMAT_DEPTH_1_MM || 
 		frame.getVideoMode().getPixelFormat() == PIXEL_FORMAT_DEPTH_100_UM )
@@ -185,16 +186,16 @@ void ONIKinectDevice::onNewDepthFrame(VideoFrameRef frame)
 		int height = frame.getVideoMode().getResolutionY();
 
 		//Initialize frame if not initialized
-		if(mRGBDFrameDepth == NULL)
+		if(rgbdFrame == NULL)
 		{
-			mRGBDFrameDepth = mFrameFactory.getRGBDFrame(width,height);
+			rgbdFrame = mFrameFactory.getRGBDFrame(width,height);
 		}
 
-		if(width == mRGBDFrameDepth->getXRes()  && height == mRGBDFrameDepth->getYRes())
+		if(width == rgbdFrame->getXRes()  && height == rgbdFrame->getYRes())
 		{
 			//Data array valid. Fill it
 			//TODO: Use more efficient method of transfering memory. (like memcopy, or plain linear indexing?)
-			DPixelArray data = mRGBDFrameDepth->getDepthArray();
+			DPixelArray data = rgbdFrame->getDepthArray();
 			//TODO: Enable cropping
 
 			const openni::DepthPixel* pDepth = (const openni::DepthPixel*)frame.getData();
@@ -202,19 +203,19 @@ void ONIKinectDevice::onNewDepthFrame(VideoFrameRef frame)
 			{
 				for(int x = 0; x < width; x++)
 				{
-					int ind = mRGBDFrameDepth->getLinearIndex(x,y);
+					int ind = rgbdFrame->getLinearIndex(x,y);
 					data[ind].depth = pDepth[ind];
 				}
 			}
-			
-			mRGBDFrameDepth->setDepthTimestamp(frame.getTimestamp());
-			mRGBDFrameDepth->setHasDepth(true);
+
+			rgbdFrame->setDepthTimestamp(frame.getTimestamp());
+			rgbdFrame->setHasDepth(true);
 			//Check if send
-			if(!mSyncDepthAndColor || mRGBDFrameDepth->hasColor())
+			if(!mSyncDepthAndColor || rgbdFrame->hasColor())
 			{
 				//Send it
-				onNewRGBDFrame(mRGBDFrameDepth);
-				mRGBDFrameDepth = NULL;
+				onNewRGBDFrame(rgbdFrame);
+				rgbdFrame = NULL;
 			}
 
 		}else{
@@ -231,7 +232,7 @@ void ONIKinectDevice::onNewDepthFrame(VideoFrameRef frame)
 void ONIKinectDevice::onNewColorFrame(VideoFrameRef frame)
 {
 	//printf("[%08llu] Color Frame\n", (long long)frame.getTimestamp());
-
+	RGBDFramePtr rgbdFrame;
 	//Make sure frame is in right format
 	if(frame.getVideoMode().getPixelFormat() == PIXEL_FORMAT_RGB888)
 	{
@@ -239,37 +240,37 @@ void ONIKinectDevice::onNewColorFrame(VideoFrameRef frame)
 		int height = frame.getVideoMode().getResolutionY();
 
 		//Initialize frame if not initialized
-		if(mRGBDFrameColor == NULL)
+		if(rgbdFrame == NULL)
 		{
-			mRGBDFrameColor = mFrameFactory.getRGBDFrame(width,height);
+			rgbdFrame = mFrameFactory.getRGBDFrame(width,height);
 		}
 
-		if(width == mRGBDFrameColor->getXRes()  && height == mRGBDFrameColor->getYRes())
+		if(width == rgbdFrame->getXRes()  && height == rgbdFrame->getYRes())
 		{
 			//Data array valid. Fill it
 			//TODO: Use more efficient method of transfering memory. (like memcopy, or plain linear indexing?)
-			ColorPixelArray data = mRGBDFrameColor->getColorArray();
+			ColorPixelArray data = rgbdFrame->getColorArray();
 			//TODO: Enable cropping
-			
+
 			const openni::RGB888Pixel* pImage = (const openni::RGB888Pixel*)frame.getData();
 			for(int y = 0; y < height; y++)
 			{
 				for(int x = 0; x < width; x++)
 				{
-					int ind = mRGBDFrameColor->getLinearIndex(x,y);
+					int ind = rgbdFrame->getLinearIndex(x,y);
 					data[ind].r = pImage[ind].r;
 					data[ind].g = pImage[ind].g;
 					data[ind].b = pImage[ind].b;
 				}
 			}
-			mRGBDFrameColor->setColorTimestamp(frame.getTimestamp());
-			mRGBDFrameColor->setHasColor(true);
+			rgbdFrame->setColorTimestamp(frame.getTimestamp());
+			rgbdFrame->setHasColor(true);
 			//Check if send
-			if(!mSyncDepthAndColor || mRGBDFrameColor->hasDepth())
+			if(!mSyncDepthAndColor || rgbdFrame->hasDepth())
 			{
 				//Send it
-				onNewRGBDFrame(mRGBDFrameColor);
-				mRGBDFrameColor = NULL;
+				onNewRGBDFrame(rgbdFrame);
+				rgbdFrame = NULL;
 			}
 
 		}else{
@@ -310,4 +311,43 @@ RGBDImageRegistrationMode ONIKinectDevice::getImageRegistrationMode(void)
 	default:
 		return RGBDImageRegistrationMode::REGISTRATION_OFF;
 	}
+
+}
+
+int ONIKinectDevice::getDepthResolutionX()
+{
+	if(mDepthStream.isValid())
+		return mDepthStream.getVideoMode().getResolutionX();
+	return 0;
+}
+int ONIKinectDevice::getDepthResolutionY()
+{
+	if(mDepthStream.isValid())
+		return mDepthStream.getVideoMode().getResolutionY();
+	return 0;
+}
+
+int ONIKinectDevice::getColorResolutionX()
+{
+	if(mColorStream.isValid())
+		return mColorStream.getVideoMode().getResolutionX();
+	return 0;
+}
+
+int ONIKinectDevice::getColorResolutionY()
+{
+	if(mColorStream.isValid())
+		return mColorStream.getVideoMode().getResolutionY();
+	return 0;
+}
+
+
+bool ONIKinectDevice::isDepthStreamValid() 
+{
+	return mDepthStream.isValid();
+}
+
+bool ONIKinectDevice::isColorStreamValid()
+{
+	return mColorStream.isValid();
 }

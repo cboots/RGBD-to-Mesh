@@ -23,6 +23,9 @@
 
 #include <OpenNI.h>
 #include <iostream>
+#include "RGBDDevice.h"
+#include "RGBDFrame.h"
+
 using namespace std;
 
 #define MAX_DEPTH 10000
@@ -34,15 +37,16 @@ enum DisplayModes
 	DISPLAY_MODE_IMAGE
 };
 
-class SampleViewer
+class SampleViewer : public RGBDDevice::NewRGBDFrameListener
 {
 public:
-	SampleViewer(const char* strSampleName, openni::Device& device, openni::VideoStream& depth, openni::VideoStream& color);
+	SampleViewer(const char* strSampleName, RGBDDevice* device);
 	virtual ~SampleViewer();
 
 	virtual openni::Status init(int argc, char **argv);
 	virtual openni::Status run();	//Does not return
 
+	void onNewRGBDFrame(RGBDFramePtr frame) override;
 protected:
 	virtual void display();
 	virtual void displayPostDraw(){};	// Overload to draw over the screen image
@@ -52,14 +56,8 @@ protected:
 	virtual openni::Status initOpenGL(int argc, char **argv);
 	void initOpenGLHooks();
 
-	openni::VideoFrameRef		m_depthFrame;
-	openni::VideoFrameRef		m_colorFrame;
-
-	openni::Device&			m_device;
-	openni::VideoStream&			m_depthStream;
-	openni::VideoStream&			m_colorStream;
-	openni::VideoStream**		m_streams;
-
+	RGBDDevice*			mDevice;
+	RGBDFramePtr latestFrame;
 private:
 	SampleViewer(const SampleViewer&);
 	SampleViewer& operator=(SampleViewer&);
