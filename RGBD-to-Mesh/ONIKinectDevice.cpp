@@ -235,6 +235,7 @@ void ONIKinectDevice::onNewDepthFrame(VideoFrameRef frame)
 					//Send it
 					mRGBDFrameSynced->setDepthArray(rgbdFrame->getDepthArray());
 					mRGBDFrameSynced->setHasDepth(true);
+					mRGBDFrameSynced->setDepthTimestamp(frame.getTimestamp());
 					onNewRGBDFrame(mRGBDFrameSynced);
 					mRGBDFrameSynced = NULL;
 				}
@@ -307,6 +308,7 @@ void ONIKinectDevice::onNewColorFrame(VideoFrameRef frame)
 					//Send it
 					mRGBDFrameSynced->setColorArray(rgbdFrame->getColorArray());
 					mRGBDFrameSynced->setHasColor(true);
+					mRGBDFrameSynced->setColorTimestamp(frame.getTimestamp());
 					onNewRGBDFrame(mRGBDFrameSynced);
 					mRGBDFrameSynced = NULL;
 				}

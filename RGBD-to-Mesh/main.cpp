@@ -2,6 +2,7 @@
 #include "Viewer.h"
 #include <iostream>
 #include "ONIKinectDevice.h"
+#include "FileUtils.h"
 //#include "OniSampleUtilities.h"
 
 using namespace std;
@@ -36,6 +37,7 @@ public:
 	void onNewRGBDFrame(RGBDFramePtr frame) override
 	{
 		printf("C[%08llu]D[%08llu] New Frame Recieved: Has Color %d Has Depth %d\n", frame->getColorTimestamp(), frame->getDepthTimestamp(), frame->hasColor(), frame->hasDepth());
+		//saveRGBDFrameImagesToFiles("logs/1", frame);
 	}
 };
 
@@ -48,6 +50,7 @@ int main(int argc, char** argv)
 	{
 		deviceURI = argv[1];
 	}
+
 
 	ONIKinectDevice device;
 	RGBDDeviceListener deviceStateListener;

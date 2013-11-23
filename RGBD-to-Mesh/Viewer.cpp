@@ -306,5 +306,11 @@ void SampleViewer::initOpenGLHooks()
 
 void SampleViewer::onNewRGBDFrame(RGBDFramePtr frame)
 {
-	latestFrame = frame;
+	//latestFrame = frame;
+	
+	RGBDFrameFactory frameFactory;
+	RGBDFramePtr testFrame = frameFactory.getRGBDFrame(640,480);
+
+	loadRGBDFrameImagesFromFiles("logs/1", testFrame);
+	latestFrame = testFrame;
 }
