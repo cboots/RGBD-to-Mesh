@@ -13,6 +13,7 @@ ONIKinectDevice::~ONIKinectDevice(void)
 
 DeviceStatus ONIKinectDevice::initialize(void)
 {
+
 	Status rc = OpenNI::initialize();
 	if (rc != STATUS_OK)
 	{
@@ -184,16 +185,16 @@ void ONIKinectDevice::onNewDepthFrame(VideoFrameRef frame)
 		int height = frame.getVideoMode().getResolutionY();
 
 		//Initialize frame if not initialized
-		if(mRGBDFrame == NULL)
+		if(mRGBDFrameDepth == NULL)
 		{
-			mRGBDFrame = mFrameFactory.getRGBDFrame(width,height);
+			mRGBDFrameDepth = mFrameFactory.getRGBDFrame(width,height);
 		}
 
-		if(width == mRGBDFrame->getXRes()  && height == mRGBDFrame->getYRes())
+		if(width == mRGBDFrameDepth->getXRes()  && height == mRGBDFrameDepth->getYRes())
 		{
 			//Data array valid. Fill it
 			//TODO: Use more efficient method of transfering memory. (like memcopy, or plain linear indexing?)
-			DepthPixelArray data = mRGBDFrame->getDepthArray();
+			DepthPixelArray data = mRGBDFrameDepth->getDepthArray();
 			//TODO: Enable cropping
 
 			const openni::DepthPixel* pDepth = (const openni::DepthPixel*)frame.getData();
@@ -201,18 +202,18 @@ void ONIKinectDevice::onNewDepthFrame(VideoFrameRef frame)
 			{
 				for(int x = 0; x < width; x++)
 				{
-					int ind = mRGBDFrame->getLinearIndex(x,y);
+					int ind = mRGBDFrameDepth->getLinearIndex(x,y);
 					data[ind].depth = pDepth[ind];
 				}
 			}
 
-			mRGBDFrame->setHasDepth(true);
+			mRGBDFrameDepth->setHasDepth(true);
 			//Check if send
-			if(!mSyncDepthAndColor || mRGBDFrame->hasColor())
+			if(!mSyncDepthAndColor || mRGBDFrameDepth->hasColor())
 			{
 				//Send it
-				onNewRGBDFrame(mRGBDFrame);
-				mRGBDFrame = NULL;
+				onNewRGBDFrame(mRGBDFrameDepth);
+				mRGBDFrameDepth = NULL;
 			}
 
 		}else{
@@ -237,16 +238,16 @@ void ONIKinectDevice::onNewColorFrame(VideoFrameRef frame)
 		int height = frame.getVideoMode().getResolutionY();
 
 		//Initialize frame if not initialized
-		if(mRGBDFrame == NULL)
+		if(mRGBDFrameColor == NULL)
 		{
-			mRGBDFrame = mFrameFactory.getRGBDFrame(width,height);
+			mRGBDFrameColor = mFrameFactory.getRGBDFrame(width,height);
 		}
 
-		if(width == mRGBDFrame->getXRes()  && height == mRGBDFrame->getYRes())
+		if(width == mRGBDFrameColor->getXRes()  && height == mRGBDFrameColor->getYRes())
 		{
 			//Data array valid. Fill it
 			//TODO: Use more efficient method of transfering memory. (like memcopy, or plain linear indexing?)
-			ColorPixelArray data = mRGBDFrame->getColorArray();
+			ColorPixelArray data = mRGBDFrameColor->getColorArray();
 			//TODO: Enable cropping
 			
 			const openni::RGB888Pixel* pImage = (const openni::RGB888Pixel*)frame.getData();
@@ -254,20 +255,20 @@ void ONIKinectDevice::onNewColorFrame(VideoFrameRef frame)
 			{
 				for(int x = 0; x < width; x++)
 				{
-					int ind = mRGBDFrame->getLinearIndex(x,y);
+					int ind = mRGBDFrameColor->getLinearIndex(x,y);
 					data[ind].r = pImage[ind].r;
 					data[ind].g = pImage[ind].g;
 					data[ind].b = pImage[ind].b;
 				}
 			}
 
-			mRGBDFrame->setHasDepth(true);
+			mRGBDFrameColor->setHasColor(true);
 			//Check if send
-			if(!mSyncDepthAndColor || mRGBDFrame->hasColor())
+			if(!mSyncDepthAndColor || mRGBDFrameColor->hasDepth())
 			{
 				//Send it
-				onNewRGBDFrame(mRGBDFrame);
-				mRGBDFrame = NULL;
+				onNewRGBDFrame(mRGBDFrameColor);
+				mRGBDFrameColor = NULL;
 			}
 
 		}else{

@@ -67,7 +67,8 @@ protected:
 	VideoStream mColorStream;
 	RGBDFrameFactory mFrameFactory;
 
-	RGBDFramePtr mRGBDFrame;
+	RGBDFramePtr mRGBDFrameDepth;
+	RGBDFramePtr mRGBDFrameColor;
 	bool mSyncDepthAndColor;
 public:
 	ONIKinectDevice(void);
