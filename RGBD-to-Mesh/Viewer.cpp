@@ -215,36 +215,7 @@ void SampleViewer::display()
 			pDepthRow += rowsize;
 		}
 	}
-	/*
-	// check if we need to draw depth frame to texture
-	if ((m_eViewState == DISPLAY_MODE_OVERLAY ||
-	m_eViewState == DISPLAY_MODE_DEPTH) && m_depthFrame.isValid())
-	{
-	const openni::DepthPixel* pDepthRow = (const openni::DepthPixel*)m_depthFrame.getData();
-	openni::RGB888Pixel* pTexRow = m_pTexMap + m_depthFrame.getCropOriginY() * m_nTexMapX;
-	int rowSize = m_depthFrame.getStrideInBytes() / sizeof(openni::DepthPixel);
 
-	for (int y = 0; y < m_depthFrame.getHeight(); ++y)
-	{
-	const openni::DepthPixel* pDepth = pDepthRow;
-	openni::RGB888Pixel* pTex = pTexRow + m_depthFrame.getCropOriginX();
-
-	for (int x = 0; x < m_depthFrame.getWidth(); ++x, ++pDepth, ++pTex)
-	{
-	if (*pDepth != 0)
-	{
-	int nHistValue = m_pDepthHist[*pDepth];
-	pTex->r = nHistValue;
-	pTex->g = nHistValue;
-	pTex->b = 0;
-	}
-	}
-
-	pDepthRow += rowSize;
-	pTexRow += m_nTexMapX;
-	}
-	}
-	*/
 	glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP_SGIS, GL_TRUE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);

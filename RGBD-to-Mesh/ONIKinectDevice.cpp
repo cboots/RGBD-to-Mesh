@@ -197,16 +197,22 @@ void ONIKinectDevice::onNewDepthFrame(VideoFrameRef frame)
 			//TODO: Use more efficient method of transfering memory. (like memcopy, or plain linear indexing?)
 			DPixelArray data = rgbdFrame->getDepthArray();
 			//TODO: Enable cropping
-
-			const openni::DepthPixel* pDepth = (const openni::DepthPixel*)frame.getData();
+			
+			const openni::DepthPixel* pDepthRowONI = (const openni::DepthPixel*)frame.getData();
+			DPixel* pDepthRow = data.get();
 			for(int y = 0; y < height; y++)
 			{
-				for(int x = 0; x < width; x++)
+				DPixel* pDepth = pDepthRow;
+				const openni::DepthPixel* pDepthONI = pDepthRowONI;
+
+				for(int x = 0; x < width; ++x, ++pDepth, ++pDepthONI)
 				{
-					int ind = rgbdFrame->getLinearIndex(x,y);
-					data[ind].depth = pDepth[ind];
+					pDepth->depth = *pDepthONI;
 				}
+				pDepthRow += width;
+				pDepthRowONI += width;
 			}
+
 
 			rgbdFrame->setDepthTimestamp(frame.getTimestamp());
 			rgbdFrame->setHasDepth(true);
