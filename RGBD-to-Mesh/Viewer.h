@@ -57,7 +57,10 @@ protected:
 	void initOpenGLHooks();
 
 	RGBDDevice*			mDevice;
+
 	RGBDFramePtr latestFrame;
+	ColorPixelArray mColorArray;
+	DPixelArray mDepthArray;
 private:
 	SampleViewer(const SampleViewer&);
 	SampleViewer& operator=(SampleViewer&);

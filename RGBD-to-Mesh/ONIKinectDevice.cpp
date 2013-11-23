@@ -251,18 +251,18 @@ void ONIKinectDevice::onNewColorFrame(VideoFrameRef frame)
 			//TODO: Use more efficient method of transfering memory. (like memcopy, or plain linear indexing?)
 			ColorPixelArray data = rgbdFrame->getColorArray();
 			//TODO: Enable cropping
-
+			//printf("Size of ColorPixel: %d Size of RGB88Pixel: %d\n", sizeof(ColorPixel), sizeof(RGB888Pixel));
 			const openni::RGB888Pixel* pImage = (const openni::RGB888Pixel*)frame.getData();
-			for(int y = 0; y < height; y++)
+			memcpy(data.get(), pImage, sizeof(RGB888Pixel)*width*height);
+			/*for(int y = 0; y < height; y++)
 			{
 				for(int x = 0; x < width; x++)
 				{
 					int ind = rgbdFrame->getLinearIndex(x,y);
-					data[ind].r = pImage[ind].r;
-					data[ind].g = pImage[ind].g;
-					data[ind].b = pImage[ind].b;
+					
+					data[ind] = ((ColorPixel*)pImage)[ind];
 				}
-			}
+			}*/
 			rgbdFrame->setColorTimestamp(frame.getTimestamp());
 			rgbdFrame->setHasColor(true);
 			//Check if send

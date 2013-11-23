@@ -142,7 +142,18 @@ void SampleViewer::display()
 {
 	//Pull a local reference to the current frame
 	RGBDFramePtr localFrame = latestFrame;
+	if(localFrame != NULL)
+	{
+		if(localFrame->hasColor())
+		{
+			mColorArray = localFrame->getColorArray();
+		}
 
+		if(localFrame->hasDepth())
+		{
+			mDepthArray = localFrame->getDepthArray();
+		}
+	}
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glMatrixMode(GL_PROJECTION);
@@ -151,32 +162,36 @@ void SampleViewer::display()
 	glOrtho(0, GL_WIN_SIZE_X, GL_WIN_SIZE_Y, 0, -1.0, 1.0);
 
 
-	
+
+	memset(m_pTexMap, 0, m_nTexMapX*m_nTexMapY*sizeof(openni::RGB888Pixel));
 
 	if(localFrame != NULL){
 		// check if we need to draw image frame to texture
 		if ((m_eViewState == DISPLAY_MODE_OVERLAY ||
-			m_eViewState == DISPLAY_MODE_IMAGE) && localFrame->hasColor())
+			m_eViewState == DISPLAY_MODE_IMAGE) && mColorArray != NULL)
 		{
-			memset(m_pTexMap, 0, m_nTexMapX*m_nTexMapY*sizeof(openni::RGB888Pixel));
-			const ColorPixelArray colorArray = localFrame->getColorArray();
+			const ColorPixelArray colorArray = mColorArray;
+			ColorPixel* pImageRow = colorArray.get();
 			openni::RGB888Pixel* pTexRow = m_pTexMap;
-
-			for (int y = 0; y < localFrame->getYRes(); ++y)
+			int rowsize = m_width;
+			for (int y = 0; y < m_height; ++y)
 			{
 
 				openni::RGB888Pixel* pTex = pTexRow;
-				for (int x = 0; x <  localFrame->getXRes(); ++x, ++pTex)
+				ColorPixel* pImage = pImageRow;
+				for (int x = 0; x <  m_width; ++x, ++pTex, ++pImage)
 				{
-					int ind = localFrame->getLinearIndex(x,y);
-					pTex->r  = colorArray[ind].r;
-					pTex->g  = colorArray[ind].g;
-					pTex->b  = colorArray[ind].b;
+					ColorPixel color = (*pImage);
+					pTex->r  =  color.r;
+					pTex->g  =  color.g;
+					pTex->b  =  color.b;
 				}
-			pTexRow += m_nTexMapX;
+				pTexRow += m_nTexMapX;
+				pImageRow += rowsize;
 			}
 		}
 	}
+
 	/*
 	// check if we need to draw depth frame to texture
 	if ((m_eViewState == DISPLAY_MODE_OVERLAY ||
