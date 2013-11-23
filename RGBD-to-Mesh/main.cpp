@@ -55,7 +55,7 @@ class RGBDFrameListener : public RGBDDevice::NewRGBDFrameListener
 public:
 	void onNewRGBDFrame(RGBDFramePtr frame) override
 	{
-		printf("New Frame Recieved: Has Color %d Has Depth %d\n", frame->hasDepth(), frame->hasColor());
+		printf("C[%08llu]D[%08llu] New Frame Recieved: Has Color %d Has Depth %d\n", frame->getColorTimestamp(), frame->getDepthTimestamp(), frame->hasColor(), frame->hasDepth());
 	}
 };
 

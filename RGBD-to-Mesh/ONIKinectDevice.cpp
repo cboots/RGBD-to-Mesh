@@ -175,7 +175,7 @@ void ONIKinectDevice::onDeviceDisconnected(const DeviceInfo* pInfo)
 
 void ONIKinectDevice::onNewDepthFrame(VideoFrameRef frame)
 {
-	printf("[%08llu] Depth Frame\n", (long long)frame.getTimestamp());
+	//printf("[%08llu] Depth Frame\n", (long long)frame.getTimestamp());
 
 	//Make sure frame is in right format
 	if(frame.getVideoMode().getPixelFormat() == PIXEL_FORMAT_DEPTH_1_MM || 
@@ -206,7 +206,8 @@ void ONIKinectDevice::onNewDepthFrame(VideoFrameRef frame)
 					data[ind].depth = pDepth[ind];
 				}
 			}
-
+			
+			mRGBDFrameDepth->setDepthTimestamp(frame.getTimestamp());
 			mRGBDFrameDepth->setHasDepth(true);
 			//Check if send
 			if(!mSyncDepthAndColor || mRGBDFrameDepth->hasColor())
@@ -229,7 +230,7 @@ void ONIKinectDevice::onNewDepthFrame(VideoFrameRef frame)
 
 void ONIKinectDevice::onNewColorFrame(VideoFrameRef frame)
 {
-	printf("[%08llu] Color Frame\n", (long long)frame.getTimestamp());
+	//printf("[%08llu] Color Frame\n", (long long)frame.getTimestamp());
 
 	//Make sure frame is in right format
 	if(frame.getVideoMode().getPixelFormat() == PIXEL_FORMAT_RGB888)
@@ -261,7 +262,7 @@ void ONIKinectDevice::onNewColorFrame(VideoFrameRef frame)
 					data[ind].b = pImage[ind].b;
 				}
 			}
-
+			mRGBDFrameColor->setColorTimestamp(frame.getTimestamp());
 			mRGBDFrameColor->setHasColor(true);
 			//Check if send
 			if(!mSyncDepthAndColor || mRGBDFrameColor->hasDepth())
