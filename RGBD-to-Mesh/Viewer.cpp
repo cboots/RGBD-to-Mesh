@@ -207,8 +207,8 @@ void SampleViewer::display()
 				if(depth != 0){
 					uint8_t scaledDepth = 256-(depth>>5);
 					pTex->r = scaledDepth;
-					pTex->g = scaledDepth;
-					pTex->b = scaledDepth;
+					pTex->g = 0;//scaledDepth;
+					pTex->b = 0;//scaledDepth;
 				}
 			}
 			pTexRow += m_nTexMapX;
