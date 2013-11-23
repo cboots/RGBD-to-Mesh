@@ -1,8 +1,6 @@
 #include "ONIKinectDevice.h"
 
 
-
-
 ONIKinectDevice::ONIKinectDevice(void)
 {
 }
@@ -97,6 +95,9 @@ bool ONIKinectDevice::createColorStream()
 		return false;
 	}
 
+	newColorFrameListener = NewColorFrameListener(this);
+	mColorStream.addNewFrameListener(&newColorFrameListener);
+
 	return true;
 }
 
@@ -124,6 +125,9 @@ bool ONIKinectDevice::createDepthStream()
 		onMessage(out.str());
 		return false;
 	}
+
+	newDepthFrameListener = NewDepthFrameListener(this);
+	mDepthStream.addNewFrameListener(&newDepthFrameListener);
 
 	return true;
 }
@@ -167,7 +171,19 @@ void ONIKinectDevice::onDeviceDisconnected(const DeviceInfo* pInfo)
 	onMessage(out.str());
 }
 
-void ONIKinectDevice::onNewFrame(VideoStream&)
-{
 
+void ONIKinectDevice::onNewDepthFrame(VideoFrameRef frame)
+{
+	printf("[%08llu] Depth Frame\n", (long long)frame.getTimestamp());
+
+	//Make sure frame is in right format
+	if(frame.getVideoMode().getPixelFormat() == PIXEL_FORMAT_RGB888)
+	{
+		
+	}
+}
+
+void ONIKinectDevice::onNewColorFrame(VideoFrameRef frame)
+{
+	printf("[%08llu] Color Frame\n", (long long)frame.getTimestamp());
 }

@@ -8,19 +8,64 @@
 using namespace std;
 using namespace openni;
 
+
+
 class ONIKinectDevice :
 	public RGBDDevice,
 	//Event listeners
 	public OpenNI::DeviceConnectedListener,
 	public OpenNI::DeviceDisconnectedListener,
-	public OpenNI::DeviceStateChangedListener,
-	public VideoStream::NewFrameListener
+	public OpenNI::DeviceStateChangedListener
 {
 protected:
+
+	class NewDepthFrameListener:public VideoStream::NewFrameListener{
+
+	private:
+		VideoFrameRef m_frame;
+		ONIKinectDevice* outer;
+	public:
+		NewDepthFrameListener() { outer = NULL;}
+		NewDepthFrameListener(ONIKinectDevice* o)
+		{
+			outer = o;
+		}
+
+		void onNewFrame(VideoStream& stream)
+		{
+			stream.readFrame(&m_frame);
+			if(outer != NULL)
+				outer->onNewDepthFrame(m_frame);
+		}
+	} newDepthFrameListener;
+
+	class NewColorFrameListener:public VideoStream::NewFrameListener{
+
+	private:
+		VideoFrameRef m_frame;
+		ONIKinectDevice* outer;
+	public:
+		NewColorFrameListener() { outer = NULL;}
+		NewColorFrameListener(ONIKinectDevice* o)
+		{
+			outer = o;
+		}
+
+		void onNewFrame(VideoStream& stream)
+		{
+			stream.readFrame(&m_frame);
+
+			if(outer != NULL)
+				outer->onNewColorFrame(m_frame);
+		}
+	} newColorFrameListener;
+
+
 	Device mDevice;
 	VideoStream mDepthStream;
 	VideoStream mColorStream;
 
+	RGBDFramePtr mRGBDFrame;
 public:
 	ONIKinectDevice(void);
 	~ONIKinectDevice(void);
@@ -43,7 +88,9 @@ public:
 	void onDeviceStateChanged(const DeviceInfo* pInfo, DeviceState state);
 	void onDeviceConnected(const DeviceInfo* pInfo);
 	void onDeviceDisconnected(const DeviceInfo* pInfo);
-	void onNewFrame(VideoStream& stream);
+
+	virtual void onNewDepthFrame(VideoFrameRef frame);
+	virtual void onNewColorFrame(VideoFrameRef frame);
 
 };
 

@@ -51,7 +51,7 @@ protected:
 	std::vector<DeviceConnectedListener*> mDeviceConnectedListeners;
 	std::vector<DeviceDisconnectedListener*> mDeviceDisconnectedListeners;
 	std::vector<DeviceMessageListener*> mDeviceMessageListeners;
-
+	bool mWaitForFullFrame;
 public:
 	virtual ~RGBDDevice(void){};
 

@@ -22,6 +22,7 @@
 #include "Viewer.h"
 #include <iostream>
 #include "ONIKinectDevice.h"
+//#include "OniSampleUtilities.h"
 
 using namespace std;
 
@@ -91,48 +92,12 @@ int main(int argc, char** argv)
 	}
 
 	printf("Streams created succesfully\n");
+	bool flag = true;
+	while (flag)
+	{
+		Sleep(100);
+	}
 	/*
-
-
-	rc = depth.create(device, openni::SENSOR_DEPTH);
-	if (rc == openni::STATUS_OK)
-	{
-	rc = depth.start();
-	if (rc != openni::STATUS_OK)
-	{
-	printf("SimpleViewer: Couldn't start depth stream:\n%s\n", openni::OpenNI::getExtendedError());
-	depth.destroy();
-	}
-	}
-	else
-	{
-	printf("SimpleViewer: Couldn't find depth stream:\n%s\n", openni::OpenNI::getExtendedError());
-	}
-
-	rc = color.create(device, openni::SENSOR_COLOR);
-	if (rc == openni::STATUS_OK)
-	{
-	rc = color.start();
-	if (rc != openni::STATUS_OK)
-	{
-	printf("SimpleViewer: Couldn't start color stream:\n%s\n", openni::OpenNI::getExtendedError());
-	color.destroy();
-	}
-	}
-	else
-	{
-	printf("SimpleViewer: Couldn't find color stream:\n%s\n", openni::OpenNI::getExtendedError());
-	}
-
-	if (!depth.isValid() || !color.isValid())
-	{
-	printf("SimpleViewer: No valid streams. Exiting\n");
-	openni::OpenNI::shutdown();
-
-	pause();
-	return 2;
-	}
-
 	SampleViewer sampleViewer("Simple Viewer", device, depth, color);
 
 	rc = sampleViewer.init(argc, argv);
