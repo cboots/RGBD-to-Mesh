@@ -173,6 +173,7 @@ xcopy /D /F /Y "$(ProjectDir)\glut64.dll" "$(OutDir)"
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="FileUtils.cpp" />
+    <ClCompile Include="FrameLogger.cpp" />
     <ClCompile Include="LogDevice.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ONIKinectDevice.cpp" />
@@ -183,6 +184,7 @@ xcopy /D /F /Y "$(ProjectDir)\glut64.dll" "$(OutDir)"
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FileUtils.h" />
+    <ClInclude Include="FrameLogger.h" />
     <ClInclude Include="LogDevice.h" />
     <ClInclude Include="ONIKinectDevice.h" />
     <ClInclude Include="RGBDDevice.h" />

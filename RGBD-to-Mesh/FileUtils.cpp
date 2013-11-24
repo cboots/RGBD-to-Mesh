@@ -56,3 +56,21 @@ void loadRGBDFrameImagesFromFiles(string filename, RGBDFramePtr frame)
 		}
 	
 }
+
+
+bool makeDir(string directory)
+{
+	boost::filesystem::path dir(directory.c_str());
+	return boost::filesystem::create_directory(dir);
+}
+
+bool isDirectoryEmpty(string directory)
+{
+	boost::filesystem::path dir(directory.c_str());
+	if(boost::filesystem::is_directory(dir))
+	{
+		return boost::filesystem::is_empty(dir);
+	}
+
+	return false;
+}
