@@ -23,7 +23,7 @@ void LogDevice::loadLog(string logFile)
 
 	//Need to copy string to parse it
 	char *cstr = new char[logStr.length() + 1];
-	strcpy(cstr, logStr.c_str());
+	strcpy_s(cstr, logStr.length(), logStr.c_str());
 	xml_document<> doc;    // character type defaults to char
 	doc.parse<0>(cstr);    // 0 means default parse flags
 	delete [] cstr;
@@ -37,8 +37,8 @@ void LogDevice::loadLog(string logFile)
 		xml_attribute<char>* xres = root->first_attribute("xresolution");
 		xml_attribute<char>* yres = root->first_attribute("yresolution");
 		if(xres != 0 && yres != 0){
-			mXRes = atoi(xres->value);
-			mYRes = atoi(yres->value);
+			mXRes = atoi(xres->value());
+			mYRes = atoi(yres->value());
 
 			//Clear arrays
 			mColorGuard.lock();
@@ -133,28 +133,104 @@ bool LogDevice::hasColorStream()
 	return false;
 }
 
+void LogDevice::streamColor()
+{
+	while(mColorStreaming){
+		//Color
+		mColorGuard.lock();
+		if(mColorInd < mColorStreamFrames.size())
+		{
+			//TODO: Buffering
+			FrameMetaData frame = mColorStreamFrames[mColorInd];
+			mColorInd++;
+			mColorGuard.unlock();
+			RGBDFramePtr localFrame = mFrameFactory.getRGBDFrame(mXRes, mYRes);
+			loadColorFrame(mDirectory, frame, localFrame);
+			onNewRGBDFrame(localFrame);
+			//TODO: Syncing
+		}else{
+			//Reached end of stream
+			if(mLoopStreams)
+				restartStreams();
+
+			mColorGuard.unlock();
+		}
+	}
+}
+
+
+void LogDevice::streamDepth()
+{
+	while(mDepthStreaming){
+		//Depth
+		mDepthGuard.lock();
+		if(mDepthInd < mDepthStreamFrames.size())
+		{
+			//TODO: Buffering
+			FrameMetaData frame = mDepthStreamFrames[mDepthInd];
+			mDepthInd++;
+			mDepthGuard.unlock();
+			RGBDFramePtr localFrame = mFrameFactory.getRGBDFrame(mXRes, mYRes);
+			loadDepthFrame(mDirectory, frame, localFrame);
+			onNewRGBDFrame(localFrame);
+			//TODO: Syncing
+		}else{
+			//Reached end of stream
+			if(mLoopStreams)
+				restartStreams();
+
+			mDepthGuard.unlock();
+		}
+	}
+}
+
 bool LogDevice::createColorStream() 
 {
-	//TODO: Implement
-	return false;
+	if(mColorStreamFrames.size() > 0){
+		mColorStreaming = true;
+
+		//Start stream thread
+		mColorThread = std::thread(&LogDevice::streamColor, this);
+
+		restartStreams();
+	}
+	return mColorStreaming;
 }
 
 bool LogDevice::createDepthStream() 
 {
-	//TODO: Implement
-	return false;
+
+	if(mDepthStreamFrames.size() > 0){
+		mDepthStreaming = true;
+
+		//Start stream thread
+		mDepthThread = std::thread(&LogDevice::streamDepth, this);
+
+		restartStreams();
+	}
+	return mDepthStreaming;
 }
 
 bool LogDevice::destroyColorStream()  
 {
-	return false;
+	mColorStreaming = false;
+	return true;
 }
 
 bool LogDevice::destroyDepthStream()
 {
-	return false;
+	mDepthStreaming = false;
+	return true;
 }
 
+
+void LogDevice::restartStreams()
+{
+	//Do not lock, will deadlock threads
+	mLastTime = 0;
+	mColorInd = 0;
+	mDepthInd = 0;
+}
 
 int LogDevice::getDepthResolutionX()
 {
