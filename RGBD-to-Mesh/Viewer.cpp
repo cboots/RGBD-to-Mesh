@@ -140,20 +140,9 @@ openni::Status SampleViewer::run()	//Does not return
 }
 void SampleViewer::display()
 {
-	//Pull a local reference to the current frame
-	RGBDFramePtr localFrame = latestFrame;
-	if(localFrame != NULL)
-	{
-		if(localFrame->hasColor())
-		{
-			mColorArray = localFrame->getColorArray();
-		}
+	ColorPixelArray localColorArray = mColorArray;
+	DPixelArray localDepthArray = mDepthArray;
 
-		if(localFrame->hasDepth())
-		{
-			mDepthArray = localFrame->getDepthArray();
-		}
-	}
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glMatrixMode(GL_PROJECTION);
@@ -167,9 +156,9 @@ void SampleViewer::display()
 
 	// check if we need to draw image frame to texture
 	if ((m_eViewState == DISPLAY_MODE_OVERLAY ||
-		m_eViewState == DISPLAY_MODE_IMAGE) && mColorArray != NULL)
+		m_eViewState == DISPLAY_MODE_IMAGE) && localColorArray != NULL)
 	{
-		const ColorPixelArray colorArray = mColorArray;
+		const ColorPixelArray colorArray = localColorArray;
 		ColorPixel* pImageRow = colorArray.get();
 		openni::RGB888Pixel* pTexRow = m_pTexMap;
 		int rowsize = m_width;
@@ -191,9 +180,9 @@ void SampleViewer::display()
 	}
 
 	if ((m_eViewState == DISPLAY_MODE_OVERLAY ||
-		m_eViewState == DISPLAY_MODE_DEPTH) && mDepthArray != NULL)
+		m_eViewState == DISPLAY_MODE_DEPTH) && localDepthArray != NULL)
 	{
-		const DPixelArray depthArray = mDepthArray;
+		const DPixelArray depthArray = localDepthArray;
 		DPixel* pDepthRow = depthArray.get();
 		openni::RGB888Pixel* pTexRow = m_pTexMap;
 		int rowsize = m_width;
@@ -324,5 +313,16 @@ void SampleViewer::initOpenGLHooks()
 void SampleViewer::onNewRGBDFrame(RGBDFramePtr frame)
 {
 	latestFrame = frame;
+	if(latestFrame != NULL)
+	{
+		if(latestFrame->hasColor())
+		{
+			mColorArray = latestFrame->getColorArray();
+		}
 
+		if(latestFrame->hasDepth())
+		{
+			mDepthArray = latestFrame->getDepthArray();
+		}
+	}
 }
