@@ -35,6 +35,15 @@ protected:
 	vector<FrameMetaData> mColorStreamFrames;
 	vector<FrameMetaData> mDepthStreamFrames;
 
+	//Stream management
+	bool mLoopStreams;
+	volatile bool mColorStreaming;
+	volatile bool mDepthStreaming;
+	volatile timestamp mLastTime;
+	volatile int mColorInd;
+	volatile int mDepthInd;
+
+	
 	std::thread mColorThread;
 	std::thread mDepthThread;
 	std::mutex mColorGuard;
@@ -43,9 +52,14 @@ protected:
 	RGBDFramePtr mSyncFrame;
 	std::mutex mFrameGuard;
 
+
+
 	void loadColorFrame(string sourceDir, FrameMetaData data, RGBDFramePtr frameOut);
 	void loadDepthFrame(string sourceDir, FrameMetaData data, RGBDFramePtr frameOut);
 	void loadLog(string logFile);
+	void restartStreams();
+	void streamColor();
+	void streamDepth();
 public:
 	LogDevice(void);
 	~LogDevice(void);
@@ -74,5 +88,7 @@ public:
 	bool isDepthStreamValid() override;
 	bool isColorStreamValid() override;
 
+	inline void setLoopStreams(bool loop) {mLoopStreams = loop;}
+	inline bool getLoopStreams(){return mLoopStreams;}
 };
 
