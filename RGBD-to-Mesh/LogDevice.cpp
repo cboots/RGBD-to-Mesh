@@ -72,7 +72,7 @@ void LogDevice::loadLog(string logFile)
 
 						if(depthTimestamp != 0)
 						{
-							timestamp time = boost::lexical_cast<timestamp>(colorTimestamp->value());
+							timestamp time = boost::lexical_cast<timestamp>(depthTimestamp->value());
 							if(depthStartTime == 0)
 								depthStartTime = time;
 
@@ -146,10 +146,10 @@ bool LogDevice::hasColorStream()
 	return false;
 }
 
+
 void LogDevice::streamColor()
 {
-	boost::posix_time::ptime tick = boost::posix_time::microsec_clock::local_time();
-
+	thread eventDispatch;
 	while(mColorStreaming){
 		boost::posix_time::ptime now  = boost::posix_time::microsec_clock::local_time();
 		boost::posix_time::time_duration duration = now - mPlaybackStartTime;
@@ -166,7 +166,8 @@ void LogDevice::streamColor()
 				mColorGuard.unlock();
 				RGBDFramePtr localFrame = mFrameFactory.getRGBDFrame(mXRes, mYRes);
 				loadColorFrame(mDirectory, frame, localFrame);
-				onNewRGBDFrame(localFrame);
+				eventDispatch = thread(&LogDevice::onNewRGBDFrame, this, localFrame);
+				eventDispatch.detach();
 			}else{
 				mColorGuard.unlock();//ALWAYS UNLOCK YOUR MUTEX!!!
 			}
@@ -180,13 +181,14 @@ void LogDevice::streamColor()
 			mColorGuard.unlock();
 		}
 		//Sleep thread
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		std::this_thread::sleep_for(std::chrono::milliseconds(5));
 	}
 }
 
 
 void LogDevice::streamDepth()
 {
+	thread eventDispatch;
 	while(mDepthStreaming){
 		boost::posix_time::ptime now  = boost::posix_time::microsec_clock::local_time();
 		boost::posix_time::time_duration duration = now - mPlaybackStartTime;
@@ -202,7 +204,9 @@ void LogDevice::streamDepth()
 				mDepthGuard.unlock();
 				RGBDFramePtr localFrame = mFrameFactory.getRGBDFrame(mXRes, mYRes);
 				loadDepthFrame(mDirectory, frame, localFrame);
-				onNewRGBDFrame(localFrame);
+				
+				eventDispatch = thread(&LogDevice::onNewRGBDFrame, this, localFrame);
+				eventDispatch.detach();
 			}else{
 				mDepthGuard.unlock();//ALWAYS UNLOCK YOUR MUTEX!!!
 			}
