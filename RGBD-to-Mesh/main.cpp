@@ -54,6 +54,10 @@ int main(int argc, char** argv)
 
 	
 	LogDevice device;
+	device.setSourceDirectory("logs\\recording");
+	device.setLoopStreams(true);
+	device.setTimedStreams(true);
+	//ONIKinectDevice device;
 	RGBDDeviceListener deviceStateListener;
 	RGBDFrameListener frameListener;
 	device.addDeviceConnectedListener(&deviceStateListener);
@@ -62,8 +66,6 @@ int main(int argc, char** argv)
 	device.addNewRGBDFrameListener(&frameListener);
 
 	device.initialize();
-	device.setSourceDirectory("logs\\handwave");
-	device.setLoopStreams(true);
 	if(DEVICESTATUS_OK != device.connect())
 	{
 		printf("Could not connect to device\n");
