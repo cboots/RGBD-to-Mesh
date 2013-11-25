@@ -2,6 +2,7 @@
 #include "Viewer.h"
 #include <iostream>
 #include "ONIKinectDevice.h"
+#include "LogDevice.h"
 #include "FileUtils.h"
 //#include "OniSampleUtilities.h"
 
@@ -52,7 +53,7 @@ int main(int argc, char** argv)
 	}
 
 	
-	ONIKinectDevice device;
+	LogDevice device;
 	RGBDDeviceListener deviceStateListener;
 	RGBDFrameListener frameListener;
 	device.addDeviceConnectedListener(&deviceStateListener);
@@ -61,9 +62,11 @@ int main(int argc, char** argv)
 	device.addNewRGBDFrameListener(&frameListener);
 
 	device.initialize();
+	device.setSourceDirectory("logs\\handwave");
+	device.setLoopStreams(true);
 	if(DEVICESTATUS_OK != device.connect())
 	{
-		printf("Could not connect to device");
+		printf("Could not connect to device\n");
 		device.shutdown();
 		pause();
 		return 1;
