@@ -80,11 +80,7 @@ void FrameLogger::record(string outputDirectory)
 //Create the output directory. Returns false if directory could not be created or is not empty
 bool FrameLogger::makeOutputDirectory()
 {
-	if(isDirectoryEmpty(mOutputDirectory))
-	{
-		return makeDir(mOutputDirectory);
-	}
-	return false;
+	return makeDir(mOutputDirectory);
 }
 
 
@@ -115,10 +111,12 @@ bool FrameLogger::startRecording(RGBDDevice* device)
 
 void FrameLogger::stopRecording()
 {
-	mDevice->removeNewRGBDFrameListener(this);
-	mIsRecording = false;
-	mLoggerThread.join();//Wait for thread to die (finish saving)
-	mDevice = NULL;
+	if(mIsRecording){
+		mDevice->removeNewRGBDFrameListener(this);
+		mIsRecording = false;
+		mLoggerThread.join();//Wait for thread to die (finish saving)
+		mDevice = NULL;
+	}
 }
 
 void FrameLogger::onNewRGBDFrame(RGBDFramePtr frame)

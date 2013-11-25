@@ -249,6 +249,8 @@ void SampleViewer::display()
 
 }
 
+
+FrameLogger logger;
 void SampleViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 {
 	switch (key)
@@ -274,6 +276,21 @@ void SampleViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		m_eViewState = DISPLAY_MODE_IMAGE;
 		mDevice->setImageRegistrationMode(RGBDImageRegistrationMode::REGISTRATION_OFF);
 		mDevice->setSyncColorAndDepth(false);
+		break;
+	case 'r':
+		//Start recording
+		if(!logger.setOutputDirectory("logs/testlog1"))
+			cout<<"Could not set output directory"<<endl;
+
+		if(!logger.startRecording(mDevice))
+			cout << "Could not start recording" <<endl;
+		else
+			cout<<"Recording to :" << logger.getOutputDirectory() << endl;
+		break;
+	case 's':
+		//Stop recording
+		logger.stopRecording();
+		cout<<"Recording stopped" <<endl;
 		break;
 	}
 

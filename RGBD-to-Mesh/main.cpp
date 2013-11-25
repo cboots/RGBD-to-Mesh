@@ -51,7 +51,7 @@ int main(int argc, char** argv)
 		deviceURI = argv[1];
 	}
 
-
+	
 	ONIKinectDevice device;
 	RGBDDeviceListener deviceStateListener;
 	RGBDFrameListener frameListener;
