@@ -11,7 +11,9 @@
 #include <mutex>
 #include "rapidxml\rapidxml.hpp"
 #include <chrono>
-
+#include <boost/date_time.hpp>
+#include <stdlib.h>
+#include <boost/lexical_cast.hpp>
 
 using namespace std;
 using namespace rapidxml;
@@ -38,6 +40,9 @@ protected:
 
 	//Stream management
 	bool mLoopStreams;
+	bool mTimedStreams;
+	timestamp mStartTime;
+	boost::posix_time::ptime mPlaybackStartTime;
 	volatile bool mColorStreaming;
 	volatile bool mDepthStreaming;
 	volatile timestamp mLastTime;
@@ -91,5 +96,8 @@ public:
 
 	inline void setLoopStreams(bool loop) {mLoopStreams = loop;}
 	inline bool getLoopStreams(){return mLoopStreams;}
+
+	inline void setTimedStreams(bool timed) {mTimedStreams = timed;}
+	inline bool getTimedStreams(){return mTimedStreams;}
 };
 

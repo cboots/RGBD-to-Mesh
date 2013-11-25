@@ -49,7 +49,8 @@ void LogDevice::loadLog(string logFile)
 
 			xml_node<char>* frame = root->first_node("frame");
 			if(frame != 0){
-
+				timestamp depthStartTime = 0;
+				timestamp colorStartTime = 0;
 				while(frame != 0){
 					xml_attribute<char>* id = frame->first_attribute("id");
 					xml_attribute<char>* colorTimestamp = frame->first_attribute("colorTimestamp");
@@ -59,7 +60,11 @@ void LogDevice::loadLog(string logFile)
 						int frameId = atoi(id->value());
 						if(colorTimestamp != 0)
 						{
-							timestamp time = atol(colorTimestamp->value());
+
+							timestamp time = boost::lexical_cast<timestamp>(colorTimestamp->value());
+							if(colorStartTime == 0)
+								colorStartTime = time;
+
 							mColorGuard.lock();
 							mColorStreamFrames.push_back(FrameMetaData(frameId, time));
 							mColorGuard.unlock();
@@ -67,7 +72,10 @@ void LogDevice::loadLog(string logFile)
 
 						if(depthTimestamp != 0)
 						{
-							timestamp time = atol(depthTimestamp->value());
+							timestamp time = boost::lexical_cast<timestamp>(colorTimestamp->value());
+							if(depthStartTime == 0)
+								depthStartTime = time;
+
 							mDepthGuard.lock();
 							mDepthStreamFrames.push_back(FrameMetaData(frameId, time));
 							mDepthGuard.unlock();
@@ -75,6 +83,9 @@ void LogDevice::loadLog(string logFile)
 					}
 					frame = frame->next_sibling("frame");
 				}
+
+				mStartTime = min(depthStartTime, colorStartTime);
+
 			}else{
 				onMessage("Empty Log File\n");
 			}
@@ -137,19 +148,30 @@ bool LogDevice::hasColorStream()
 
 void LogDevice::streamColor()
 {
+	boost::posix_time::ptime tick = boost::posix_time::microsec_clock::local_time();
+
 	while(mColorStreaming){
+		boost::posix_time::ptime now  = boost::posix_time::microsec_clock::local_time();
+		boost::posix_time::time_duration duration = now - mPlaybackStartTime;
 		//Color
 		mColorGuard.lock();
 		if(mColorInd < mColorStreamFrames.size())
 		{
 			//TODO: Buffering
 			FrameMetaData frame = mColorStreamFrames[mColorInd];
-			mColorInd++;
-			mColorGuard.unlock();
-			RGBDFramePtr localFrame = mFrameFactory.getRGBDFrame(mXRes, mYRes);
-			loadColorFrame(mDirectory, frame, localFrame);
-			onNewRGBDFrame(localFrame);
+			//If we've passed frame time
+			if(frame.time - mStartTime <= (timestamp) duration.total_microseconds())
+			{
+				mColorInd++;
+				mColorGuard.unlock();
+				RGBDFramePtr localFrame = mFrameFactory.getRGBDFrame(mXRes, mYRes);
+				loadColorFrame(mDirectory, frame, localFrame);
+				onNewRGBDFrame(localFrame);
+			}else{
+				mColorGuard.unlock();//ALWAYS UNLOCK YOUR MUTEX!!!
+			}
 			//TODO: Syncing
+
 		}else{
 			//Reached end of stream
 			if(mLoopStreams)
@@ -157,7 +179,8 @@ void LogDevice::streamColor()
 
 			mColorGuard.unlock();
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		//Sleep thread
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 }
 
@@ -165,17 +188,24 @@ void LogDevice::streamColor()
 void LogDevice::streamDepth()
 {
 	while(mDepthStreaming){
+		boost::posix_time::ptime now  = boost::posix_time::microsec_clock::local_time();
+		boost::posix_time::time_duration duration = now - mPlaybackStartTime;
 		//Depth
 		mDepthGuard.lock();
 		if(mDepthInd < mDepthStreamFrames.size())
 		{
 			//TODO: Buffering
 			FrameMetaData frame = mDepthStreamFrames[mDepthInd];
-			mDepthInd++;
-			mDepthGuard.unlock();
-			RGBDFramePtr localFrame = mFrameFactory.getRGBDFrame(mXRes, mYRes);
-			loadDepthFrame(mDirectory, frame, localFrame);
-			onNewRGBDFrame(localFrame);
+			if(frame.time - mStartTime <= (timestamp) duration.total_microseconds())
+			{
+				mDepthInd++;
+				mDepthGuard.unlock();
+				RGBDFramePtr localFrame = mFrameFactory.getRGBDFrame(mXRes, mYRes);
+				loadDepthFrame(mDirectory, frame, localFrame);
+				onNewRGBDFrame(localFrame);
+			}else{
+				mDepthGuard.unlock();//ALWAYS UNLOCK YOUR MUTEX!!!
+			}
 			//TODO: Syncing
 		}else{
 			//Reached end of stream
@@ -184,7 +214,8 @@ void LogDevice::streamDepth()
 
 			mDepthGuard.unlock();
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		//Sleep thread
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 }
 
@@ -231,9 +262,9 @@ bool LogDevice::destroyDepthStream()
 void LogDevice::restartStreams()
 {
 	//Do not lock, will deadlock threads
-	mLastTime = 0;
 	mColorInd = 0;
 	mDepthInd = 0;
+	mPlaybackStartTime  = boost::posix_time::microsec_clock::local_time();
 }
 
 int LogDevice::getDepthResolutionX()
