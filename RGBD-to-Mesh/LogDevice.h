@@ -38,9 +38,6 @@ public:
 	bool destroyColorStream()  override;
 	bool destroyDepthStream()  override;
 	
-	bool setImageRegistrationMode(RGBDImageRegistrationMode) override;
-	RGBDImageRegistrationMode getImageRegistrationMode(void) override;
-
 	int getDepthResolutionX() override;
 	int getDepthResolutionY() override;
 	int getColorResolutionX() override;
