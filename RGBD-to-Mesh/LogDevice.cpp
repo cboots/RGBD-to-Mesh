@@ -87,10 +87,6 @@ bool LogDevice::destroyDepthStream()
 	return false;
 }
 
-RGBDImageRegistrationMode LogDevice::getImageRegistrationMode(void)
-{
-	return RGBDImageRegistrationMode::REGISTRATION_OFF;
-}
 
 int LogDevice::getDepthResolutionX()
 {
