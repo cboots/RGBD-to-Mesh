@@ -55,7 +55,7 @@ void FrameLogger::record(string outputDirectory)
 				}
 
 				//Close tag
-				logfile << "/>";
+				logfile << "/>" << endl;
 
 				//Save frames
 				ostringstream s;

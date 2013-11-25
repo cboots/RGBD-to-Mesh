@@ -279,7 +279,7 @@ void SampleViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		break;
 	case 'r':
 		//Start recording
-		if(!logger.setOutputDirectory("logs/testlog1"))
+		if(!logger.setOutputDirectory("logs/recording"))
 			cout<<"Could not set output directory"<<endl;
 
 		if(!logger.startRecording(mDevice))
