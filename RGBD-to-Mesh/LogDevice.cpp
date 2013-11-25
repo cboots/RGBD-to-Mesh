@@ -3,6 +3,21 @@
 
 LogDevice::LogDevice(void)
 {
+	mDirectory = "";
+
+	mXRes = 0;
+	mYRes = 0;
+
+	//Stream management
+	mSyncDepthAndColor = false;
+	mLoopStreams = false;
+	mStartTime = 0; 
+	mColorStreaming = false;
+	mDepthStreaming = false;
+	mColorInd = 0;
+	mDepthInd = 0;
+
+	mRGBDFrameSynced = NULL;
 }
 
 
@@ -136,16 +151,13 @@ DeviceStatus LogDevice::shutdown(void)
 
 bool LogDevice::hasDepthStream()
 {
-	//TODO: implement
-	return false;
+	return mDepthStreaming;
 }
 
 bool LogDevice::hasColorStream()
 {
-	//TODO: implement
-	return false;
+	return mColorStreaming;
 }
-
 
 void LogDevice::streamColor()
 {
@@ -166,8 +178,34 @@ void LogDevice::streamColor()
 				mColorGuard.unlock();
 				RGBDFramePtr localFrame = mFrameFactory.getRGBDFrame(mXRes, mYRes);
 				loadColorFrame(mDirectory, frame, localFrame);
-				eventDispatch = thread(&LogDevice::onNewRGBDFrame, this, localFrame);
-				eventDispatch.detach();
+
+				//Check if send
+				if(!mSyncDepthAndColor)
+				{
+					eventDispatch = thread(&LogDevice::onNewRGBDFrame, this, localFrame);
+					eventDispatch.detach();
+					localFrame = NULL;
+				}else{
+					//Sync it
+					mFrameGuard.lock();
+					if(mRGBDFrameSynced == NULL)
+					{
+						//FIRST POST!!!
+						mRGBDFrameSynced = localFrame;
+					}else{
+						//SECOND!!
+						//Send it
+						mRGBDFrameSynced->setColorArray(localFrame->getColorArray());
+						mRGBDFrameSynced->setHasColor(true);
+						mRGBDFrameSynced->setColorTimestamp(localFrame->getColorTimestamp());
+
+						eventDispatch = thread(&LogDevice::onNewRGBDFrame, this, mRGBDFrameSynced);
+						eventDispatch.detach();
+						mRGBDFrameSynced = NULL;
+					}
+					//Unlock scoped
+					mFrameGuard.unlock();
+				}
 			}else{
 				mColorGuard.unlock();//ALWAYS UNLOCK YOUR MUTEX!!!
 			}
@@ -204,9 +242,33 @@ void LogDevice::streamDepth()
 				mDepthGuard.unlock();
 				RGBDFramePtr localFrame = mFrameFactory.getRGBDFrame(mXRes, mYRes);
 				loadDepthFrame(mDirectory, frame, localFrame);
-				
-				eventDispatch = thread(&LogDevice::onNewRGBDFrame, this, localFrame);
-				eventDispatch.detach();
+				//Check if send
+				if(!mSyncDepthAndColor)
+				{
+					eventDispatch = thread(&LogDevice::onNewRGBDFrame, this, localFrame);
+					eventDispatch.detach();
+					localFrame = NULL;
+				}else{
+					//Sync it
+					mFrameGuard.lock();
+					if(mRGBDFrameSynced == NULL)
+					{
+						//FIRST POST!!!
+						mRGBDFrameSynced = localFrame;
+					}else{
+						//SECOND!!
+						//Send it
+						mRGBDFrameSynced->setDepthArray(localFrame->getDepthArray());
+						mRGBDFrameSynced->setHasDepth(true);
+						mRGBDFrameSynced->setDepthTimestamp(localFrame->getDepthTimestamp());
+
+						eventDispatch = thread(&LogDevice::onNewRGBDFrame, this, mRGBDFrameSynced);
+						eventDispatch.detach();
+						mRGBDFrameSynced = NULL;
+					}
+					//Unlock scoped
+					mFrameGuard.unlock();
+				}
 			}else{
 				mDepthGuard.unlock();//ALWAYS UNLOCK YOUR MUTEX!!!
 			}

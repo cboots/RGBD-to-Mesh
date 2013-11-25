@@ -39,13 +39,12 @@ protected:
 	vector<FrameMetaData> mDepthStreamFrames;
 
 	//Stream management
+	bool mSyncDepthAndColor;
 	bool mLoopStreams;
-	bool mTimedStreams;
 	timestamp mStartTime;
 	boost::posix_time::ptime mPlaybackStartTime;
 	volatile bool mColorStreaming;
 	volatile bool mDepthStreaming;
-	volatile timestamp mLastTime;
 	volatile int mColorInd;
 	volatile int mDepthInd;
 
@@ -55,7 +54,7 @@ protected:
 	std::mutex mColorGuard;
 	std::mutex mDepthGuard;
 
-	RGBDFramePtr mSyncFrame;
+	RGBDFramePtr mRGBDFrameSynced;
 	std::mutex mFrameGuard;
 
 
@@ -97,7 +96,8 @@ public:
 	inline void setLoopStreams(bool loop) {mLoopStreams = loop;}
 	inline bool getLoopStreams(){return mLoopStreams;}
 
-	inline void setTimedStreams(bool timed) {mTimedStreams = timed;}
-	inline bool getTimedStreams(){return mTimedStreams;}
+	
+	inline virtual bool getSyncColorAndDepth() override {return mSyncDepthAndColor;}
+	inline virtual bool setSyncColorAndDepth(bool sync) override { mSyncDepthAndColor = sync; return true;}
 };
 
