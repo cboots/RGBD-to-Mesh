@@ -22,11 +22,10 @@ void LogDevice::loadLog(string logFile)
 	string logStr = loadTextFile(logFile);
 
 	//Need to copy string to parse it
-	char *cstr = new char[logStr.length() + 1];
-	strcpy_s(cstr, logStr.length(), logStr.c_str());
+	char *cstr = new char[logStr.length() + 1]();
+	logStr.copy(cstr, logStr.length());
 	xml_document<> doc;    // character type defaults to char
 	doc.parse<0>(cstr);    // 0 means default parse flags
-	delete [] cstr;
 
 
 	//Parse tree
@@ -74,7 +73,7 @@ void LogDevice::loadLog(string logFile)
 							mDepthGuard.unlock();
 						}
 					}
-					frame->next_sibling("frame");
+					frame = frame->next_sibling("frame");
 				}
 			}else{
 				onMessage("Empty Log File\n");
@@ -85,13 +84,16 @@ void LogDevice::loadLog(string logFile)
 	}else{
 		onMessage("Invalid Log File\n");
 	}
+
+	//Free memory
+	delete [] cstr;
 }
 
 DeviceStatus LogDevice::connect(void)
 {
 
 	std::ostringstream logfilePath; 
-	logfilePath << mDirectory << "\\log.xml" << endl;
+	logfilePath << mDirectory << "\\log.xml";
 	if(fileExists(logfilePath.str()))
 	{
 
@@ -155,6 +157,7 @@ void LogDevice::streamColor()
 
 			mColorGuard.unlock();
 		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 }
 
@@ -181,6 +184,7 @@ void LogDevice::streamDepth()
 
 			mDepthGuard.unlock();
 		}
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 }
 
@@ -253,12 +257,12 @@ int LogDevice::getColorResolutionY()
 
 bool LogDevice::isDepthStreamValid() 
 {
-	return false;
+	return mDepthStreaming;
 }
 
 bool LogDevice::isColorStreamValid()
 {
-	return false;
+	return mColorStreaming;
 }
 
 void LogDevice::loadColorFrame(string sourceDir, FrameMetaData data, RGBDFramePtr frameOut)
