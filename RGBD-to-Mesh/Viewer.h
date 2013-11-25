@@ -27,6 +27,8 @@
 #include "RGBDFrame.h"
 #include "RGBDFrameFactory.h"
 #include "FileUtils.h"
+#include "FrameLogger.h"
+
 using namespace std;
 
 #define MAX_DEPTH 10000

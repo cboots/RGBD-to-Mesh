@@ -34,3 +34,8 @@
 /Simple Viewer/x64/Debug
 
 /x64/Debug
+
+/RGBD-to-Mesh/logs/recording
+
+/*.sdf
+/*.opensdf
