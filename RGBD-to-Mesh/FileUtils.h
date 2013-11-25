@@ -19,3 +19,8 @@ void loadRGBDFrameImagesFromFiles(string filename, RGBDFramePtr frame);
 bool makeDir(string dir);
 
 bool isDirectoryEmpty(string dir);
+
+
+bool isDirectory(string dir);
+
+bool fileExists(string filename);

@@ -74,3 +74,16 @@ bool isDirectoryEmpty(string directory)
 
 	return false;
 }
+
+
+bool isDirectory(string dir)
+{
+	return boost::filesystem::is_directory(dir);
+}
+
+
+bool fileExists(string filename)
+{
+	boost::filesystem::path file(filename.c_str());
+	return boost::filesystem::exists(file);
+}
