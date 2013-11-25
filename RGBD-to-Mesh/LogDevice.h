@@ -6,8 +6,23 @@
 #include <ostream>
 #include <fstream>
 #include <sstream>
+#include <vector>
+#include <thread>
+#include <mutex>
+#include "rapidxml\rapidxml.hpp"
+
 
 using namespace std;
+using namespace rapidxml;
+
+struct FrameMetaData{
+	int id;
+	timestamp time;
+	FrameMetaData(int id, timestamp time){
+		this->id = id;
+		this->time = time;
+	}
+};
 
 class LogDevice :
 	public RGBDDevice
@@ -17,10 +32,24 @@ protected:
 	string mDirectory;
 
 	int mXRes,mYRes;
+	vector<FrameMetaData> mColorStreamFrames;
+	vector<FrameMetaData> mDepthStreamFrames;
+
+	std::thread mColorThread;
+	std::thread mDepthThread;
+	std::mutex mColorGuard;
+	std::mutex mDepthGuard;
+
+	RGBDFramePtr mSyncFrame;
+	std::mutex mFrameGuard;
+
+	void loadColorFrame(string sourceDir, FrameMetaData data, RGBDFramePtr frameOut);
+	void loadDepthFrame(string sourceDir, FrameMetaData data, RGBDFramePtr frameOut);
+	void loadLog(string logFile);
 public:
 	LogDevice(void);
 	~LogDevice(void);
-	
+
 	DeviceStatus initialize(void)  override;//Initialize 
 	DeviceStatus connect(void)	   override;//Connect to any device
 	DeviceStatus disconnect(void)  override;//Disconnect from current device
@@ -37,7 +66,7 @@ public:
 
 	bool destroyColorStream()  override;
 	bool destroyDepthStream()  override;
-	
+
 	int getDepthResolutionX() override;
 	int getDepthResolutionY() override;
 	int getColorResolutionX() override;
