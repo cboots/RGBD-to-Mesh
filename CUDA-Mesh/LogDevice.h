@@ -7,10 +7,8 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
-#include <thread>
-#include <mutex>
-#include "rapidxml\rapidxml.hpp"
-#include <chrono>
+#include <boost/thread.hpp>
+#include "rapidxml/rapidxml.hpp"
 #include <boost/date_time.hpp>
 #include <stdlib.h>
 #include <boost/lexical_cast.hpp>
@@ -49,13 +47,13 @@ protected:
 	volatile int mDepthInd;
 
 	
-	std::thread mColorThread;
-	std::thread mDepthThread;
-	std::mutex mColorGuard;
-	std::mutex mDepthGuard;
+	boost::thread mColorThread;
+	boost::thread mDepthThread;
+	boost::mutex mColorGuard;
+	boost::mutex mDepthGuard;
 
 	RGBDFramePtr mRGBDFrameSynced;
-	std::mutex mFrameGuard;
+	boost::mutex mFrameGuard;
 
 
 
@@ -98,7 +96,7 @@ public:
 	inline bool getLoopStreams(){return mLoopStreams;}
 
 	
-	inline virtual bool getSyncColorAndDepth() override {return mSyncDepthAndColor;}
-	inline virtual bool setSyncColorAndDepth(bool sync) override { mSyncDepthAndColor = sync; return true;}
+	bool getSyncColorAndDepth() override {return mSyncDepthAndColor;}
+	bool setSyncColorAndDepth(bool sync) override { mSyncDepthAndColor = sync; return true;}
 };
 

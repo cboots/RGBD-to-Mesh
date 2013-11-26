@@ -4,7 +4,7 @@
 #include <iostream>
 #include <string>
 #include <sstream>
-#include <mutex>
+#include <boost/thread/mutex.hpp>
 #include "RGBDFrameFactory.h"
 
 using namespace std;
@@ -68,7 +68,7 @@ protected:
 	VideoStream mColorStream;
 	RGBDFrameFactory mFrameFactory;
 
-	std::mutex frameGuard;
+	boost::mutex frameGuard;
 	RGBDFramePtr mRGBDFrameSynced;
 	bool mSyncDepthAndColor;
 public:
@@ -93,8 +93,8 @@ public:
 	RGBDImageRegistrationMode getImageRegistrationMode(void) override;
 
 	//Override to implement
-	inline virtual bool getSyncColorAndDepth() override {return mSyncDepthAndColor;}
-	inline virtual bool setSyncColorAndDepth(bool sync) override { mSyncDepthAndColor = sync; return true;}
+	bool getSyncColorAndDepth() override {return mSyncDepthAndColor;}
+	bool setSyncColorAndDepth(bool sync) override { mSyncDepthAndColor = sync; return true;}
 
 
 	//Event handlers

@@ -281,6 +281,8 @@ void SampleViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		logger.stopRecording();
 		cout<<"Recording stopped" <<endl;
 		break;
+	case 'p':
+		((LogDevice*) mDevice)->restartStreams();
 	}
 
 }
