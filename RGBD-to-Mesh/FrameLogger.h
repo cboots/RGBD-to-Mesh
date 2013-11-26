@@ -2,8 +2,7 @@
 #include "RGBDDevice.h"
 #include <string>
 #include <queue>
-#include <thread>
-#include <mutex>
+#include <boost/thread.hpp>
 #include "FileUtils.h"
 #include <sstream>
 
@@ -22,8 +21,8 @@ protected:
 	volatile bool mIsRecording;
 	RGBDDevice* mDevice;
 
-	std::thread mLoggerThread;
-	std::mutex mQueueGuard;
+	boost::thread mLoggerThread;
+	boost::mutex mQueueGuard;
 
 	void record(string outputDirectory);
 public:

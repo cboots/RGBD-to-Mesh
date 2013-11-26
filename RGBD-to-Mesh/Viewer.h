@@ -28,6 +28,7 @@
 #include "RGBDFrameFactory.h"
 #include "FileUtils.h"
 #include "FrameLogger.h"
+#include "LogDevice.h"
 
 using namespace std;
 

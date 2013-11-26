@@ -104,7 +104,7 @@ bool FrameLogger::startRecording(RGBDDevice* device)
 
 	//Launch thread
 	mIsRecording = true;
-	mLoggerThread = std::thread(&FrameLogger::record, this, mOutputDirectory);
+	mLoggerThread = boost::thread(&FrameLogger::record, this, mOutputDirectory);
 
 	return true;
 }
