@@ -21,6 +21,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{190FE85B-189F-4244-BCDF-2279229D32A8}</ProjectGuid>
     <RootNamespace>SimpleViewer</RootNamespace>
+    <ProjectName>Viewer-Recorder</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
