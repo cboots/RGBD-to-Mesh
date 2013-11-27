@@ -39,3 +39,21 @@
 
 /*.sdf
 /*.opensdf
+
+/CUDA-Mesh/x64/Release
+
+/Simple Viewer/Release
+
+/RGBD-to-Mesh/Release
+/EventBasedRead/Release
+
+/Release
+
+/CUDA-Mesh
+
+/RGBD-to-Mesh/RGBD-to-Mesh.vcxproj.user
+
+/Recorder-Viewer/Release
+/Recorder-Viewer/x64/Release/*.tlog
+
+/Recorder-Viewer/x64/Release
