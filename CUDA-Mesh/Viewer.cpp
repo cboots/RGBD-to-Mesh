@@ -194,7 +194,7 @@ void SampleViewer::display()
 			{
 				int depth = (*pDepth).depth;
 				if(depth != 0){
-					uint8_t scaledDepth = 256-(depth>>5);
+					uint8_t scaledDepth = 256-(depth>>6);
 					pTex->r = scaledDepth;
 					pTex->g = 0;//scaledDepth;
 					pTex->b = 0;//scaledDepth;

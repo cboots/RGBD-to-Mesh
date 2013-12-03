@@ -7,6 +7,7 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <queue>
 #include <boost/thread.hpp>
 #include "rapidxml/rapidxml.hpp"
 #include <boost/date_time.hpp>
@@ -51,6 +52,12 @@ protected:
 	volatile int mColorInd;
 	volatile int mDepthInd;
 
+
+	//Stream frame buffers.
+	//const int cBufferCapacity = 500;//Max number of frames to buffer per stream
+	queue<RGBDFramePtr> mColorStreamBuffer;
+	queue<RGBDFramePtr> mDepthStreamBuffer;
+
 	//1.0 is normal, 0.5 is half speed, 2.0 is double speed, etc
 	double mPlaybackSpeed;
 
@@ -69,6 +76,7 @@ protected:
 	void loadLog(string logFile);
 	void streamColor();
 	void streamDepth();
+	void dispatchEvents();
 public:
 	LogDevice(void);
 	~LogDevice(void);

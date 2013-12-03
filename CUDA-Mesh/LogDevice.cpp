@@ -31,7 +31,7 @@ LogDevice::~LogDevice(void)
 
 DeviceStatus LogDevice::initialize(void)
 {
-	
+
 	return DEVICESTATUS_OK;	
 }
 
@@ -162,9 +162,14 @@ bool LogDevice::hasColorStream()
 	return mColorStreaming;
 }
 
+void LogDevice::dispatchEvents()
+{
+	RGBDFramePtr localFrame;
+
+}
+
 void LogDevice::streamColor()
 {
-	boost::thread eventDispatch;
 	while(mColorStreaming){
 		boost::posix_time::ptime now  = boost::posix_time::microsec_clock::local_time();
 		boost::posix_time::time_duration duration = (now - mPlaybackStartTime);
@@ -186,8 +191,7 @@ void LogDevice::streamColor()
 				//Check if send
 				if(!mSyncDepthAndColor)
 				{
-					eventDispatch = boost::thread(&LogDevice::onNewRGBDFrame, this, localFrame);
-					eventDispatch.detach();
+					onNewRGBDFrame(localFrame);
 					localFrame = NULL;
 				}else{
 					//Sync it
@@ -203,8 +207,7 @@ void LogDevice::streamColor()
 						mRGBDFrameSynced->setHasColor(true);
 						mRGBDFrameSynced->setColorTimestamp(localFrame->getColorTimestamp());
 
-						eventDispatch = boost::thread(&LogDevice::onNewRGBDFrame, this, mRGBDFrameSynced);
-						eventDispatch.detach();
+						onNewRGBDFrame(mRGBDFrameSynced);
 						mRGBDFrameSynced = NULL;
 					}
 					//Unlock scoped
@@ -250,8 +253,7 @@ void LogDevice::streamDepth()
 				//Check if send
 				if(!mSyncDepthAndColor)
 				{
-					eventDispatch = boost::thread(&LogDevice::onNewRGBDFrame, this, localFrame);
-					eventDispatch.detach();
+					onNewRGBDFrame(localFrame);
 					localFrame = NULL;
 				}else{
 					//Sync it
@@ -267,8 +269,7 @@ void LogDevice::streamDepth()
 						mRGBDFrameSynced->setHasDepth(true);
 						mRGBDFrameSynced->setDepthTimestamp(localFrame->getDepthTimestamp());
 
-						eventDispatch = boost::thread(&LogDevice::onNewRGBDFrame, this, mRGBDFrameSynced);
-						eventDispatch.detach();
+						onNewRGBDFrame(mRGBDFrameSynced);
 						mRGBDFrameSynced = NULL;
 					}
 					//Unlock scoped
