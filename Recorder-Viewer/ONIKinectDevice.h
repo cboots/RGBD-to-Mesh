@@ -62,12 +62,15 @@ protected:
 		}
 	} newColorFrameListener;
 
-
+	//OpenNI Device
 	Device mDevice;
+	//Streams
 	VideoStream mDepthStream;
 	VideoStream mColorStream;
+	//Factory for frame
 	RGBDFrameFactory mFrameFactory;
 
+	//Lock for synchronized frames
 	boost::mutex frameGuard;
 	RGBDFramePtr mRGBDFrameSynced;
 	bool mSyncDepthAndColor;

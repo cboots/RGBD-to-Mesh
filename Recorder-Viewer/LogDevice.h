@@ -29,10 +29,15 @@ class LogDevice :
 	public RGBDDevice
 {
 protected:
+	//Provides new frames 
 	RGBDFrameFactory mFrameFactory;
+	//Source directory for log files
 	string mDirectory;
 
+	//Resolution of logged data
 	int mXRes,mYRes;
+
+	//Stream frames for various 
 	vector<FrameMetaData> mColorStreamFrames;
 	vector<FrameMetaData> mDepthStreamFrames;
 
@@ -46,7 +51,9 @@ protected:
 	volatile int mColorInd;
 	volatile int mDepthInd;
 
-	
+	//1.0 is normal, 0.5 is half speed, 2.0 is double speed, etc
+	double mPlaybackSpeed;
+
 	boost::thread mColorThread;
 	boost::thread mDepthThread;
 	boost::mutex mColorGuard;
@@ -92,11 +99,16 @@ public:
 	bool isDepthStreamValid() override;
 	bool isColorStreamValid() override;
 
+	//If set to true, whenever either stream reaches the end of the loop the playback will restart from the beginning.
 	inline void setLoopStreams(bool loop) {mLoopStreams = loop;}
 	inline bool getLoopStreams(){return mLoopStreams;}
 
-	
 	bool getSyncColorAndDepth() override {return mSyncDepthAndColor;}
 	bool setSyncColorAndDepth(bool sync) override { mSyncDepthAndColor = sync; return true;}
+
+	//Getter/Setter for playback speed
+	//1.0 is normal, 0.5 is half speed, 2.0 is double speed, etc
+	void setPlaybackSpeed(double speed);
+	double getPlaybackSpeed(){return mPlaybackSpeed;}
 };
 

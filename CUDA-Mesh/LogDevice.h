@@ -52,7 +52,7 @@ protected:
 	volatile int mDepthInd;
 
 	//1.0 is normal, 0.5 is half speed, 2.0 is double speed, etc
-	float mPlaybackSpeed;
+	double mPlaybackSpeed;
 
 	boost::thread mColorThread;
 	boost::thread mDepthThread;
@@ -99,15 +99,16 @@ public:
 	bool isDepthStreamValid() override;
 	bool isColorStreamValid() override;
 
+	//If set to true, whenever either stream reaches the end of the loop the playback will restart from the beginning.
 	inline void setLoopStreams(bool loop) {mLoopStreams = loop;}
 	inline bool getLoopStreams(){return mLoopStreams;}
 
 	bool getSyncColorAndDepth() override {return mSyncDepthAndColor;}
 	bool setSyncColorAndDepth(bool sync) override { mSyncDepthAndColor = sync; return true;}
 
-	
+	//Getter/Setter for playback speed
 	//1.0 is normal, 0.5 is half speed, 2.0 is double speed, etc
-	void setPlaybackSpeed(float speed);
-	float getPlaybackSpeed(){return mPlaybackSpeed;}
+	void setPlaybackSpeed(double speed);
+	double getPlaybackSpeed(){return mPlaybackSpeed;}
 };
 

@@ -383,7 +383,7 @@ void LogDevice::loadDepthFrame(string sourceDir, FrameMetaData data, RGBDFramePt
 	loadDepthImageFromFile(out.str(), frameOut);
 }
 
-void LogDevice::setPlaybackSpeed(float speed) 
+void LogDevice::setPlaybackSpeed(double speed) 
 {
 	if(speed>0.0) {
 		//Grab current time scaled by old playback
@@ -397,7 +397,7 @@ void LogDevice::setPlaybackSpeed(float speed)
 		if(mColorStreaming || mDepthStreaming)
 		{
 			//If playback ongoing, reset start time to simulate seamless speed change
-			float usOffset = durationUS;
+			double usOffset = durationUS;
 			usOffset /= mPlaybackSpeed;
 			mPlaybackStartTime = now - boost::posix_time::microseconds(usOffset);//Move playback to scaled time
 		}

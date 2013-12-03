@@ -242,6 +242,7 @@ void SampleViewer::display()
 FrameLogger logger;
 void SampleViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 {
+	float newPlayback = 1.0;
 	switch (key)
 	{
 	case 27:
@@ -283,6 +284,17 @@ void SampleViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		break;
 	case 'p':
 		((LogDevice*) mDevice)->restartStreams();
+		break;
+	case '=':
+		newPlayback = ((LogDevice*) mDevice)->getPlaybackSpeed()+0.1;
+		cout <<"Playback speed: " << newPlayback << endl;
+		((LogDevice*) mDevice)->setPlaybackSpeed(newPlayback);
+		break;
+	case '-':
+		newPlayback = ((LogDevice*) mDevice)->getPlaybackSpeed()-0.1;
+		cout <<"Playback speed: " << newPlayback << endl;
+		((LogDevice*) mDevice)->setPlaybackSpeed(newPlayback);
+		break;
 	}
 
 }

@@ -18,6 +18,8 @@ LogDevice::LogDevice(void)
 	mDepthInd = 0;
 
 	mRGBDFrameSynced = NULL;
+	mPlaybackSpeed = 1.0;
+
 }
 
 
@@ -29,6 +31,7 @@ LogDevice::~LogDevice(void)
 
 DeviceStatus LogDevice::initialize(void)
 {
+	
 	return DEVICESTATUS_OK;	
 }
 
@@ -164,7 +167,8 @@ void LogDevice::streamColor()
 	boost::thread eventDispatch;
 	while(mColorStreaming){
 		boost::posix_time::ptime now  = boost::posix_time::microsec_clock::local_time();
-		boost::posix_time::time_duration duration = now - mPlaybackStartTime;
+		boost::posix_time::time_duration duration = (now - mPlaybackStartTime);
+		timestamp durationUS = duration.total_microseconds()*mPlaybackSpeed;
 		//Color
 		mColorGuard.lock();
 		if(mColorInd < mColorStreamFrames.size())
@@ -172,7 +176,7 @@ void LogDevice::streamColor()
 			//TODO: Buffering
 			FrameMetaData frame = mColorStreamFrames[mColorInd];
 			//If we've passed frame time
-			if(frame.time - mStartTime <= (timestamp) duration.total_microseconds())
+			if(frame.time - mStartTime <= durationUS)
 			{
 				mColorInd++;
 				mColorGuard.unlock();
@@ -229,14 +233,15 @@ void LogDevice::streamDepth()
 	boost::thread eventDispatch;
 	while(mDepthStreaming){
 		boost::posix_time::ptime now  = boost::posix_time::microsec_clock::local_time();
-		boost::posix_time::time_duration duration = now - mPlaybackStartTime;
+		boost::posix_time::time_duration duration = (now - mPlaybackStartTime);
+		timestamp durationUS = duration.total_microseconds()*mPlaybackSpeed;
 		//Depth
 		mDepthGuard.lock();
 		if(mDepthInd < mDepthStreamFrames.size())
 		{
 			//TODO: Buffering
 			FrameMetaData frame = mDepthStreamFrames[mDepthInd];
-			if(frame.time - mStartTime <= (timestamp) duration.total_microseconds())
+			if(frame.time - mStartTime <= durationUS)
 			{
 				mDepthInd++;
 				mDepthGuard.unlock();
@@ -376,4 +381,25 @@ void LogDevice::loadDepthFrame(string sourceDir, FrameMetaData data, RGBDFramePt
 	out << sourceDir << "\\" << data.id;
 	frameOut->setDepthTimestamp(data.time);
 	loadDepthImageFromFile(out.str(), frameOut);
+}
+
+void LogDevice::setPlaybackSpeed(double speed) 
+{
+	if(speed>0.0) {
+		//Grab current time scaled by old playback
+		boost::posix_time::ptime now  = boost::posix_time::microsec_clock::local_time();
+		boost::posix_time::time_duration duration = (now - mPlaybackStartTime);
+		timestamp durationUS = duration.total_microseconds()*mPlaybackSpeed;
+
+		//Change speed
+		mPlaybackSpeed = speed;
+
+		if(mColorStreaming || mDepthStreaming)
+		{
+			//If playback ongoing, reset start time to simulate seamless speed change
+			double usOffset = durationUS;
+			usOffset /= mPlaybackSpeed;
+			mPlaybackStartTime = now - boost::posix_time::microseconds(usOffset);//Move playback to scaled time
+		}
+	}
 }
