@@ -386,8 +386,6 @@ void LogDevice::loadDepthFrame(string sourceDir, FrameMetaData data, RGBDFramePt
 void LogDevice::setPlaybackSpeed(float speed) 
 {
 	if(speed>0.0) {
-		cout <<"Playback speed (in file): " << speed << endl;
-
 		//Grab current time scaled by old playback
 		boost::posix_time::ptime now  = boost::posix_time::microsec_clock::local_time();
 		boost::posix_time::time_duration duration = (now - mPlaybackStartTime);
@@ -401,11 +399,7 @@ void LogDevice::setPlaybackSpeed(float speed)
 			//If playback ongoing, reset start time to simulate seamless speed change
 			float usOffset = durationUS;
 			usOffset /= mPlaybackSpeed;
-
-			cout << "usOffset: " << usOffset << endl;
 			mPlaybackStartTime = now - boost::posix_time::microseconds(usOffset);//Move playback to scaled time
-			cout << "Now: " << now << endl;
-			cout << "mPlayback Start: " << mPlaybackStartTime << endl;
 		}
 	}
 }
