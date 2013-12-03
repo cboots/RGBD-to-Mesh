@@ -26,36 +26,43 @@ class RGBDDevice
 {
 	//******************Events and listener declarations*****************
 public:
+	//Abstract class that lets you register a new frame listener with the device.
 	class NewRGBDFrameListener{
 	public :
 		virtual void onNewRGBDFrame(RGBDFramePtr frame) = 0;
 	};
 
+	//Abstract class that lets you register a device connected listener with the device
 	class DeviceConnectedListener{
 	public :
 		virtual void onDeviceConnected() = 0;
 	};
-
+	
+	//Abstract class that lets you register a device disconnected listener with the device
 	class DeviceDisconnectedListener{
 	public :
 		virtual void onDeviceDisconnected() = 0;
 	};
-
+	
+	//Abstract class that lets you register a listener with the device that will output debug messages, status updates, and warnings
 	class DeviceMessageListener{
 	public :
 		virtual void onMessage(std::string msg) = 0;
 	};
 
 protected:
+	//Collections of registered listeners 
 	std::vector<NewRGBDFrameListener*> mNewRGBDFrameListeners;
 	std::vector<DeviceConnectedListener*> mDeviceConnectedListeners;
 	std::vector<DeviceDisconnectedListener*> mDeviceDisconnectedListeners;
 	std::vector<DeviceMessageListener*> mDeviceMessageListeners;
 
 public:
+	//Destructor
 	virtual ~RGBDDevice(void){};
 
 	//Purely virtual methods
+	//Order the application should call these functions in is 1. initialize 2. connect 3. disconnect 4. shutdown
 	virtual DeviceStatus initialize(void) = 0;
 	virtual DeviceStatus connect(void) = 0;
 	virtual DeviceStatus disconnect(void) = 0;
@@ -92,16 +99,19 @@ public:
 	virtual bool isDepthStreamValid() = 0;
 	virtual bool isColorStreamValid() = 0;
 
+	//Add event listeners
 	void addNewRGBDFrameListener(NewRGBDFrameListener* listener);
 	void addDeviceConnectedListener(DeviceConnectedListener* listener);
 	void addDeviceDisconnectedListener(DeviceDisconnectedListener* listener);
 	void addDeviceMessageListener(DeviceMessageListener* listener);
 
+	//Remove event listeners
 	void removeNewRGBDFrameListener(NewRGBDFrameListener* listener);
 	void removeDeviceConnectedListener(DeviceConnectedListener* listener);
 	void removeDeviceDisconnectedListener(DeviceDisconnectedListener* listener);
 	void removeDeviceMessageListener(DeviceMessageListener* listener);
 
+	//Event handlers
 	void onNewRGBDFrame(RGBDFramePtr frame);
 	void onConnect();
 	void onDisconnect();
