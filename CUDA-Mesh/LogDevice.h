@@ -78,6 +78,7 @@ protected:
 
 	boost::thread mColorThread;
 	boost::thread mDepthThread;
+	boost::thread mEventThread;
 	boost::mutex mColorGuard;
 	boost::mutex mDepthGuard;
 

@@ -179,7 +179,7 @@ void LogDevice::bufferColor()
 
 				localFrame = mFrameFactory.getRGBDFrame(mXRes, mYRes);
 				loadColorFrame(mDirectory, frame, localFrame);
-				
+
 				//Buffer the frame
 				mColorGuard.lock();
 				mColorStreamBuffer.push(BufferFrame(frame.id, localFrame));
@@ -218,7 +218,7 @@ void LogDevice::bufferDepth()
 
 				localFrame = mFrameFactory.getRGBDFrame(mXRes, mYRes);
 				loadDepthFrame(mDirectory, frame, localFrame);
-				
+
 				//Buffer the frame
 				mDepthGuard.lock();
 				mDepthStreamBuffer.push(BufferFrame(frame.id, localFrame));
@@ -243,7 +243,10 @@ void LogDevice::bufferDepth()
 
 void LogDevice::dispatchEvents()
 {
-	RGBDFramePtr localFrame = NULL;
+	RGBDFramePtr localDepthFrame = NULL;
+	RGBDFramePtr localColorFrame = NULL;
+	RGBDFramePtr localSyncFrame = NULL;
+
 	while(mColorStreaming || mDepthStreaming)
 	{
 		//Tick thread time
@@ -253,38 +256,69 @@ void LogDevice::dispatchEvents()
 
 		//=======Check depth stream for update========
 		if(mDepthStreaming){
+			localDepthFrame = NULL;//Clear
 			if(mDepthInd < mDepthStreamFrames.size()){
 				FrameMetaData frame = mDepthStreamFrames[mDepthInd];
 				//If we've passed frame time
 				if(frame.time - mStartTime <= durationUS)
 				{
+					mDepthGuard.lock();
+					while(mDepthStreamBuffer.size() > 0){
+						BufferFrame bufFrame = mDepthStreamBuffer.front();
+						mDepthStreamBuffer.pop();
+						if(frame.id == bufFrame.id)
+						{
+							//Found the correct position in the buffer, pull the frame
+							localDepthFrame = bufFrame.frame;
+							break;
+						}
+					}
+					mDepthGuard.unlock();
 
-					//TODO: Do buffer read here.
-					//If buffer read success, mDepthInd++;
-					
-
-
+					if(localDepthFrame != NULL)
+					{
+						//Found the right frame in the buffer, advance
+						mDepthInd++;
+					}
 				}
 			}else{
 				//Reached end of stream, restart
 				if(mLoopStreams){
 					restartStreams();
-					localFrame = NULL;//clear frame (avoids wrapped synchronization)
+					localColorFrame = NULL;
+					localDepthFrame = NULL;
 				}
 			}
 		}
 
 		//=======Check color stream for update========
 		if(mColorStreaming){
+			localColorFrame = NULL;//Clear
 			if(mColorInd < mColorStreamFrames.size()){
 				FrameMetaData frame = mColorStreamFrames[mColorInd];
 				//If we've passed frame time
 				if(frame.time - mStartTime <= durationUS)
 				{
 
-					//TODO: Do buffer read here.
-					//If buffer read success, mColorInd++;
+					mColorGuard.lock();
+					while(mColorStreamBuffer.size() > 0){
+						BufferFrame bufFrame = mColorStreamBuffer.front();
+						mColorStreamBuffer.pop();
+						if(frame.id == bufFrame.id)
+						{
+							//Found the correct position in the buffer, pull the frame
+							localColorFrame = bufFrame.frame;
+							break;
+						}
+						//Buffer miss
+					}
+					mColorGuard.unlock();
 
+					if(localColorFrame != NULL)
+					{
+						//Found the right frame in the buffer, advance
+						mColorInd++;
+					}
 
 
 				}
@@ -292,11 +326,109 @@ void LogDevice::dispatchEvents()
 				//Reached end of stream, restart
 				if(mLoopStreams){
 					restartStreams();
-					localFrame = NULL;//clear frame (avoids wrapped synchronization)
+					localColorFrame = NULL;
+					localDepthFrame = NULL;
 				}
 			}
 		}
 
+		//Dispatch events if apprpriate
+		//All synchronization logic handled below
+		if(mSyncDepthAndColor)
+		{
+			//Synchronized
+			//Check if anything new
+			if(localColorFrame != NULL)
+			{
+				//New color data from stream
+				if(localDepthFrame != NULL)
+				{
+					//Also new depth data. Both color and depth present
+					if(localSyncFrame != NULL)
+					{
+						//has a frame already. complete the frame and send it
+						if(localSyncFrame->hasColor())
+						{
+							//Synch packet and send
+							localSyncFrame->overwriteDepthData(localDepthFrame);
+							onNewRGBDFrame(localSyncFrame);
+
+							//queue other packet
+							localSyncFrame = localColorFrame;
+						}else{
+							//has depth
+							localSyncFrame->overwriteColorData(localColorFrame);
+							onNewRGBDFrame(localSyncFrame);
+
+							//queue other packet
+							localSyncFrame = localDepthFrame;
+						}
+					}else{
+						localSyncFrame = localColorFrame;
+						localSyncFrame->overwriteDepthData(localDepthFrame);
+						onNewRGBDFrame(localSyncFrame);
+						localSyncFrame = NULL;
+					}
+
+				}else{
+					//New color data only
+					if(localSyncFrame != NULL)
+					{
+						if(localSyncFrame->hasColor())
+						{
+							//Already has color data, push unsynchronized event
+							onNewRGBDFrame(localSyncFrame);
+							localSyncFrame = localColorFrame;
+						}else{
+							//has depth data, overwrite color
+							localSyncFrame->overwriteColorData(localColorFrame);
+							onNewRGBDFrame(localSyncFrame);
+							localSyncFrame = NULL;
+						}
+					}else{
+						//First one here
+						localSyncFrame = localColorFrame;
+					}
+
+				}
+			}else if(localDepthFrame != NULL){
+				//New depth data only
+				if(localSyncFrame != NULL)
+				{
+					if(localSyncFrame->hasDepth())
+					{
+						//already has depth data, push out unsynchronized event
+						onNewRGBDFrame(localSyncFrame);
+						localSyncFrame = localDepthFrame;
+					}else{
+						//Has color data, add depth
+						localSyncFrame->overwriteDepthData(localDepthFrame);
+
+						//Send synched event
+						onNewRGBDFrame(localSyncFrame);
+						localSyncFrame = NULL;
+					}
+				}else{
+					//First one here
+					localSyncFrame = localDepthFrame;
+				}
+			}
+
+		}else{
+			//Seperate dispatches
+			if(localColorFrame != NULL)
+			{
+				onNewRGBDFrame(localColorFrame);
+			}
+
+			if(localDepthFrame != NULL)
+			{
+				onNewRGBDFrame(localDepthFrame);
+			}
+		}
+
+		localDepthFrame = NULL;
+		localColorFrame = NULL;
 		//Sleep thread
 		boost::this_thread::sleep_for(boost::chrono::milliseconds(1));//1ms resolution should be fine
 	}
@@ -431,7 +563,13 @@ bool LogDevice::createColorStream()
 		mColorStreaming = true;
 
 		//Start stream thread
-		mColorThread = boost::thread(&LogDevice::streamColor, this);
+		mColorThread = boost::thread(&LogDevice::bufferColor, this);
+		
+		if(!mDepthStreaming)
+		{
+			//Event thread not started yet
+			mEventThread = boost::thread(&LogDevice::dispatchEvents, this);
+		}
 
 		restartStreams();
 	}
@@ -445,7 +583,13 @@ bool LogDevice::createDepthStream()
 		mDepthStreaming = true;
 
 		//Start stream thread
-		mDepthThread = boost::thread(&LogDevice::streamDepth, this);
+		mDepthThread = boost::thread(&LogDevice::bufferDepth, this);
+		
+		if(!mColorStreaming)
+		{
+			//Event thread not started yet
+			mEventThread = boost::thread(&LogDevice::dispatchEvents, this);
+		}
 
 		restartStreams();
 	}
