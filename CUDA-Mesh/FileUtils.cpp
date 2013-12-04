@@ -12,7 +12,7 @@ float saveToCompressedBinaryFile(string filename, char* uncompressed, int uncomp
 	{
 		switch(compressMode)
 		{
-		case LZ4:
+		case LZ4_COMPRESSION:
 			//Allocate memory for compressed data
 			compressed = new char[uncompressedSize];
 			compressedSize = LZ4_compress_limitedOutput(uncompressed, compressed, uncompressedSize, uncompressedSize);
@@ -32,6 +32,39 @@ float saveToCompressedBinaryFile(string filename, char* uncompressed, int uncomp
 	}
 
 	return ratio;
+}
+
+
+void loadCompressedBinaryFile(string filename, char* outputArray, int memSize, COMPRESSION_METHOD compressMode)
+{
+	ifstream file (filename, ios::in|ios::binary);
+	if (file.is_open())
+	{
+
+		// get length of file:
+		file.seekg (0, file.end);
+		int length = file.tellg();
+		file.seekg (0, file.beg);
+
+		switch(compressMode)
+		{
+		case LZ4_COMPRESSION:
+			//Allocate memory for compressed data
+			//compressed = new char[uncompressedSize];
+			//compressedSize = LZ4_compress_limitedOutput(uncompressed, compressed, uncompressedSize, uncompressedSize);
+			//ratio = float(compressedSize)/float(uncompressedSize);
+			//file.write(compressed, compressedSize);
+			//delete compressed;
+
+			break;
+		case NO_COMPRESSION:
+		default:
+			//read raw data
+			file.read(outputArray, min(memSize, length));
+			break;
+		}
+		file.close();
+	}
 }
 
 void saveRGBDFrameImagesToFiles(string filename, RGBDFramePtr frame)
@@ -69,28 +102,18 @@ void loadRGBDFrameImagesFromFiles(string filename, RGBDFramePtr frame)
 
 void loadColorImageFromFile(string filename, RGBDFramePtr frame)
 {
-	ifstream rgbfile (filename+".rgb", ios::in|ios::binary);
-	if (rgbfile.is_open())
-	{
-		char* rgbData = (char*)frame->getColorArray().get();
-		int memSize = frame->getXRes()*frame->getYRes()*sizeof(ColorPixel);
-		rgbfile.read(rgbData, memSize);
-		rgbfile.close();
-		frame->setHasColor(true);
-	}
+	char* rgbData = (char*)frame->getColorArray().get();
+	int memSize = frame->getXRes()*frame->getYRes()*sizeof(ColorPixel);
+	loadCompressedBinaryFile(filename+".rgb", rgbData, memSize, NO_COMPRESSION);
+	frame->setHasColor(true);
 }
 
 void loadDepthImageFromFile(string filename, RGBDFramePtr frame)
 {
-	ifstream depthfile (filename+".depth", ios::in|ios::binary);
-	if (depthfile.is_open())
-	{
-		char* depthData = (char*)frame->getDepthArray().get();
-		int memSize = frame->getXRes()*frame->getYRes()*sizeof(DPixel);
-		depthfile.read(depthData, memSize);
-		depthfile.close();
-		frame->setHasDepth(true);
-	}
+	char* depthData = (char*)frame->getDepthArray().get();
+	int memSize = frame->getXRes()*frame->getYRes()*sizeof(DPixel);
+	loadCompressedBinaryFile(filename+".depth", depthData, memSize, NO_COMPRESSION);
+	frame->setHasDepth(true);
 }
 
 

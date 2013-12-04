@@ -13,10 +13,14 @@
 
 using namespace std;
 
-enum COMPRESSION_METHOD {NO_COMPRESSION = 0, LZ4 = 1};
+//Enumeration of supported binary compression methods
+enum COMPRESSION_METHOD {NO_COMPRESSION = 0, LZ4_COMPRESSION = 1};
 
-
+//Saves image files with appropriate file extensions and no compression
 void saveRGBDFrameImagesToFiles(string filename, RGBDFramePtr frame);
+
+//Saves image files with appropriate file extensions and with the specified compression schemes.
+//Depth and Color data may be compressed with different methods
 void saveRGBDFrameImagesToFiles(string filename, RGBDFramePtr frame, COMPRESSION_METHOD rgbCompression, COMPRESSION_METHOD depthCompression);
 
 //Loads both .depth and .rgb files.
