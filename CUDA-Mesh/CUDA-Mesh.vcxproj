@@ -153,6 +153,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <ClCompile Include="FileUtils.cpp" />
     <ClCompile Include="FrameLogger.cpp" />
     <ClCompile Include="LogDevice.cpp" />
+    <ClCompile Include="lz4\lz4.c" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="ONIKinectDevice.cpp" />
     <ClCompile Include="RGBDDevice.cpp" />
@@ -164,6 +165,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <ClInclude Include="FileUtils.h" />
     <ClInclude Include="FrameLogger.h" />
     <ClInclude Include="LogDevice.h" />
+    <ClInclude Include="lz4\lz4.h" />
     <ClInclude Include="ONIKinectDevice.h" />
     <ClInclude Include="OniSampleUtilities.h" />
     <ClInclude Include="RGBDDevice.h" />
