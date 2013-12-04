@@ -252,7 +252,7 @@ void LogDevice::dispatchEvents()
 		//Tick thread time
 		boost::posix_time::ptime now  = boost::posix_time::microsec_clock::local_time();
 		boost::posix_time::time_duration duration = (now - mPlaybackStartTime);
-		timestamp durationUS = duration.total_microseconds()*mPlaybackSpeed;//Time in microseconds. Normalized to playback time
+		timestamp durationUS = (timestamp) (duration.total_microseconds()*mPlaybackSpeed);//Time in microseconds. Normalized to playback time
 
 		//=======Check depth stream for update========
 		if(mDepthStreaming){
@@ -284,7 +284,7 @@ void LogDevice::dispatchEvents()
 			}else{
 				//Reached end of stream, restart
 				if(mLoopStreams){
-					restartStreams();
+					restartPlayback();
 					localColorFrame = NULL;
 					localDepthFrame = NULL;
 				}
@@ -325,7 +325,7 @@ void LogDevice::dispatchEvents()
 			}else{
 				//Reached end of stream, restart
 				if(mLoopStreams){
-					restartStreams();
+					restartPlayback();
 					localColorFrame = NULL;
 					localDepthFrame = NULL;
 				}
@@ -434,129 +434,6 @@ void LogDevice::dispatchEvents()
 	}
 }
 
-void LogDevice::streamColor()
-{
-	while(mColorStreaming){
-		boost::posix_time::ptime now  = boost::posix_time::microsec_clock::local_time();
-		boost::posix_time::time_duration duration = (now - mPlaybackStartTime);
-		timestamp durationUS = duration.total_microseconds()*mPlaybackSpeed;
-		//Color
-		mColorGuard.lock();
-		if(mColorInd < mColorStreamFrames.size())
-		{
-			//TODO: Buffering
-			FrameMetaData frame = mColorStreamFrames[mColorInd];
-			//If we've passed frame time
-			if(frame.time - mStartTime <= durationUS)
-			{
-				mColorInd++;
-				mColorGuard.unlock();
-				RGBDFramePtr localFrame = mFrameFactory.getRGBDFrame(mXRes, mYRes);
-				loadColorFrame(mDirectory, frame, localFrame);
-
-				//Check if send
-				if(!mSyncDepthAndColor)
-				{
-					onNewRGBDFrame(localFrame);
-					localFrame = NULL;
-				}else{
-					//Sync it
-					mFrameGuard.lock();
-					if(mRGBDFrameSynced == NULL)
-					{
-						//FIRST POST!!!
-						mRGBDFrameSynced = localFrame;
-					}else{
-						//SECOND!!
-						//Send it
-						mRGBDFrameSynced->setColorArray(localFrame->getColorArray());
-						mRGBDFrameSynced->setHasColor(true);
-						mRGBDFrameSynced->setColorTimestamp(localFrame->getColorTimestamp());
-
-						onNewRGBDFrame(mRGBDFrameSynced);
-						mRGBDFrameSynced = NULL;
-					}
-					//Unlock scoped
-					mFrameGuard.unlock();
-				}
-			}else{
-				mColorGuard.unlock();//ALWAYS UNLOCK YOUR MUTEX!!!
-			}
-			//TODO: Syncing
-
-		}else{
-			//Reached end of stream
-			if(mLoopStreams)
-				restartStreams();
-
-			mColorGuard.unlock();
-		}
-		//Sleep thread
-		boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
-	}
-}
-
-
-void LogDevice::streamDepth()
-{
-	boost::thread eventDispatch;
-	while(mDepthStreaming){
-		boost::posix_time::ptime now  = boost::posix_time::microsec_clock::local_time();
-		boost::posix_time::time_duration duration = (now - mPlaybackStartTime);
-		timestamp durationUS = duration.total_microseconds()*mPlaybackSpeed;
-		//Depth
-		mDepthGuard.lock();
-		if(mDepthInd < mDepthStreamFrames.size())
-		{
-			//TODO: Buffering
-			FrameMetaData frame = mDepthStreamFrames[mDepthInd];
-			if(frame.time - mStartTime <= durationUS)
-			{
-				mDepthInd++;
-				mDepthGuard.unlock();
-				RGBDFramePtr localFrame = mFrameFactory.getRGBDFrame(mXRes, mYRes);
-				loadDepthFrame(mDirectory, frame, localFrame);
-				//Check if send
-				if(!mSyncDepthAndColor)
-				{
-					onNewRGBDFrame(localFrame);
-					localFrame = NULL;
-				}else{
-					//Sync it
-					mFrameGuard.lock();
-					if(mRGBDFrameSynced == NULL)
-					{
-						//FIRST POST!!!
-						mRGBDFrameSynced = localFrame;
-					}else{
-						//SECOND!!
-						//Send it
-						mRGBDFrameSynced->setDepthArray(localFrame->getDepthArray());
-						mRGBDFrameSynced->setHasDepth(true);
-						mRGBDFrameSynced->setDepthTimestamp(localFrame->getDepthTimestamp());
-
-						onNewRGBDFrame(mRGBDFrameSynced);
-						mRGBDFrameSynced = NULL;
-					}
-					//Unlock scoped
-					mFrameGuard.unlock();
-				}
-			}else{
-				mDepthGuard.unlock();//ALWAYS UNLOCK YOUR MUTEX!!!
-			}
-			//TODO: Syncing
-		}else{
-			//Reached end of stream
-			if(mLoopStreams)
-				restartStreams();
-
-			mDepthGuard.unlock();
-		}
-		//Sleep thread
-		boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
-	}
-}
-
 bool LogDevice::createColorStream() 
 {
 	if(mColorStreamFrames.size() > 0){
@@ -571,7 +448,7 @@ bool LogDevice::createColorStream()
 			mEventThread = boost::thread(&LogDevice::dispatchEvents, this);
 		}
 
-		restartStreams();
+		restartPlayback();
 	}
 	return mColorStreaming;
 }
@@ -591,7 +468,7 @@ bool LogDevice::createDepthStream()
 			mEventThread = boost::thread(&LogDevice::dispatchEvents, this);
 		}
 
-		restartStreams();
+		restartPlayback();
 	}
 	return mDepthStreaming;
 }
@@ -609,7 +486,7 @@ bool LogDevice::destroyDepthStream()
 }
 
 
-void LogDevice::restartStreams()
+void LogDevice::restartPlayback()
 {
 	//Do not lock, will deadlock threads
 	mColorInd = 0;
@@ -668,7 +545,7 @@ void LogDevice::setPlaybackSpeed(double speed)
 		//Grab current time scaled by old playback
 		boost::posix_time::ptime now  = boost::posix_time::microsec_clock::local_time();
 		boost::posix_time::time_duration duration = (now - mPlaybackStartTime);
-		timestamp durationUS = duration.total_microseconds()*mPlaybackSpeed;
+		timestamp durationUS = (timestamp) (duration.total_microseconds()*mPlaybackSpeed);
 
 		//Change speed
 		mPlaybackSpeed = speed;
@@ -676,9 +553,9 @@ void LogDevice::setPlaybackSpeed(double speed)
 		if(mColorStreaming || mDepthStreaming)
 		{
 			//If playback ongoing, reset start time to simulate seamless speed change
-			double usOffset = durationUS;
+			double usOffset = (double) durationUS;
 			usOffset /= mPlaybackSpeed;
-			mPlaybackStartTime = now - boost::posix_time::microseconds(usOffset);//Move playback to scaled time
+			mPlaybackStartTime = now - boost::posix_time::microseconds((int64_t) usOffset);//Move playback to scaled time
 		}
 	}
 }

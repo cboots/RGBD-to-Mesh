@@ -90,8 +90,6 @@ protected:
 	void loadColorFrame(string sourceDir, FrameMetaData data, RGBDFramePtr frameOut);
 	void loadDepthFrame(string sourceDir, FrameMetaData data, RGBDFramePtr frameOut);
 	void loadLog(string logFile);
-	void streamColor();
-	void streamDepth();
 	void bufferColor();
 	void bufferDepth();
 	void dispatchEvents();
@@ -104,7 +102,7 @@ public:
 	DeviceStatus disconnect(void)  override;//Disconnect from current device
 	DeviceStatus shutdown(void) override;
 	
-	void restartStreams();
+	void restartPlayback();
 
 	void setSourceDirectory(string dir) { mDirectory = dir;}
 	string setSourceDirectory(){return mDirectory;}

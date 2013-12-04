@@ -283,7 +283,7 @@ void SampleViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		cout<<"Recording stopped" <<endl;
 		break;
 	case 'p':
-		((LogDevice*) mDevice)->restartStreams();
+		((LogDevice*) mDevice)->restartPlayback();
 		break;
 	case '=':
 		newPlayback = ((LogDevice*) mDevice)->getPlaybackSpeed()+0.1;
