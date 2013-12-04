@@ -1,32 +1,61 @@
 #include "FileUtils.h"
 
+//Returns compression ratio for reference, or -1 if write failed
+float saveToCompressedBinaryFile(string filename, char* uncompressed, int uncompressedSize, COMPRESSION_METHOD compressMode)
+{
+	char* compressed;
+	int compressedSize;
+	float ratio = -1.0f;
+	//Try to open file
+	ofstream file (filename, ios::out|ios::binary);
+	if (file.is_open())
+	{
+		switch(compressMode)
+		{
+		case LZ4:
+			//Allocate memory for compressed data
+			compressed = new char[uncompressedSize];
+			compressedSize = LZ4_compress_limitedOutput(uncompressed, compressed, uncompressedSize, uncompressedSize);
+			ratio = float(compressedSize)/float(uncompressedSize);
+			file.write(compressed, compressedSize);
+			delete compressed;
+
+			break;
+		case NO_COMPRESSION:
+		default:
+			//Save raw data
+			file.write(uncompressed, uncompressedSize);
+			break;
+		}
+
+		file.close();
+	}
+
+	return ratio;
+}
 
 void saveRGBDFrameImagesToFiles(string filename, RGBDFramePtr frame)
+{
+	saveRGBDFrameImagesToFiles(filename, frame, NO_COMPRESSION, NO_COMPRESSION);
+}
+
+void saveRGBDFrameImagesToFiles(string filename, RGBDFramePtr frame, COMPRESSION_METHOD rgbCompression, COMPRESSION_METHOD depthCompression)
 {
 	if(frame->hasColor())
 	{
 		//Write color file
-		ofstream rgbfile (filename+".rgb", ios::out|ios::binary);
-		if (rgbfile.is_open())
-		{
-			char* rgbData = (char*)frame->getColorArray().get();
-			int memSize = frame->getXRes()*frame->getYRes()*sizeof(ColorPixel);
-			rgbfile.write(rgbData, memSize);
-			rgbfile.close();
-		}
+		char* rgbData = (char*)frame->getColorArray().get();
+		int memSize = frame->getXRes()*frame->getYRes()*sizeof(ColorPixel);
+		saveToCompressedBinaryFile(filename + ".rgb", rgbData, memSize, rgbCompression);
+
 	}
 
 	if(frame->hasDepth())
 	{
-		//write depth file//Write color file
-		ofstream depthfile (filename+".depth", ios::out|ios::binary);
-		if (depthfile.is_open())
-		{
-			char* depthData = (char*)frame->getDepthArray().get();
-			int memSize = frame->getXRes()*frame->getYRes()*sizeof(DPixel);
-			depthfile.write(depthData, memSize);
-			depthfile.close();
-		}
+		//write depth file
+		char* depthData = (char*)frame->getDepthArray().get();
+		int memSize = frame->getXRes()*frame->getYRes()*sizeof(DPixel);
+		saveToCompressedBinaryFile(filename + ".depth", depthData, memSize, depthCompression);
 	}
 }
 

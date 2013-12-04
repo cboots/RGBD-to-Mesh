@@ -8,9 +8,16 @@
 #include <string>
 #include "RGBDFrame.h"
 #include <boost/filesystem.hpp>
+#include "lz4/lz4.h"
+#include <iostream>
 
 using namespace std;
+
+enum COMPRESSION_METHOD {NO_COMPRESSION = 0, LZ4 = 1};
+
+
 void saveRGBDFrameImagesToFiles(string filename, RGBDFramePtr frame);
+void saveRGBDFrameImagesToFiles(string filename, RGBDFramePtr frame, COMPRESSION_METHOD rgbCompression, COMPRESSION_METHOD depthCompression);
 
 //Loads both .depth and .rgb files.
 //Must call frame.setResolution(x,y) before using this function.
