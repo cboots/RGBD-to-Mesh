@@ -162,10 +162,144 @@ bool LogDevice::hasColorStream()
 	return mColorStreaming;
 }
 
+
+void LogDevice::bufferColor()
+{
+	RGBDFramePtr localFrame = NULL;
+	int bufferPos = 0;
+
+	while(mColorStreaming){
+		if(mColorStreamBuffer.size() < MAX_BUFFER_FRAMES)
+		{
+			//More room in buffer to fill
+			//Check if stream has pending frames
+			if(bufferPos < mColorStreamFrames.size())
+			{
+				FrameMetaData frame = mColorStreamFrames[bufferPos];
+
+				localFrame = mFrameFactory.getRGBDFrame(mXRes, mYRes);
+				loadColorFrame(mDirectory, frame, localFrame);
+				
+				//Buffer the frame
+				mColorGuard.lock();
+				mColorStreamBuffer.push(BufferFrame(frame.id, localFrame));
+				localFrame = NULL;//Pass to buffer
+				mColorGuard.unlock();
+
+				bufferPos++;
+			}
+
+			//Loop buffer if turned on 
+			if(mLoopStreams && mColorStreamFrames.size() <= bufferPos) 
+			{
+				bufferPos = 0;
+			}
+		}
+		boost::this_thread::sleep_for(boost::chrono::milliseconds(1));//1ms resolution should be fine
+
+	}
+
+}
+
+
+void LogDevice::bufferDepth()
+{
+	RGBDFramePtr localFrame = NULL;
+	int bufferPos = 0;
+
+	while(mDepthStreaming){
+		if(mDepthStreamBuffer.size() < MAX_BUFFER_FRAMES)
+		{
+			//More room in buffer to fill
+			//Check if stream has pending frames
+			if(bufferPos < mDepthStreamFrames.size())
+			{
+				FrameMetaData frame = mDepthStreamFrames[bufferPos];
+
+				localFrame = mFrameFactory.getRGBDFrame(mXRes, mYRes);
+				loadDepthFrame(mDirectory, frame, localFrame);
+				
+				//Buffer the frame
+				mDepthGuard.lock();
+				mDepthStreamBuffer.push(BufferFrame(frame.id, localFrame));
+				localFrame = NULL;//Pass to buffer
+				mDepthGuard.unlock();
+
+				bufferPos++;
+			}
+
+			//Loop buffer if turned on 
+			if(mLoopStreams && mDepthStreamFrames.size() <= bufferPos) 
+			{
+				bufferPos = 0;
+			}
+		}
+		boost::this_thread::sleep_for(boost::chrono::milliseconds(1));//1ms resolution should be fine
+
+	}
+
+}
+
+
 void LogDevice::dispatchEvents()
 {
-	RGBDFramePtr localFrame;
+	RGBDFramePtr localFrame = NULL;
+	while(mColorStreaming || mDepthStreaming)
+	{
+		//Tick thread time
+		boost::posix_time::ptime now  = boost::posix_time::microsec_clock::local_time();
+		boost::posix_time::time_duration duration = (now - mPlaybackStartTime);
+		timestamp durationUS = duration.total_microseconds()*mPlaybackSpeed;//Time in microseconds. Normalized to playback time
 
+		//=======Check depth stream for update========
+		if(mDepthStreaming){
+			if(mDepthInd < mDepthStreamFrames.size()){
+				FrameMetaData frame = mDepthStreamFrames[mDepthInd];
+				//If we've passed frame time
+				if(frame.time - mStartTime <= durationUS)
+				{
+
+					//TODO: Do buffer read here.
+					//If buffer read success, mDepthInd++;
+					
+
+
+				}
+			}else{
+				//Reached end of stream, restart
+				if(mLoopStreams){
+					restartStreams();
+					localFrame = NULL;//clear frame (avoids wrapped synchronization)
+				}
+			}
+		}
+
+		//=======Check color stream for update========
+		if(mColorStreaming){
+			if(mColorInd < mColorStreamFrames.size()){
+				FrameMetaData frame = mColorStreamFrames[mColorInd];
+				//If we've passed frame time
+				if(frame.time - mStartTime <= durationUS)
+				{
+
+					//TODO: Do buffer read here.
+					//If buffer read success, mColorInd++;
+
+
+
+				}
+			}else{
+				//Reached end of stream, restart
+				if(mLoopStreams){
+					restartStreams();
+					localFrame = NULL;//clear frame (avoids wrapped synchronization)
+				}
+			}
+		}
+
+		//Sleep thread
+		boost::this_thread::sleep_for(boost::chrono::milliseconds(1));//1ms resolution should be fine
+	}
 }
 
 void LogDevice::streamColor()

@@ -17,12 +17,27 @@
 using namespace std;
 using namespace rapidxml;
 
+
+#define MAX_BUFFER_FRAMES 100
+
+
 struct FrameMetaData{
 	int id;
 	timestamp time;
 	FrameMetaData(int id, timestamp time){
 		this->id = id;
 		this->time = time;
+	}
+};
+
+struct BufferFrame{
+	RGBDFramePtr frame;
+	int id;
+
+	BufferFrame(int id, RGBDFramePtr frame)
+	{
+		this->id = id;
+		this->frame = frame;
 	}
 };
 
@@ -55,8 +70,8 @@ protected:
 
 	//Stream frame buffers.
 	//const int cBufferCapacity = 500;//Max number of frames to buffer per stream
-	queue<RGBDFramePtr> mColorStreamBuffer;
-	queue<RGBDFramePtr> mDepthStreamBuffer;
+	queue<BufferFrame> mColorStreamBuffer;
+	queue<BufferFrame> mDepthStreamBuffer;
 
 	//1.0 is normal, 0.5 is half speed, 2.0 is double speed, etc
 	double mPlaybackSpeed;
@@ -76,6 +91,8 @@ protected:
 	void loadLog(string logFile);
 	void streamColor();
 	void streamDepth();
+	void bufferColor();
+	void bufferDepth();
 	void dispatchEvents();
 public:
 	LogDevice(void);
