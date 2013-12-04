@@ -7,6 +7,7 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <queue>
 #include <boost/thread.hpp>
 #include "rapidxml/rapidxml.hpp"
 #include <boost/date_time.hpp>
@@ -16,12 +17,27 @@
 using namespace std;
 using namespace rapidxml;
 
+
+#define MAX_BUFFER_FRAMES 100
+
+
 struct FrameMetaData{
 	int id;
 	timestamp time;
 	FrameMetaData(int id, timestamp time){
 		this->id = id;
 		this->time = time;
+	}
+};
+
+struct BufferFrame{
+	RGBDFramePtr frame;
+	int id;
+
+	BufferFrame(int id, RGBDFramePtr frame)
+	{
+		this->id = id;
+		this->frame = frame;
 	}
 };
 
@@ -51,11 +67,18 @@ protected:
 	volatile int mColorInd;
 	volatile int mDepthInd;
 
+
+	//Stream frame buffers.
+	//const int cBufferCapacity = 500;//Max number of frames to buffer per stream
+	queue<BufferFrame> mColorStreamBuffer;
+	queue<BufferFrame> mDepthStreamBuffer;
+
 	//1.0 is normal, 0.5 is half speed, 2.0 is double speed, etc
 	double mPlaybackSpeed;
 
 	boost::thread mColorThread;
 	boost::thread mDepthThread;
+	boost::thread mEventThread;
 	boost::mutex mColorGuard;
 	boost::mutex mDepthGuard;
 
@@ -67,8 +90,9 @@ protected:
 	void loadColorFrame(string sourceDir, FrameMetaData data, RGBDFramePtr frameOut);
 	void loadDepthFrame(string sourceDir, FrameMetaData data, RGBDFramePtr frameOut);
 	void loadLog(string logFile);
-	void streamColor();
-	void streamDepth();
+	void bufferColor();
+	void bufferDepth();
+	void dispatchEvents();
 public:
 	LogDevice(void);
 	~LogDevice(void);
@@ -78,7 +102,7 @@ public:
 	DeviceStatus disconnect(void)  override;//Disconnect from current device
 	DeviceStatus shutdown(void) override;
 	
-	void restartStreams();
+	void restartPlayback();
 
 	void setSourceDirectory(string dir) { mDirectory = dir;}
 	string setSourceDirectory(){return mDirectory;}

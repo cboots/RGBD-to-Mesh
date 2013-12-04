@@ -194,7 +194,7 @@ void SampleViewer::display()
 			{
 				int depth = (*pDepth).depth;
 				if(depth != 0){
-					uint8_t scaledDepth = 256-(depth>>5);
+					uint8_t scaledDepth = 256-(depth>>6);
 					pTex->r = scaledDepth;
 					pTex->g = 0;//scaledDepth;
 					pTex->b = 0;//scaledDepth;
@@ -283,7 +283,7 @@ void SampleViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		cout<<"Recording stopped" <<endl;
 		break;
 	case 'p':
-		((LogDevice*) mDevice)->restartStreams();
+		((LogDevice*) mDevice)->restartPlayback();
 		break;
 	case '=':
 		newPlayback = ((LogDevice*) mDevice)->getPlaybackSpeed()+0.1;

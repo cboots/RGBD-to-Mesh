@@ -59,27 +59,35 @@ void RGBDDevice::removeDeviceMessageListener(DeviceMessageListener* listener)
 void RGBDDevice::onNewRGBDFrame(RGBDFramePtr frame)
 {
 	for(std::vector<NewRGBDFrameListener*>::iterator it = mNewRGBDFrameListeners.begin(); it != mNewRGBDFrameListeners.end(); ++it) {
-		(*it)->onNewRGBDFrame(frame);
+		boost::thread eventDispatch = boost::thread(&NewRGBDFrameListener::onNewRGBDFrame, (*it), frame);
+		eventDispatch.detach();
+		//(*it)->onNewRGBDFrame(frame);
 	}
 }
 
 void RGBDDevice::onConnect()
 {
 	for(std::vector<DeviceConnectedListener*>::iterator it = mDeviceConnectedListeners.begin(); it != mDeviceConnectedListeners.end(); ++it) {
-		(*it)->onDeviceConnected();
+		boost::thread eventDispatch = boost::thread(&DeviceConnectedListener::onDeviceConnected, (*it));
+		eventDispatch.detach();
+		//(*it)->onDeviceConnected();
 	}
 }
 
 void RGBDDevice::onDisconnect()
 {
 	for(std::vector<DeviceDisconnectedListener*>::iterator it = mDeviceDisconnectedListeners.begin(); it != mDeviceDisconnectedListeners.end(); ++it) {
-		(*it)->onDeviceDisconnected();
+		boost::thread eventDispatch = boost::thread(&DeviceDisconnectedListener::onDeviceDisconnected, (*it));
+		eventDispatch.detach();
+		//(*it)->onDeviceDisconnected();
 	}
 }
 
 void RGBDDevice::onMessage(std::string msg)
 {
 	for(std::vector<DeviceMessageListener*>::iterator it = mDeviceMessageListeners.begin(); it != mDeviceMessageListeners.end(); ++it) {
-		(*it)->onMessage(msg);
+		boost::thread eventDispatch = boost::thread(&DeviceMessageListener::onMessage, (*it), msg);
+		eventDispatch.detach();
+		//(*it)->onMessage(msg);
 	}
 }

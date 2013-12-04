@@ -65,10 +65,29 @@ public:
 
 	//Writes 0 to all elements of color image
 	void clearColorImage(void);
-	
+
 	//Resets all metadata parameters. Does not affect resolution or image data
 	void resetMetaData(void);
+
+	//Overwrites this frame's color data with the relevant data from newColorData
+	//Changes return values of hasColor(), getColorArray(), and getColorTimestamp()
+	inline void overwriteColorData(RGBDFramePtr newColorData)
+	{
+		setColorArray(newColorData->getColorArray());
+		setHasColor(newColorData->hasColor());
+		setColorTimestamp(newColorData->getColorTimestamp());
+	}
+
 	
+	//Overwrites this frame's depth data with the relevant data from newDepthData
+	//Changes return values of hasDepth(), getDepthArray(), and getDepthTimestamp()
+	inline void overwriteDepthData(RGBDFramePtr newDepthData)
+	{
+		setDepthArray(newDepthData->getDepthArray());
+		setHasDepth(newDepthData->hasDepth());
+		setDepthTimestamp(newDepthData->getDepthTimestamp());
+	}
+
 	//Returns managed pointer to color data array.
 	//If setResolution has not been called yet, this function cannot be used.
 	//This array can be accessed regardless of the state of hasColor.
@@ -107,7 +126,7 @@ public:
 		}
 	}
 
-	
+
 	inline void setDPixel(int x, int y, DPixel pixel)
 	{
 		if(x >= 0 && y >= 0 && x < mXRes && y < mYRes)
@@ -122,18 +141,18 @@ public:
 		{
 			return	mDepthData[getLinearIndex(x,y)];
 		}
-		
+
 		return DPixel();
 	}
 
-	
+
 	inline ColorPixel getColorPixel(int x, int y)
 	{
 		if(x >= 0 && y >= 0 && x < mXRes && y < mYRes)
 		{
 			return	mColorData[getLinearIndex(x,y)];
 		}
-		
+
 		return ColorPixel();
 	}
 
@@ -156,7 +175,7 @@ public:
 	{
 		return mHasColor;
 	}
-	
+
 	inline int getXRes()
 	{
 		return mXRes;
