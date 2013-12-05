@@ -106,7 +106,7 @@ DeviceStatus MeshViewer::initOpenGL(int argc, char **argv)
 
 
 	// Init GLEW
-	/*
+	
 	glewInit();
 	GLenum err = glewInit();
 	if (GLEW_OK != err)
@@ -115,7 +115,7 @@ DeviceStatus MeshViewer::initOpenGL(int argc, char **argv)
 		std::cout << "glewInit failed, aborting." << std::endl;
 		return DEVICESTATUS_ERROR;
 	}
-	*/
+	
 	return DEVICESTATUS_OK;
 }
 
