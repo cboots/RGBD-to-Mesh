@@ -25,6 +25,7 @@ float saveToCompressedBinaryFile(string filename, char* uncompressed, int uncomp
 		default:
 			//Save raw data
 			file.write(uncompressed, uncompressedSize);
+			ratio = 1.0;
 			break;
 		}
 
