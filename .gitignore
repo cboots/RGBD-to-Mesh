@@ -51,8 +51,6 @@
 
 /Release
 
-/CUDA-Mesh
-
 /RGBD-to-Mesh/RGBD-to-Mesh.vcxproj.user
 
 /Recorder-Viewer/Release
