@@ -1,14 +1,11 @@
-#include <OpenNI.h>
-#include "Viewer.h"
-#include <iostream>
-#include "ONIKinectDevice.h"
-#include "LogDevice.h"
-#include "FileUtils.h"
-//#include "OniSampleUtilities.h"
+#include "main.h"
+
 
 using namespace std;
 
 void pause();
+
+
 
 
 class RGBDDeviceListener : public RGBDDevice::DeviceDisconnectedListener,
@@ -37,8 +34,7 @@ class RGBDFrameListener : public RGBDDevice::NewRGBDFrameListener
 public:
 	void onNewRGBDFrame(RGBDFramePtr frame) override
 	{
-		//printf("C[%08llu]D[%08llu] New Frame Recieved: Has Color %d Has Depth %d\n", frame->getColorTimestamp(), frame->getDepthTimestamp(), frame->hasColor(), frame->hasDepth());
-		//saveRGBDFrameImagesToFiles("logs/1", frame);
+		printf("C[%08llu]D[%08llu] New Frame Recieved: Has Color %d Has Depth %d\n", frame->getColorTimestamp(), frame->getDepthTimestamp(), frame->hasColor(), frame->hasDepth());
 	}
 };
 
@@ -46,17 +42,11 @@ public:
 int main(int argc, char** argv)
 {
 
-	const char* deviceURI = openni::ANY_DEVICE;
-	if (argc > 1)
-	{
-		deviceURI = argv[1];
-	}
-
+	//LogDevice device;
+	//device.setSourceDirectory("logs\\siglab");
+	//device.setLoopStreams(true);
+	ONIKinectDevice device;
 	
-	LogDevice device;
-	device.setSourceDirectory("logs\\siglab");
-	device.setLoopStreams(true);
-	//ONIKinectDevice device;
 	RGBDDeviceListener deviceStateListener;
 	RGBDFrameListener frameListener;
 	device.addDeviceConnectedListener(&deviceStateListener);
@@ -91,17 +81,22 @@ int main(int argc, char** argv)
 
 	printf("Streams created succesfully\n");
 
-	SampleViewer sampleViewer("Sample Viewer", &device);
+	
+	device.setImageRegistrationMode(REGISTRATION_DEPTH_TO_COLOR);
+	device.setSyncColorAndDepth(false);
 
-	Status rc = sampleViewer.init(argc, argv);
-	if (rc != openni::STATUS_OK)
+	MeshViewer viewer(&device, screenwidth, screenheight);
+
+	DeviceStatus rc = viewer.init(argc, argv);
+	if (rc != DEVICESTATUS_OK)
 	{
 		device.shutdown();
 		pause();
 		return 4;
 	}
-	sampleViewer.run();
 
+	viewer.run();
+	pause();
 
 	return 0;
 }

@@ -333,11 +333,11 @@ bool ONIKinectDevice::setImageRegistrationMode(RGBDImageRegistrationMode mode)
 {
 	switch(mode)
 	{
-	case RGBDImageRegistrationMode::REGISTRATION_DEPTH_TO_COLOR:
-		mDevice.setImageRegistrationMode(ImageRegistrationMode::IMAGE_REGISTRATION_DEPTH_TO_COLOR);
+	case REGISTRATION_DEPTH_TO_COLOR:
+		mDevice.setImageRegistrationMode(IMAGE_REGISTRATION_DEPTH_TO_COLOR);
 		break;
 	default:
-		mDevice.setImageRegistrationMode(ImageRegistrationMode::IMAGE_REGISTRATION_OFF);
+		mDevice.setImageRegistrationMode(IMAGE_REGISTRATION_OFF);
 		break;
 	}
 
@@ -349,10 +349,10 @@ RGBDImageRegistrationMode ONIKinectDevice::getImageRegistrationMode(void)
 	ImageRegistrationMode mode = mDevice.getImageRegistrationMode();
 	switch(mode)
 	{
-	case ImageRegistrationMode::IMAGE_REGISTRATION_DEPTH_TO_COLOR:
-		return RGBDImageRegistrationMode::REGISTRATION_DEPTH_TO_COLOR;
+	case IMAGE_REGISTRATION_DEPTH_TO_COLOR:
+		return REGISTRATION_DEPTH_TO_COLOR;
 	default:
-		return RGBDImageRegistrationMode::REGISTRATION_OFF;
+		return REGISTRATION_OFF;
 	}
 
 }
