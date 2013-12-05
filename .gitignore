@@ -8,6 +8,7 @@
 *.swp
 *.user
 *.ipch
+*.suo
 
 /RGBD-to-Mesh/x64/Release/*.tlog
 
