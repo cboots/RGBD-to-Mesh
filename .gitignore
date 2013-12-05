@@ -64,3 +64,5 @@
 /CUDA-Mesh/x64/Debug
 
 /Recorder-Viewer/x64/Debug
+
+/CUDA-Mesh/*.pdb
