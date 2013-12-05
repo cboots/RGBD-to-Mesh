@@ -7,8 +7,8 @@
 #include "RGBDFrameFactory.h"
 #include "FileUtils.h"
 #include "FrameLogger.h"
-
-
+#include "device_structs.h"
+#include "Device.h"
 
 enum DisplayModes
 {
@@ -53,7 +53,8 @@ private:
 	ColorPixelArray mColorArray;
 	DPixelArray mDepthArray;
 
-	
+
+
 	static void glutIdle();
 	static void glutDisplay();
 	static void glutKeyboard(unsigned char key, int x, int y);

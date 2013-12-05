@@ -106,7 +106,7 @@ DeviceStatus MeshViewer::initOpenGL(int argc, char **argv)
 
 
 	// Init GLEW
-	
+
 	glewInit();
 	GLenum err = glewInit();
 	if (GLEW_OK != err)
@@ -115,7 +115,7 @@ DeviceStatus MeshViewer::initOpenGL(int argc, char **argv)
 		std::cout << "glewInit failed, aborting." << std::endl;
 		return DEVICESTATUS_ERROR;
 	}
-	
+
 	return DEVICESTATUS_OK;
 }
 
@@ -136,10 +136,17 @@ void MeshViewer::run()
 }
 
 
+
 ////All the important runtime stuff happens here:
 void MeshViewer::display()
 {
+	ColorPixelArray localColorArray = mColorArray;
+	DPixelArray localDepthArray = mDepthArray;
+
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	//=====CUDA CALLS=====
+	
 
 	glutSwapBuffers();
 
@@ -186,7 +193,7 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	case '3':
 		mViewState = DISPLAY_MODE_IMAGE;
 		break;
-	
+
 	}
 
 }
