@@ -255,7 +255,7 @@ void SampleViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	case '1':
 		m_eViewState = DISPLAY_MODE_OVERLAY;
 		mDevice->setImageRegistrationMode(RGBDImageRegistrationMode::REGISTRATION_DEPTH_TO_COLOR);
-		mDevice->setSyncColorAndDepth(true);
+		mDevice->setSyncColorAndDepth(false);
 		break;
 	case '2':
 		m_eViewState = DISPLAY_MODE_DEPTH;
@@ -269,6 +269,8 @@ void SampleViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		break;
 	case 'r':
 		//Start recording
+		logger.setDepthCompressionMethod(LZ4_COMPRESSION);
+		logger.setColorCompressionMethod(NO_COMPRESSION);
 		if(!logger.setOutputDirectory("logs/recording"))
 			cout<<"Could not set output directory"<<endl;
 

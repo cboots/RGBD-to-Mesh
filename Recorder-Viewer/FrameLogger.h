@@ -38,6 +38,12 @@ protected:
 	//Mutex that should be locked whenever queue is being accessed.
 	boost::mutex mQueueGuard;
 
+	//Compression algorithm to use when saving color images
+	COMPRESSION_METHOD mColorCompressionMethod;
+	
+	//Compression algorithm to use when saving depth images
+	COMPRESSION_METHOD mDepthCompressionMethod;
+
 	//This function will be run in mLoggerThread to save frames to output directory.
 	void record(string outputDirectory);
 public:
@@ -75,6 +81,11 @@ public:
 
 	//Event handler. Inherited from RGBDDevice::NewRGBDFrameListener
 	void onNewRGBDFrame(RGBDFramePtr frame) override;
+
+	inline void setColorCompressionMethod(COMPRESSION_METHOD method){ mColorCompressionMethod = method;}
+	inline void setDepthCompressionMethod(COMPRESSION_METHOD method){ mDepthCompressionMethod = method;}
+	inline COMPRESSION_METHOD getColorCompressionMethod(){return mColorCompressionMethod;}
+	inline COMPRESSION_METHOD getDepthCompressionMethod(){return mDepthCompressionMethod;}
 
 };
 
