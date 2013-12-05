@@ -1,5 +1,26 @@
 #include "FileUtils.h"
 
+
+string getCompressionMethodTag(COMPRESSION_METHOD method)
+{
+	switch(method)
+	{
+	case LZ4_COMPRESSION:
+		return string("lz4");
+	case NO_COMPRESSION:
+	default:
+		return string("");
+	}
+}
+
+COMPRESSION_METHOD getCompressionMethodFromTag(string tag)
+{
+	if(tag.compare("lz4") == 0)
+		return LZ4_COMPRESSION;
+
+	return NO_COMPRESSION;
+}
+
 //Returns compression ratio for reference, or -1 if write failed
 float saveToCompressedBinaryFile(string filename, char* uncompressed, int uncompressedSize, COMPRESSION_METHOD compressMode)
 {

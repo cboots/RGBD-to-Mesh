@@ -88,10 +88,7 @@ void LogDevice::loadLog(string logFile)
 							if(colorCompression != 0)
 							{
 								char* compressionAlgId = colorCompression->value();
-								if(strcmp(compressionAlgId, "lz4") == 0)
-								{
-									compressionMethod = LZ4_COMPRESSION;
-								}
+								compressionMethod = getCompressionMethodFromTag(string(compressionAlgId));
 							}
 
 							mColorGuard.lock();
@@ -109,10 +106,7 @@ void LogDevice::loadLog(string logFile)
 							if(depthCompression != 0)
 							{
 								char* compressionAlgId = depthCompression->value();
-								if(strcmp(compressionAlgId, "lz4") == 0)
-								{
-									compressionMethod = LZ4_COMPRESSION;
-								}
+								compressionMethod = getCompressionMethodFromTag(string(compressionAlgId));
 							}
 
 							mDepthGuard.lock();

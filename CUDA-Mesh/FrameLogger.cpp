@@ -57,18 +57,15 @@ void FrameLogger::record(string outputDirectory)
 				}
 
 				//TODO: Add more compression methods here
-				switch(mColorCompressionMethod)
+				if(mColorCompressionMethod != NO_COMPRESSION)
 				{
-				case LZ4_COMPRESSION:
-					logfile << " colorCompression=\"lz4\"";
-					break;
+					logfile << " colorCompression=\"" << getCompressionMethodTag(mColorCompressionMethod) << "\"";
+
 				}
 				
-				switch(mDepthCompressionMethod)
+				if(mDepthCompressionMethod != NO_COMPRESSION)
 				{
-				case LZ4_COMPRESSION:
-					logfile << " depthCompression=\"lz4\"";
-					break;
+					logfile << " depthCompression=\"" << getCompressionMethodTag(mDepthCompressionMethod) << "\"";
 				}
 
 				//Close tag

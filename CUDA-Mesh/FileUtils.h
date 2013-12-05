@@ -16,6 +16,9 @@ using namespace std;
 //Enumeration of supported binary compression methods
 enum COMPRESSION_METHOD {NO_COMPRESSION = 0, LZ4_COMPRESSION = 1};
 
+string getCompressionMethodTag(COMPRESSION_METHOD method);
+COMPRESSION_METHOD getCompressionMethodFromTag(string tag);
+
 //Saves image files with appropriate file extensions and no compression
 void saveRGBDFrameImagesToFiles(string filename, RGBDFramePtr frame);
 
