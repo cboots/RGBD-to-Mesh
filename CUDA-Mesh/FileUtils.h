@@ -30,6 +30,9 @@ void saveRGBDFrameImagesToFiles(string filename, RGBDFramePtr frame, COMPRESSION
 //Filename can be relative or absolute path
 void loadRGBDFrameImagesFromFiles(string filename, RGBDFramePtr frame);
 
+//See void loadRGBDFrameImagesFromFiles(string filename, RGBDFramePtr frame) for usage
+void loadRGBDFrameImagesFromFiles(string filename, RGBDFramePtr frame, COMPRESSION_METHOD rgbCompression, COMPRESSION_METHOD depthCompression);
+
 //Loads just the color image from file. 
 //Must call frame.setResolution(x,y) before using this function.
 //Assumes the provided memory is large enough to store the entire frame
@@ -37,12 +40,20 @@ void loadRGBDFrameImagesFromFiles(string filename, RGBDFramePtr frame);
 //Filename can be relative or absolute path
 void loadColorImageFromFile(string filename, RGBDFramePtr frame);
 
+//See void loadColorImageFromFile(string filename, RGBDFramePtr frame);
+void loadColorImageFromFile(string filename, RGBDFramePtr frame, COMPRESSION_METHOD compressionMode);
+
+
 //Loads just the depth image from file. 
 //Must call frame.setResolution(x,y) before using this function.
 //Assumes the provided memory is large enough to store the entire frame
 //The filename should not include the file extension. (i.e. "1" not "1.rgb")
 //Filename can be relative or absolute path
+//Assumes no compression was used in saving the file
 void loadDepthImageFromFile(string filename, RGBDFramePtr frame);
+
+//See void loadDepthImageFromFile(string filename, RGBDFramePtr frame);
+void loadDepthImageFromFile(string filename, RGBDFramePtr frame, COMPRESSION_METHOD compressionMode);
 
 
 //Convenience function wrapper to make a directory on the local filesystem.

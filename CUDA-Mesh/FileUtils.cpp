@@ -37,25 +37,24 @@ float saveToCompressedBinaryFile(string filename, char* uncompressed, int uncomp
 
 void loadCompressedBinaryFile(string filename, char* outputArray, int memSize, COMPRESSION_METHOD compressMode)
 {
+	char* compressed;
 	ifstream file (filename, ios::in|ios::binary);
 	if (file.is_open())
 	{
 
 		// get length of file:
 		file.seekg (0, file.end);
-		int length = file.tellg();
+		int length = (int) file.tellg();
 		file.seekg (0, file.beg);
 
 		switch(compressMode)
 		{
 		case LZ4_COMPRESSION:
 			//Allocate memory for compressed data
-			//compressed = new char[uncompressedSize];
-			//compressedSize = LZ4_compress_limitedOutput(uncompressed, compressed, uncompressedSize, uncompressedSize);
-			//ratio = float(compressedSize)/float(uncompressedSize);
-			//file.write(compressed, compressedSize);
-			//delete compressed;
-
+			compressed = new char[length];
+			file.read(compressed, length);
+			LZ4_decompress_safe(compressed, outputArray, length, memSize);
+			delete compressed;
 			break;
 		case NO_COMPRESSION:
 		default:
@@ -95,24 +94,40 @@ void saveRGBDFrameImagesToFiles(string filename, RGBDFramePtr frame, COMPRESSION
 
 void loadRGBDFrameImagesFromFiles(string filename, RGBDFramePtr frame)
 {
-	loadColorImageFromFile(filename,frame);
-	loadDepthImageFromFile(filename,frame);
+	loadRGBDFrameImagesFromFiles(filename, frame, NO_COMPRESSION, NO_COMPRESSION);
 }
 
+
+void loadRGBDFrameImagesFromFiles(string filename, RGBDFramePtr frame, COMPRESSION_METHOD rgbCompression, COMPRESSION_METHOD depthCompression)
+{
+	loadColorImageFromFile(filename,frame, rgbCompression);
+	loadDepthImageFromFile(filename,frame, depthCompression);
+}
 
 void loadColorImageFromFile(string filename, RGBDFramePtr frame)
 {
+	loadColorImageFromFile(filename,frame,NO_COMPRESSION);
+}
+
+void loadColorImageFromFile(string filename, RGBDFramePtr frame, COMPRESSION_METHOD compressionMode)
+{
 	char* rgbData = (char*)frame->getColorArray().get();
 	int memSize = frame->getXRes()*frame->getYRes()*sizeof(ColorPixel);
-	loadCompressedBinaryFile(filename+".rgb", rgbData, memSize, NO_COMPRESSION);
+	loadCompressedBinaryFile(filename+".rgb", rgbData, memSize, compressionMode);
 	frame->setHasColor(true);
 }
 
+
 void loadDepthImageFromFile(string filename, RGBDFramePtr frame)
+{
+	loadDepthImageFromFile(filename, frame, NO_COMPRESSION);
+}
+
+void loadDepthImageFromFile(string filename, RGBDFramePtr frame, COMPRESSION_METHOD compressionMode)
 {
 	char* depthData = (char*)frame->getDepthArray().get();
 	int memSize = frame->getXRes()*frame->getYRes()*sizeof(DPixel);
-	loadCompressedBinaryFile(filename+".depth", depthData, memSize, NO_COMPRESSION);
+	loadCompressedBinaryFile(filename+".depth", depthData, memSize, compressionMode);
 	frame->setHasDepth(true);
 }
 
