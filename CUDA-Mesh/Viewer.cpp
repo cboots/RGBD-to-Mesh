@@ -269,6 +269,8 @@ void SampleViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		break;
 	case 'r':
 		//Start recording
+		logger.setDepthCompressionMethod(LZ4_COMPRESSION);
+		logger.setColorCompressionMethod(NO_COMPRESSION);
 		if(!logger.setOutputDirectory("logs/recording"))
 			cout<<"Could not set output directory"<<endl;
 

@@ -73,6 +73,8 @@ void LogDevice::loadLog(string logFile)
 					xml_attribute<char>* id = frame->first_attribute("id");
 					xml_attribute<char>* colorTimestamp = frame->first_attribute("colorTimestamp");
 					xml_attribute<char>* depthTimestamp = frame->first_attribute("depthTimestamp");
+					xml_attribute<char>* colorCompression = frame->first_attribute("colorCompression");
+					xml_attribute<char>* depthCompression = frame->first_attribute("depthCompression");
 
 					if(id != 0){
 						int frameId = atoi(id->value());
@@ -82,9 +84,18 @@ void LogDevice::loadLog(string logFile)
 							timestamp time = boost::lexical_cast<timestamp>(colorTimestamp->value());
 							if(colorStartTime == 0)
 								colorStartTime = time;
+							COMPRESSION_METHOD compressionMethod = NO_COMPRESSION;
+							if(colorCompression != 0)
+							{
+								char* compressionAlgId = colorCompression->value();
+								if(strcmp(compressionAlgId, "lz4") == 0)
+								{
+									compressionMethod = LZ4_COMPRESSION;
+								}
+							}
 
 							mColorGuard.lock();
-							mColorStreamFrames.push_back(FrameMetaData(frameId, time));
+							mColorStreamFrames.push_back(FrameMetaData(frameId, time, compressionMethod));
 							mColorGuard.unlock();
 						}
 
@@ -94,10 +105,21 @@ void LogDevice::loadLog(string logFile)
 							if(depthStartTime == 0)
 								depthStartTime = time;
 
+							COMPRESSION_METHOD compressionMethod = NO_COMPRESSION;
+							if(depthCompression != 0)
+							{
+								char* compressionAlgId = depthCompression->value();
+								if(strcmp(compressionAlgId, "lz4") == 0)
+								{
+									compressionMethod = LZ4_COMPRESSION;
+								}
+							}
+
 							mDepthGuard.lock();
-							mDepthStreamFrames.push_back(FrameMetaData(frameId, time));
+							mDepthStreamFrames.push_back(FrameMetaData(frameId, time, compressionMethod));
 							mDepthGuard.unlock();
 						}
+
 					}
 					frame = frame->next_sibling("frame");
 				}
@@ -178,7 +200,7 @@ void LogDevice::bufferColor()
 				FrameMetaData frame = mColorStreamFrames[bufferPos];
 
 				localFrame = mFrameFactory.getRGBDFrame(mXRes, mYRes);
-				loadColorFrame(mDirectory, frame, localFrame);
+				loadColorFrame(mDirectory, frame, localFrame, frame.compressionMode);
 
 				//Buffer the frame
 				mColorGuard.lock();
@@ -217,7 +239,7 @@ void LogDevice::bufferDepth()
 				FrameMetaData frame = mDepthStreamFrames[bufferPos];
 
 				localFrame = mFrameFactory.getRGBDFrame(mXRes, mYRes);
-				loadDepthFrame(mDirectory, frame, localFrame);
+				loadDepthFrame(mDirectory, frame, localFrame, frame.compressionMode);
 
 				//Buffer the frame
 				mDepthGuard.lock();
@@ -441,7 +463,7 @@ bool LogDevice::createColorStream()
 
 		//Start stream thread
 		mColorThread = boost::thread(&LogDevice::bufferColor, this);
-		
+
 		if(!mDepthStreaming)
 		{
 			//Event thread not started yet
@@ -461,7 +483,7 @@ bool LogDevice::createDepthStream()
 
 		//Start stream thread
 		mDepthThread = boost::thread(&LogDevice::bufferDepth, this);
-		
+
 		if(!mColorStreaming)
 		{
 			//Event thread not started yet
@@ -523,20 +545,20 @@ bool LogDevice::isColorStreamValid()
 	return mColorStreaming;
 }
 
-void LogDevice::loadColorFrame(string sourceDir, FrameMetaData data, RGBDFramePtr frameOut)
+void LogDevice::loadColorFrame(string sourceDir, FrameMetaData data, RGBDFramePtr frameOut, COMPRESSION_METHOD colorCompressMode)
 {
 	std::ostringstream out; 
 	out << sourceDir << "\\" << data.id;
 	frameOut->setColorTimestamp(data.time);
-	loadColorImageFromFile(out.str(), frameOut);
+	loadColorImageFromFile(out.str(), frameOut, colorCompressMode);
 }
 
-void LogDevice::loadDepthFrame(string sourceDir, FrameMetaData data, RGBDFramePtr frameOut)
+void LogDevice::loadDepthFrame(string sourceDir, FrameMetaData data, RGBDFramePtr frameOut, COMPRESSION_METHOD depthCompressMode)
 {
 	std::ostringstream out; 
 	out << sourceDir << "\\" << data.id;
 	frameOut->setDepthTimestamp(data.time);
-	loadDepthImageFromFile(out.str(), frameOut);
+	loadDepthImageFromFile(out.str(), frameOut, depthCompressMode);
 }
 
 void LogDevice::setPlaybackSpeed(double speed) 

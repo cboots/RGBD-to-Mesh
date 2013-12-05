@@ -3,6 +3,8 @@
 
 FrameLogger::FrameLogger(void)
 {
+	mColorCompressionMethod = NO_COMPRESSION;
+	mDepthCompressionMethod = NO_COMPRESSION;
 }
 
 
@@ -54,13 +56,28 @@ void FrameLogger::record(string outputDirectory)
 					logfile << " depthTimestamp=\"" << time << "\"";
 				}
 
+				//TODO: Add more compression methods here
+				switch(mColorCompressionMethod)
+				{
+				case LZ4_COMPRESSION:
+					logfile << " colorCompression=\"lz4\"";
+					break;
+				}
+				
+				switch(mDepthCompressionMethod)
+				{
+				case LZ4_COMPRESSION:
+					logfile << " depthCompression=\"lz4\"";
+					break;
+				}
+
 				//Close tag
 				logfile << "/>" << endl;
 
 				//Save frames
 				ostringstream s;
 				s << outputDirectory << "\\" << frameCount;
-				saveRGBDFrameImagesToFiles(s.str(), localFrame);
+				saveRGBDFrameImagesToFiles(s.str(), localFrame, mColorCompressionMethod, mDepthCompressionMethod);
 			}
 
 			mQueueGuard.lock();

@@ -54,7 +54,7 @@ int main(int argc, char** argv)
 
 	
 	LogDevice device;
-	device.setSourceDirectory("logs\\siglab");
+	device.setSourceDirectory("logs\\recording");
 	device.setLoopStreams(true);
 	//ONIKinectDevice device;
 	RGBDDeviceListener deviceStateListener;

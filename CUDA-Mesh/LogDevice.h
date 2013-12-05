@@ -18,15 +18,17 @@ using namespace std;
 using namespace rapidxml;
 
 
-#define MAX_BUFFER_FRAMES 100
+#define MAX_BUFFER_FRAMES 500
 
 
 struct FrameMetaData{
 	int id;
 	timestamp time;
-	FrameMetaData(int id, timestamp time){
+	COMPRESSION_METHOD compressionMode;
+	FrameMetaData(int id, timestamp time, COMPRESSION_METHOD compressionMode){
 		this->id = id;
 		this->time = time;
+		this->compressionMode = compressionMode;
 	}
 };
 
@@ -87,8 +89,8 @@ protected:
 
 
 
-	void loadColorFrame(string sourceDir, FrameMetaData data, RGBDFramePtr frameOut);
-	void loadDepthFrame(string sourceDir, FrameMetaData data, RGBDFramePtr frameOut);
+	void loadColorFrame(string sourceDir, FrameMetaData data, RGBDFramePtr frameOut, COMPRESSION_METHOD colorCompressMode);
+	void loadDepthFrame(string sourceDir, FrameMetaData data, RGBDFramePtr frameOut, COMPRESSION_METHOD depthCompressMode);
 	void loadLog(string logFile);
 	void bufferColor();
 	void bufferDepth();
