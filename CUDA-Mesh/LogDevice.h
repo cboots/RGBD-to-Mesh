@@ -18,7 +18,7 @@ using namespace std;
 using namespace rapidxml;
 
 
-#define MAX_BUFFER_FRAMES 500
+#define MAX_BUFFER_FRAMES 150 //5 seconds of data
 
 
 struct FrameMetaData{
