@@ -6,6 +6,8 @@
 *.out
 *.run.xml
 *.swp
+*.user
+*.ipch
 
 /RGBD-to-Mesh/x64/Release/*.tlog
 
