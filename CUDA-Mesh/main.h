@@ -1,6 +1,5 @@
 #pragma once
 
-#include <GL/glew.h>
 #include <OpenNI.h>
 #include "MeshViewer.h"
 #include <iostream>
@@ -12,4 +11,4 @@
 //----------CUDA STUFF-----------
 //-------------------------------
 
-int width=800; int height=600;
+int screenwidth=800; int screenheight=600;

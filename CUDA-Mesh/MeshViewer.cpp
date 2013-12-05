@@ -1,8 +1,8 @@
 #include "MeshViewer.h"
 
 //Platform specific code goes here
-#include <GL/glut.h>
 #include <GL/glew.h>
+#include <GL/glut.h>
 
 void MeshViewer::glutIdle()
 {
@@ -106,13 +106,11 @@ DeviceStatus MeshViewer::initOpenGL(int argc, char **argv)
 	{
 		/* Problem: glewInit failed, something is seriously wrong. */
 		std::cout << "glewInit failed, aborting." << std::endl;
-		return DeviceStatus::DEVICESTATUS_ERROR;
+		return DEVICESTATUS_ERROR;
 	}
 
-	return DeviceStatus::DEVICESTATUS_OK;
+	return DEVICESTATUS_OK;
 }
-
-
 
 //Does not return;
 void MeshViewer::run()
@@ -121,12 +119,13 @@ void MeshViewer::run()
 }
 
 
-openni::Status SampleViewer::run()	//Does not return
+////All the important runtime stuff happens here:
+void MeshViewer::display()
 {
-	glutMainLoop();
 
-	return openni::STATUS_OK;
 }
+
+
 
 void MeshViewer::onNewRGBDFrame(RGBDFramePtr frame)
 {
@@ -143,4 +142,31 @@ void MeshViewer::onNewRGBDFrame(RGBDFramePtr frame)
 			mDepthArray = mLatestFrame->getDepthArray();
 		}
 	}
+}
+
+void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
+{
+	float newPlayback = 1.0;
+	switch (key)
+	{
+	case 27://ESC
+		mDevice->destroyColorStream();
+		mDevice->destroyDepthStream();
+
+		mDevice->disconnect();
+		mDevice->shutdown();
+		exit (1);
+		break;
+	case '1':
+		mViewState = DISPLAY_MODE_OVERLAY;
+		break;
+	case '2':
+		mViewState = DISPLAY_MODE_DEPTH;
+		break;
+	case '3':
+		mViewState = DISPLAY_MODE_IMAGE;
+		break;
+	
+	}
+
 }

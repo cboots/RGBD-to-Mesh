@@ -35,6 +35,9 @@ protected:
 	//Display functions
 	virtual void display();
 	virtual void displayPostDraw(){};	// Overload to draw over the screen image
+	
+	virtual void onKey(unsigned char key, int x, int y);
+
 	virtual DeviceStatus initOpenGL(int argc, char **argv);
 
 private:
@@ -42,11 +45,12 @@ private:
 	RGBDDevice* mDevice;
 	int mXRes, mYRes;
 	int mWidth, mHeight;
+	
+	DisplayModes mViewState;
 
 	RGBDFramePtr mLatestFrame;
 	ColorPixelArray mColorArray;
 	DPixelArray mDepthArray;
-
 
 	
 	static void glutIdle();

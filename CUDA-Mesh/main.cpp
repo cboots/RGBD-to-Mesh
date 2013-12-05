@@ -48,11 +48,14 @@ int main(int argc, char** argv)
 		deviceURI = argv[1];
 	}
 
-	
+
 	//LogDevice device;
 	//device.setSourceDirectory("logs\\siglab");
 	//device.setLoopStreams(true);
 	ONIKinectDevice device;
+	device.setImageRegistrationMode(RGBDImageRegistrationMode::REGISTRATION_DEPTH_TO_COLOR);
+	device.setSyncColorAndDepth(false);
+	
 	RGBDDeviceListener deviceStateListener;
 	RGBDFrameListener frameListener;
 	device.addDeviceConnectedListener(&deviceStateListener);
@@ -89,7 +92,7 @@ int main(int argc, char** argv)
 
 
 
-	MeshViewer viewer(&device);
+	MeshViewer viewer(&device, screenwidth, screenheight);
 
 	DeviceStatus rc = viewer.init(argc, argv);
 	if (rc != DeviceStatus::DEVICESTATUS_OK)
