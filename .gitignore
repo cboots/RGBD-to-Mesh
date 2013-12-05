@@ -57,3 +57,9 @@
 /Recorder-Viewer/x64/Release/*.tlog
 
 /Recorder-Viewer/x64/Release
+
+/CUDA-Mesh/logs/siglab
+
+/CUDA-Mesh/x64/Debug
+
+/Recorder-Viewer/x64/Debug

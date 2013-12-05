@@ -92,6 +92,8 @@ DeviceStatus MeshViewer::init(int argc, char **argv)
 	return initOpenGL(argc, argv);
 }
 
+
+
 DeviceStatus MeshViewer::initOpenGL(int argc, char **argv)
 {
 	glutInit(&argc, argv);
@@ -99,18 +101,33 @@ DeviceStatus MeshViewer::initOpenGL(int argc, char **argv)
 	glutInitWindowSize(mWidth, mHeight);
 	glutCreateWindow ("CUDA Point Cloud to Mesh");
 
+	//Setup callbacks
+	initOpenGLHooks();
+
+
 	// Init GLEW
+	/*
 	glewInit();
 	GLenum err = glewInit();
 	if (GLEW_OK != err)
 	{
-		/* Problem: glewInit failed, something is seriously wrong. */
+		// Problem: glewInit failed, something is seriously wrong.
 		std::cout << "glewInit failed, aborting." << std::endl;
 		return DEVICESTATUS_ERROR;
 	}
-
+	*/
 	return DEVICESTATUS_OK;
 }
+
+
+
+void MeshViewer::initOpenGLHooks()
+{
+	glutKeyboardFunc(glutKeyboard);
+	glutDisplayFunc(glutDisplay);
+	glutIdleFunc(glutIdle);
+}
+
 
 //Does not return;
 void MeshViewer::run()
@@ -122,6 +139,9 @@ void MeshViewer::run()
 ////All the important runtime stuff happens here:
 void MeshViewer::display()
 {
+	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glutSwapBuffers();
 
 }
 

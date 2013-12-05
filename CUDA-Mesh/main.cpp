@@ -42,19 +42,10 @@ public:
 int main(int argc, char** argv)
 {
 
-	const char* deviceURI = openni::ANY_DEVICE;
-	if (argc > 1)
-	{
-		deviceURI = argv[1];
-	}
-
-
 	//LogDevice device;
 	//device.setSourceDirectory("logs\\siglab");
 	//device.setLoopStreams(true);
 	ONIKinectDevice device;
-	device.setImageRegistrationMode(RGBDImageRegistrationMode::REGISTRATION_DEPTH_TO_COLOR);
-	device.setSyncColorAndDepth(false);
 	
 	RGBDDeviceListener deviceStateListener;
 	RGBDFrameListener frameListener;
@@ -90,12 +81,14 @@ int main(int argc, char** argv)
 
 	printf("Streams created succesfully\n");
 
-
+	
+	device.setImageRegistrationMode(REGISTRATION_DEPTH_TO_COLOR);
+	device.setSyncColorAndDepth(false);
 
 	MeshViewer viewer(&device, screenwidth, screenheight);
 
 	DeviceStatus rc = viewer.init(argc, argv);
-	if (rc != DeviceStatus::DEVICESTATUS_OK)
+	if (rc != DEVICESTATUS_OK)
 	{
 		device.shutdown();
 		pause();
@@ -103,7 +96,7 @@ int main(int argc, char** argv)
 	}
 
 	viewer.run();
-
+	pause();
 
 	return 0;
 }

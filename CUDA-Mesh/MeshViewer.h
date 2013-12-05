@@ -39,6 +39,7 @@ protected:
 	virtual void onKey(unsigned char key, int x, int y);
 
 	virtual DeviceStatus initOpenGL(int argc, char **argv);
+	void initOpenGLHooks();
 
 private:
 	static MeshViewer* msSelf;
