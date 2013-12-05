@@ -162,6 +162,8 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <ClCompile Include="Viewer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Device.h" />
+    <ClInclude Include="device_structs.h" />
     <ClInclude Include="FileUtils.h" />
     <ClInclude Include="FrameLogger.h" />
     <ClInclude Include="LogDevice.h" />
