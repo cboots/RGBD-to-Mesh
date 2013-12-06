@@ -1,11 +1,4 @@
-
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
-#include <stdint.h>
-
-#include <stdio.h>
-#include "device_structs.h"
-#include "RGBDFrame.h"
+#include "Device.h"
 
 /*
 #define FOV_Y 43 # degrees
@@ -17,6 +10,14 @@
 #define SCALE_Y 0.393910475614942392
 #define SCALE_X 0.542955699638436879
 #define PI      3.141592653589793238
+
+ColorPixel* dev_colorImageBuffer;
+DPixel* dev_depthImageBuffer;
+PointCloud* dev_pointCloudBuffer;
+
+int cuImageWidth = 0;
+int	cuImageHeight = 0;
+
 
 __global__ void makePointCloud(ColorPixel* colorPixels, DPixel* dPixels, int xRes, int yRes, PointCloud* pointCloud) {
     int i = (blockIdx.y*gridDim.x + blockIdx.x)*(blockDim.y*blockDim.x) + (threadIdx.y*blockDim.x) + threadIdx.x;
@@ -69,4 +70,95 @@ __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) 
     int r = i / xRes;
     int c = i % xRes;
 
+}
+
+
+
+//Intialize pipeline buffers
+void initCuda(int width, int height)
+{
+	//Allocate buffers
+	cudaMalloc((void**) dev_colorImageBuffer, sizeof(ColorPixel)*width*height);
+	cudaMalloc((void**) dev_depthImageBuffer, sizeof(DPixel)*width*height);
+	cudaMalloc((void**) dev_pointCloudBuffer, sizeof(PointCloud)*width*height);
+	cuImageWidth = width;
+	cuImageHeight = height;
+
+}
+
+//Free all allocated buffers and close out environment
+void cleanupCuda()
+{
+	cudaFree(dev_colorImageBuffer);
+	cudaFree(dev_depthImageBuffer);
+	cudaFree(dev_pointCloudBuffer);
+	cuImageWidth = 0;
+	cuImageHeight = 0;
+}
+
+
+//Copies a depth image to the GPU buffer. 
+//Returns false if width and height do not match buffer size set by initCuda(), true if success
+bool pushDepthArrayToBuffer(DPixel* hDepthArray, int width, int height)
+{
+	//TODO: Implement
+	return false;
+}
+
+
+//Copies a color image to the GPU buffer. 
+//Returns false if width and height do not match buffer size set by initCuda(), true if success
+bool pushColorArrayToBuffer(ColorPixel* hColorArray, int width, int height)
+{
+	//TODO: Implement
+	return false;
+}
+
+//Converts the color and depth images currently in GPU buffers into point cloud buffer
+void convertToPointCloud()
+{
+	//TODO: Implement
+
+}
+
+//Computes normals for point cloud in buffer and writes back to the point cloud buffer.
+void computePointCloudNormals()
+{
+	//TODO: Implement
+
+}
+
+
+//Draws depth image buffer to the texture.
+//Texture width and height must match the resolution of the depth image.
+//Returns false if width or height does not match, true otherwise
+bool drawDepthImageBufferToTexture(GLuint texture, int texWidth, int texHeight)
+{
+	//TODO: Implement
+	return false;
+}
+
+//Draws color image buffer to the texture.
+//Texture width and height must match the resolution of the color image.
+//Returns false if width or height does not match, true otherwise
+bool drawColorImageBufferToTexture(GLuint texture, int texWidth, int texHeight)
+{
+	//TODO: Implement
+	return false;
+}
+
+//Renders the point cloud as stored in the VBO to the texture
+void drawPointCloudVBOToTexture(GLuint texture, int texWidth, int texHeight /*TODO: More vizualization parameters here*/)
+{
+	//TODO: Implement
+
+}
+
+//Renders various debug information about the 2D point cloud buffer to the texture.
+//Texture width and height must match the resolution of the point cloud buffer.
+//Returns false if width or height does not match, true otherwise
+bool drawPointCloudDebugToTexture(GLuint texture, int texWidth, int texHeight /*TODO: More vizualization parameters here*/)
+{
+	//TODO: Implement
+	return false;
 }

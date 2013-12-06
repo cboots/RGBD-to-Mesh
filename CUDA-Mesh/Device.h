@@ -1,6 +1,9 @@
 #pragma once
 #include <GL/glew.h>
-
+#include "cuda_runtime.h"
+#include "device_launch_parameters.h"
+#include <stdint.h>
+#include <stdio.h>
 #include "RGBDFrame.h"
 #include "device_structs.h"
 #include <glm/glm.hpp>
