@@ -18,4 +18,7 @@ bool pushDepthArrayToBuffer(DPixel* hDepthArray, int width, int height);
 bool pushColorArrayToBuffer(ColorPixel* hColorArray, int width, int height);
 
 //Converts the color and depth images currently in GPU buffers into point cloud buffer
-bool convertToPointCloud();
+void convertToPointCloud();
+
+//Computes normals for point cloud in buffer and writes back to the point cloud buffer.
+void computePointCloudNormals();

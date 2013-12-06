@@ -88,6 +88,7 @@ DeviceStatus MeshViewer::init(int argc, char **argv)
 
 	//Register frame listener
 	mDevice->addNewRGBDFrameListener(this);
+	initCuda(mXRes, mYRes);
 
 	return initOpenGL(argc, argv);
 }
@@ -146,7 +147,18 @@ void MeshViewer::display()
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	//=====CUDA CALLS=====
+	//Push buffers
+	pushColorArrayToBuffer(localColorArray.get(), mXRes, mYRes);
+	pushDepthArrayToBuffer(localDepthArray.get(), mXRes, mYRes);
+
+	//Generate point cloud
+	convertToPointCloud();
 	
+	//Compute normals
+	computePointCloudNormals();
+
+	//=====RENDERING======
+
 
 	glutSwapBuffers();
 
@@ -182,6 +194,9 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 
 		mDevice->disconnect();
 		mDevice->shutdown();
+
+		cleanupCuda();
+
 		exit (1);
 		break;
 	case '1':
