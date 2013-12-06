@@ -9,6 +9,7 @@
 #include "FrameLogger.h"
 #include "device_structs.h"
 #include "Device.h"
+#include "Utility.h"
 
 using namespace glm;
 
@@ -68,17 +69,19 @@ private:
 	RGBDDevice* mDevice;
 	int mXRes, mYRes;
 	int mWidth, mHeight;
-	
+
 	DisplayModes mViewState;
 
 	RGBDFramePtr mLatestFrame;
 	ColorPixelArray mColorArray;
 	DPixelArray mDepthArray;
 
-	
+	//Shader programs
+	GLuint pass_prog;
+
+	void initShader();
 	void initQuad();
-	void drawQuad(GLuint texture, float xNDC, float yNDC, float widthNDC, float heightNDC);
-	void setupQuad(GLuint prog, GLuint texture);
+	void drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale, float heightScale, GLuint texture);
 
 	static void glutIdle();
 	static void glutDisplay();

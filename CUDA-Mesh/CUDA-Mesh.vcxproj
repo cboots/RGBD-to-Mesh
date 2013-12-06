@@ -175,6 +175,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <ClCompile Include="RGBDDevice.cpp" />
     <ClCompile Include="RGBDFrame.cpp" />
     <ClCompile Include="RGBDFrameFactory.cpp" />
+    <ClCompile Include="Utility.cpp" />
     <ClCompile Include="Viewer.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -191,6 +192,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <ClInclude Include="RGBDDevice.h" />
     <ClInclude Include="RGBDFrame.h" />
     <ClInclude Include="RGBDFrameFactory.h" />
+    <ClInclude Include="Utility.h" />
     <ClInclude Include="Viewer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
