@@ -20,3 +20,17 @@ typedef struct
     glm::vec3 eigenVals;
     glm::mat3 eigenVecs;
 } EigenResult;
+
+typedef struct {
+	unsigned int vertex_array;
+	unsigned int vbo_indices;
+	unsigned int num_indices;
+	//Don't need these to get it working, but needed for deallocation
+	unsigned int vbo_data;
+} device_mesh2_t;
+
+
+typedef struct {
+	glm::vec3 pt;
+	glm::vec2 texcoord;
+} vertex2_t;
