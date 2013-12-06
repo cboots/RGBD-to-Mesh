@@ -11,6 +11,9 @@
 
 // THIS IS FOR ALL THE DEVICE KERNEL WRAPPER FUNCTIONS
 
+//Check for error
+void checkCUDAError(const char *msg) ;
+
 //Intialize pipeline buffers
 void initCuda(int width, int height);
 
