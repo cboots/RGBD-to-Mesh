@@ -128,7 +128,7 @@ DeviceStatus MeshViewer::initOpenGL(int argc, char **argv)
 
 	//Init textures
 	initTextures();
-
+	initShader();
 	return DEVICESTATUS_OK;
 }
 
@@ -146,8 +146,8 @@ void MeshViewer::initOpenGLHooks()
 void MeshViewer::initShader()
 {
 	//Passthrough shaders that sample textures
-	const char * pass_vert = "shaders/pass.vert";
-	const char * pass_frag = "shaders/pass.frag";
+	const char * pass_vert = "shaders/passVS.glsl";
+	const char * pass_frag = "shaders/passFS.glsl";
 
 	Utility::shaders_t shaders = Utility::loadShaders(pass_vert, pass_frag);
 
@@ -254,6 +254,7 @@ void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale,
 	//Setup program and uniforms
 	glUseProgram(prog);
 	glEnable(GL_TEXTURE_2D);
+	glDisable(GL_DEPTH_TEST);
 
 	mat4 persp = mat4(1.0f);//Identity
 	mat4 viewmat = mat4(widthScale, 0.0f, 0.0f, 0.0f,
@@ -372,7 +373,10 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	case '3':
 		mViewState = DISPLAY_MODE_IMAGE;
 		break;
-
+	case('r'):
+		cout << "Reloading Shaders" <<endl;
+		initShader();
+		break;
 	}
 
 }

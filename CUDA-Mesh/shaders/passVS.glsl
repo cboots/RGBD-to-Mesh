@@ -13,6 +13,6 @@ out vec2 fs_texCoord;
 //Transform each vertex to projection space
 void main(void)
 {
-	gl_Position = u_projMatrix*u_viewMatrix*vs_position;
+	gl_Position = u_projMatrix*u_viewMatrix*vec4(vs_position, 1.0);
 	fs_texCoord = vs_texCoord;
 }
