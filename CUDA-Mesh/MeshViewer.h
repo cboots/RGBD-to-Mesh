@@ -77,7 +77,8 @@ private:
 	DPixelArray mDepthArray;
 
 	//Shader programs
-	GLuint pass_prog;
+	GLuint depth_prog;
+	GLuint color_prog;
 
 	//PBOs
 	GLuint imagePBO;

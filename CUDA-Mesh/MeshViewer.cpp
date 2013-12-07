@@ -96,13 +96,8 @@ DeviceStatus MeshViewer::init(int argc, char **argv)
 	mDevice->addNewRGBDFrameListener(this);
 	initCuda(mXRes, mYRes);
 
-	DeviceStatus status = initOpenGL(argc, argv);
-	if(status == DEVICESTATUS_OK)
-	{
-		initQuad();
-		initPBO();
-	}
-	return status;
+	return initOpenGL(argc, argv);
+
 }
 
 
@@ -128,9 +123,12 @@ DeviceStatus MeshViewer::initOpenGL(int argc, char **argv)
 		return DEVICESTATUS_ERROR;
 	}
 
-	//Init textures
+	//Init elements
 	initTextures();
 	initShader();
+	initQuad();
+	initPBO();
+
 	return DEVICESTATUS_OK;
 }
 
@@ -148,17 +146,31 @@ void MeshViewer::initOpenGLHooks()
 void MeshViewer::initShader()
 {
 	//Passthrough shaders that sample textures
-	const char * pass_vert = "shaders/passVS.glsl";
-	const char * pass_frag = "shaders/passFS.glsl";
+	const char * color_vert = "shaders/colorVS.glsl";
+	const char * color_frag = "shaders/colorFS.glsl";
+	const char * depth_vert = "shaders/depthVS.glsl";
+	const char * depth_frag = "shaders/depthFS.glsl";
 
-	Utility::shaders_t shaders = Utility::loadShaders(pass_vert, pass_frag);
+	//Color image shader
+	Utility::shaders_t shaders = Utility::loadShaders(color_vert, color_frag);
 
-	pass_prog = glCreateProgram();
+	color_prog = glCreateProgram();
 
-	glBindAttribLocation(pass_prog, quad_attributes::POSITION, "vs_position");
-	glBindAttribLocation(pass_prog, quad_attributes::TEXCOORD, "vs_texCoord");
+	glBindAttribLocation(color_prog, quad_attributes::POSITION, "vs_position");
+	glBindAttribLocation(color_prog, quad_attributes::TEXCOORD, "vs_texCoord");
 
-	Utility::attachAndLinkProgram(pass_prog,shaders);
+	Utility::attachAndLinkProgram(color_prog,shaders);
+	
+
+	//DEPTH image shader
+	shaders = Utility::loadShaders(depth_vert, depth_frag);
+
+	depth_prog = glCreateProgram();
+
+	glBindAttribLocation(depth_prog, quad_attributes::POSITION, "vs_position");
+	glBindAttribLocation(depth_prog, quad_attributes::TEXCOORD, "vs_texCoord");
+
+	Utility::attachAndLinkProgram(depth_prog,shaders);
 }
 
 
@@ -218,7 +230,7 @@ void MeshViewer::initPBO()
 	// set up vertex data parameter
 
 	// Generate a buffer ID called a PBO (Pixel Buffer Object)
-	
+
 	int num_texels = mXRes*mYRes;
 	int num_values = num_texels * 4;
 	int size_tex_data = sizeof(GLfloat) * num_values;
@@ -321,7 +333,7 @@ bool MeshViewer::drawColorImageBufferToTexture(GLuint texture)
 		glBindTexture(GL_TEXTURE_2D, texture);
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
 			GL_RGBA, GL_FLOAT, NULL);
-		
+
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
@@ -340,7 +352,7 @@ bool MeshViewer::drawDepthImageBufferToTexture(GLuint texture)
 		glBindTexture(GL_TEXTURE_2D, texture);
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
 			GL_RGBA, GL_FLOAT, NULL);
-		
+
 		glBindTexture(GL_TEXTURE_2D, 0);
 	}
 
@@ -373,12 +385,12 @@ void MeshViewer::display()
 	case DISPLAY_MODE_DEPTH:
 		drawDepthImageBufferToTexture(depthTexture);
 		glDisable(GL_BLEND);
-		drawQuad(pass_prog, 0, 0, 1, 1, depthTexture);
+		drawQuad(depth_prog, 0, 0, 1, 1, depthTexture);
 		break;
 	case DISPLAY_MODE_IMAGE:
 		drawColorImageBufferToTexture(colorTexture);
 		glDisable(GL_BLEND);
-		drawQuad(pass_prog, 0, 0, 1, 1, colorTexture);
+		drawQuad(color_prog, 0, 0, 1, 1, colorTexture);
 		break;
 	case DISPLAY_MODE_OVERLAY:
 		drawDepthImageBufferToTexture(depthTexture);
@@ -386,10 +398,10 @@ void MeshViewer::display()
 
 
 		glDisable(GL_BLEND);
-		drawQuad(pass_prog, 0, 0, 1, 1, colorTexture);
+		drawQuad(color_prog, 0, 0, 1, 1, colorTexture);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);//Alpha blending
-		drawQuad(pass_prog, 0, 0, 1, 1, depthTexture);
+		drawQuad(depth_prog, 0, 0, 1, 1, depthTexture);
 		break;
 	}
 
