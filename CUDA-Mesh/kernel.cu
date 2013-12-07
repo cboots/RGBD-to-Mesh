@@ -15,12 +15,12 @@ ColorPixel* dev_colorImageBuffer;
 DPixel* dev_depthImageBuffer;
 PointCloud* dev_pointCloudBuffer;
 
-int cuImageWidth = 0;
+int	cuImageWidth = 0;
 int	cuImageHeight = 0;
 
 GLuint imagePBO = (GLuint)NULL;
 
-void checkCUDAError(const char *msg) {
+__host__ void checkCUDAError(const char *msg) {
 	cudaError_t err = cudaGetLastError();
 	if( cudaSuccess != err) {
 		fprintf(stderr, "Cuda error: %s: %s.\n", msg, cudaGetErrorString( err) ); 
@@ -128,27 +128,22 @@ __global__ void sendColorImageBufferToPBO(float4* PBOpos, glm::vec2 resolution, 
 	}
 }
 
-void initImagePBO(GLuint *pbo)
+__host__ void deletePBO(GLuint *pbo)
 {
 	if (pbo) {
-		// set up vertex data parameter
-		int num_texels = cuImageWidth*cuImageHeight;
-		int num_values = num_texels * 4;
-		int size_tex_data = sizeof(GLfloat) * num_values;
+		// unregister this buffer object with CUDA
+		cudaGLUnregisterBufferObject(*pbo);
 
-		// Generate a buffer ID called a PBO (Pixel Buffer Object)
-		glGenBuffers(1,pbo);
-		// Make this the current UNPACK buffer (OpenGL is state-based)
-		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, *pbo);
-		// Allocate data for the buffer. 4-channel float image
-		glBufferData(GL_PIXEL_UNPACK_BUFFER, size_tex_data, NULL, GL_DYNAMIC_COPY);
-		cudaGLRegisterBufferObject( *pbo );
+		glBindBuffer(GL_ARRAY_BUFFER, *pbo);
+		glDeleteBuffers(1, pbo);
+
+		*pbo = (GLuint)NULL;
 	}
 }
 
 
 //Intialize pipeline buffers
-void initCuda(int width, int height)
+__host__ void initCuda(int width, int height)
 {
 	//Allocate buffers
 	cudaMalloc((void**) &dev_colorImageBuffer, sizeof(ColorPixel)*width*height);
@@ -157,28 +152,27 @@ void initCuda(int width, int height)
 	cuImageWidth = width;
 	cuImageHeight = height;
 
-	
-	initImagePBO(&imagePBO);
-
-
 }
 
 //Free all allocated buffers and close out environment
-void cleanupCuda()
+__host__ void cleanupCuda()
 {
+	if(imagePBO) deletePBO(&imagePBO);
+
 	cudaFree(dev_colorImageBuffer);
 	cudaFree(dev_depthImageBuffer);
 	cudaFree(dev_pointCloudBuffer);
 	cuImageWidth = 0;
 	cuImageHeight = 0;
-	
+
 	cudaDeviceReset();
+
 }
 
 
 //Copies a depth image to the GPU buffer. 
 //Returns false if width and height do not match buffer size set by initCuda(), true if success
-bool pushDepthArrayToBuffer(DPixel* hDepthArray, int width, int height)
+__host__ bool pushDepthArrayToBuffer(DPixel* hDepthArray, int width, int height)
 {
 	if(width != cuImageWidth || height != cuImageHeight)
 		return false;//Buffer wrong size
@@ -190,7 +184,7 @@ bool pushDepthArrayToBuffer(DPixel* hDepthArray, int width, int height)
 
 //Copies a color image to the GPU buffer. 
 //Returns false if width and height do not match buffer size set by initCuda(), true if success
-bool pushColorArrayToBuffer(ColorPixel* hColorArray, int width, int height)
+__host__ bool pushColorArrayToBuffer(ColorPixel* hColorArray, int width, int height)
 {
 	if(width != cuImageWidth || height != cuImageHeight)
 		return false;//Buffer wrong size
@@ -200,14 +194,14 @@ bool pushColorArrayToBuffer(ColorPixel* hColorArray, int width, int height)
 }
 
 //Converts the color and depth images currently in GPU buffers into point cloud buffer
-void convertToPointCloud()
+__host__ void convertToPointCloud()
 {
 	//TODO: Implement
 
 }
 
 //Computes normals for point cloud in buffer and writes back to the point cloud buffer.
-void computePointCloudNormals()
+__host__ void computePointCloudNormals()
 {
 	//TODO: Implement
 
@@ -217,7 +211,7 @@ void computePointCloudNormals()
 //Draws depth image buffer to the texture.
 //Texture width and height must match the resolution of the depth image.
 //Returns false if width or height does not match, true otherwise
-bool drawDepthImageBufferToTexture(GLuint texture, int texWidth, int texHeight)
+bool drawDepthImageBufferToPBO(float4* dev_PBOpos, int texWidth, int texHeight)
 {
 	//TODO: Implement
 	return false;
@@ -226,20 +220,25 @@ bool drawDepthImageBufferToTexture(GLuint texture, int texWidth, int texHeight)
 //Draws color image buffer to the texture.
 //Texture width and height must match the resolution of the color image.
 //Returns false if width or height does not match, true otherwise
-bool drawColorImageBufferToTexture(GLuint texture, int texWidth, int texHeight)
+//dev_PBOpos must be a CUDA device pointer
+bool drawColorImageBufferToPBO(float4* dev_PBOpos, int texWidth, int texHeight)
 {
 	if(texWidth != cuImageWidth || texHeight != cuImageHeight)
 		return false;
 
-	glBindTexture(GL_TEXTURE_2D, texture);
-	//TODO: Fix. Cannot copy from CUDA memory.
-	//glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F, texWidth, texHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, dev_colorImageBuffer);
-	glBindTexture(GL_TEXTURE_2D, 0);
+	int tileSize = 8;
+
+	dim3 threadsPerBlock(tileSize, tileSize);
+	dim3 fullBlocksPerGrid((int)ceil(float(texWidth)/float(tileSize)), 
+		(int)ceil(float(texHeight)/float(tileSize)));
+
+	sendColorImageBufferToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(dev_PBOpos, glm::vec2(texWidth, texHeight), dev_colorImageBuffer);
+	
 	return true;
 }
 
 //Renders the point cloud as stored in the VBO to the texture
-void drawPointCloudVBOToTexture(GLuint texture, int texWidth, int texHeight /*TODO: More vizualization parameters here*/)
+__host__ void drawPointCloudVBOToTexture(GLuint texture, int texWidth, int texHeight /*TODO: More vizualization parameters here*/)
 {
 	//TODO: Implement
 
@@ -248,7 +247,7 @@ void drawPointCloudVBOToTexture(GLuint texture, int texWidth, int texHeight /*TO
 //Renders various debug information about the 2D point cloud buffer to the texture.
 //Texture width and height must match the resolution of the point cloud buffer.
 //Returns false if width or height does not match, true otherwise
-bool drawPointCloudDebugToTexture(GLuint texture, int texWidth, int texHeight /*TODO: More vizualization parameters here*/)
+__host__ bool drawPointCloudDebugToTexture(GLuint texture, int texWidth, int texHeight /*TODO: More vizualization parameters here*/)
 {
 	//TODO: Implement
 	return false;

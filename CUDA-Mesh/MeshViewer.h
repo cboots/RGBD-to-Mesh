@@ -79,9 +79,24 @@ private:
 	//Shader programs
 	GLuint pass_prog;
 
+	//PBOs
+	GLuint imagePBO;
+
 	void initShader();
 	void initQuad();
+	void initPBO();
+
 	void drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale, float heightScale, GLuint texture);
+
+	//Draws depth image buffer to the texture.
+	//Texture width and height must match the resolution of the depth image.
+	//Returns false if width or height does not match, true otherwise
+	bool drawDepthImageBufferToTexture(GLuint texture);
+
+	//Draws color image buffer to the texture.
+	//Texture width and height must match the resolution of the color image.
+	//Returns false if width or height does not match, true otherwise
+	bool drawColorImageBufferToTexture(GLuint texture);
 
 	static void glutIdle();
 	static void glutDisplay();

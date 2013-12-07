@@ -1,5 +1,6 @@
 #pragma once
 #include <GL/glew.h>
+#include <GL/glut.h>
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 #include <stdint.h>
@@ -41,12 +42,12 @@ void computePointCloudNormals();
 //Draws depth image buffer to the texture.
 //Texture width and height must match the resolution of the depth image.
 //Returns false if width or height does not match, true otherwise
-bool drawDepthImageBufferToTexture(GLuint texture, int texWidth, int texHeight);
+bool drawDepthImageBufferToPBO(float4* pbo, int texWidth, int texHeight);
 
 //Draws color image buffer to the texture.
 //Texture width and height must match the resolution of the color image.
 //Returns false if width or height does not match, true otherwise
-bool drawColorImageBufferToTexture(GLuint texture, int texWidth, int texHeight);
+bool drawColorImageBufferToPBO(float4* pbo, int texWidth, int texHeight);
 
 //Renders the point cloud as stored in the VBO to the texture
 void drawPointCloudVBOToTexture(GLuint texture, int texWidth, int texHeight /*TODO: More vizualization parameters here*/);

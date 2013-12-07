@@ -38,6 +38,7 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	mDevice = device;
 	mWidth = screenwidth;
 	mHeight = screenheight;
+	mViewState = DISPLAY_MODE_OVERLAY;
 }
 
 
@@ -99,6 +100,7 @@ DeviceStatus MeshViewer::init(int argc, char **argv)
 	if(status == DEVICESTATUS_OK)
 	{
 		initQuad();
+		initPBO();
 	}
 	return status;
 }
@@ -152,7 +154,7 @@ void MeshViewer::initShader()
 	Utility::shaders_t shaders = Utility::loadShaders(pass_vert, pass_frag);
 
 	pass_prog = glCreateProgram();
-	
+
 	glBindAttribLocation(pass_prog, quad_attributes::POSITION, "vs_position");
 	glBindAttribLocation(pass_prog, quad_attributes::TEXCOORD, "vs_texCoord");
 
@@ -210,6 +212,26 @@ void MeshViewer::cleanupTextures()
 	glDeleteTextures(1, &pointCloudTexture);
 }
 
+
+void MeshViewer::initPBO()
+{
+	// set up vertex data parameter
+
+	// Generate a buffer ID called a PBO (Pixel Buffer Object)
+	
+	int num_texels = mXRes*mYRes;
+	int num_values = num_texels * 4;
+	int size_tex_data = sizeof(GLfloat) * num_values;
+	glGenBuffers(1,&imagePBO);
+
+	// Make this the current UNPACK buffer (OpenGL is state-based)
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, imagePBO);
+
+	// Allocate data for the buffer. 4-channel float image
+	glBufferData(GL_PIXEL_UNPACK_BUFFER, size_tex_data, NULL, GL_DYNAMIC_COPY);
+	cudaGLRegisterBufferObject( imagePBO);
+
+}
 
 void MeshViewer::initQuad() {
 	vertex2_t verts [] = { {vec3(-1,1,0),vec2(0,1)},
@@ -283,6 +305,29 @@ void MeshViewer::run()
 }
 
 
+bool MeshViewer::drawColorImageBufferToTexture(GLuint texture)
+{
+	float4* dptr;
+	cudaGLMapBufferObject((void**)&dptr, imagePBO);
+	bool result = drawColorImageBufferToPBO(dptr, mXRes, mYRes);
+	cudaGLUnmapBufferObject(imagePBO);
+	if(result){
+		//Draw to texture
+		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO);
+		glBindTexture(GL_TEXTURE_2D, texture);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+			GL_RGBA, GL_FLOAT, NULL);
+		
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+
+	return result;
+}
+
+bool MeshViewer::drawDepthImageBufferToTexture(GLuint texture)
+{
+	return false;
+}
 
 ////All the important runtime stuff happens here:
 void MeshViewer::display()
@@ -308,18 +353,20 @@ void MeshViewer::display()
 	switch(mViewState)
 	{
 	case DISPLAY_MODE_DEPTH:
-		drawDepthImageBufferToTexture(depthTexture, mXRes, mYRes);
+		drawDepthImageBufferToTexture(depthTexture);
 		glBlendFunc(GL_ZERO, GL_ONE);//Overwrite
 		drawQuad(pass_prog, 0, 0, 1, 1, depthTexture);
 		break;
 	case DISPLAY_MODE_IMAGE:
-		drawColorImageBufferToTexture(colorTexture, mXRes, mYRes);
+		drawColorImageBufferToTexture(colorTexture);
 		glBlendFunc(GL_ZERO, GL_ONE);//Overwrite
 		drawQuad(pass_prog, 0, 0, 1, 1, colorTexture);
 		break;
 	case DISPLAY_MODE_OVERLAY:
-		drawDepthImageBufferToTexture(depthTexture, mXRes, mYRes);
-		drawColorImageBufferToTexture(colorTexture, mXRes, mYRes);
+		drawDepthImageBufferToTexture(depthTexture);
+		drawColorImageBufferToTexture(colorTexture);
+
+
 		glDisable(GL_BLEND);
 		drawQuad(pass_prog, 0, 0, 1, 1, colorTexture);
 		glEnable(GL_BLEND);

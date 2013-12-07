@@ -103,7 +103,7 @@ xcopy /D /F /Y "$(ProjectDir)\glut32.dll" "$(OutDir)"
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>glut64.lib;OpenNI2.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(BOOST_LIB64);$(OutDir);$(OPENNI2_LIB64);..\..\ThirdParty\GL;</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(BOOST_LIB64-VC100);$(OutDir);$(OPENNI2_LIB64);..\..\ThirdParty\GL;</AdditionalLibraryDirectories>
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
