@@ -13,7 +13,7 @@ void main()
 	//get depth in mm
 	float depth = texture(u_ColorTex, fs_texCoord).r;
 	
-	float shade = 1.0-clamp(depth/5000.0, 0.0, 1.0);
+	float shade = 1.0-clamp(depth/(16.0*255.0), 0.0, 1.0);
 	
-	FragColor = step(0.0001, depth)*vec4(shade, 0.0, 0.0, 0.8);
+	FragColor = step(0.0001, depth)*vec4(shade, 0.0, 0.0, 0.9);
 }

@@ -42,10 +42,10 @@ public:
 int main(int argc, char** argv)
 {
 
-	//LogDevice device;
-	//device.setSourceDirectory("logs\\siglab");
-	//device.setLoopStreams(true);
-	ONIKinectDevice device;
+	LogDevice device;
+	device.setSourceDirectory("logs\\siglab");
+	device.setLoopStreams(true);
+	//ONIKinectDevice device;
 	
 	RGBDDeviceListener deviceStateListener;
 	RGBDFrameListener frameListener;
