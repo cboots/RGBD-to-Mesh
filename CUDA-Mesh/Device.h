@@ -7,6 +7,7 @@
 #include "RGBDFrame.h"
 #include "device_structs.h"
 #include <glm/glm.hpp>
+#include <cuda_gl_interop.h>
 
 
 // THIS IS FOR ALL THE DEVICE KERNEL WRAPPER FUNCTIONS

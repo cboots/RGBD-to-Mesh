@@ -303,6 +303,7 @@ void MeshViewer::display()
 	//Compute normals
 	computePointCloudNormals();
 
+	cudaDeviceSynchronize();
 	//=====RENDERING======
 	switch(mViewState)
 	{
@@ -319,8 +320,10 @@ void MeshViewer::display()
 	case DISPLAY_MODE_OVERLAY:
 		drawDepthImageBufferToTexture(depthTexture, mXRes, mYRes);
 		drawColorImageBufferToTexture(colorTexture, mXRes, mYRes);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);//Alpha blending
+		glDisable(GL_BLEND);
 		drawQuad(pass_prog, 0, 0, 1, 1, colorTexture);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);//Alpha blending
 		drawQuad(pass_prog, 0, 0, 1, 1, depthTexture);
 		break;
 	}
