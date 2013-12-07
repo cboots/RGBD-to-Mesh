@@ -213,8 +213,18 @@ __host__ void computePointCloudNormals()
 //Returns false if width or height does not match, true otherwise
 bool drawDepthImageBufferToPBO(float4* dev_PBOpos, int texWidth, int texHeight)
 {
-	//TODO: Implement
-	return false;
+	if(texWidth != cuImageWidth || texHeight != cuImageHeight)
+		return false;
+
+	int tileSize = 8;
+
+	dim3 threadsPerBlock(tileSize, tileSize);
+	dim3 fullBlocksPerGrid((int)ceil(float(texWidth)/float(tileSize)), 
+		(int)ceil(float(texHeight)/float(tileSize)));
+
+	sendDepthImageBufferToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(dev_PBOpos, glm::vec2(texWidth, texHeight), dev_depthImageBuffer);
+	
+	return true;
 }
 
 //Draws color image buffer to the texture.

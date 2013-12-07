@@ -234,10 +234,10 @@ void MeshViewer::initPBO()
 }
 
 void MeshViewer::initQuad() {
-	vertex2_t verts [] = { {vec3(-1,1,0),vec2(0,1)},
-	{vec3(-1,-1,0),vec2(0,0)},
-	{vec3(1,-1,0),vec2(1,0)},
-	{vec3(1,1,0),vec2(1,1)}};
+	vertex2_t verts [] = { {vec3(-1,1,0),vec2(0,0)},
+	{vec3(-1,-1,0),vec2(0,1)},
+	{vec3(1,-1,0),vec2(1,1)},
+	{vec3(1,1,0),vec2(1,0)}};
 
 	unsigned short indices[] = { 0,1,2,0,2,3};
 
@@ -288,6 +288,10 @@ void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale,
 	glUniformMatrix4fv(glGetUniformLocation(prog, "u_projMatrix"),1, GL_FALSE, &persp[0][0] );
 	glUniformMatrix4fv(glGetUniformLocation(prog, "u_viewMatrix"),1, GL_FALSE, &viewmat[0][0] );
 
+	//Bind texture
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glUniform1i(glGetUniformLocation(prog, "u_ColorTex"),0);
 
 	//Draw quad
 	glBindVertexArray(device_quad.vertex_array);
@@ -325,8 +329,22 @@ bool MeshViewer::drawColorImageBufferToTexture(GLuint texture)
 }
 
 bool MeshViewer::drawDepthImageBufferToTexture(GLuint texture)
-{
-	return false;
+{	
+	float4* dptr;
+	cudaGLMapBufferObject((void**)&dptr, imagePBO);
+	bool result = drawDepthImageBufferToPBO(dptr, mXRes, mYRes);
+	cudaGLUnmapBufferObject(imagePBO);
+	if(result){
+		//Draw to texture
+		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO);
+		glBindTexture(GL_TEXTURE_2D, texture);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+			GL_RGBA, GL_FLOAT, NULL);
+		
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
+
+	return result;
 }
 
 ////All the important runtime stuff happens here:
@@ -354,12 +372,12 @@ void MeshViewer::display()
 	{
 	case DISPLAY_MODE_DEPTH:
 		drawDepthImageBufferToTexture(depthTexture);
-		glBlendFunc(GL_ZERO, GL_ONE);//Overwrite
+		glDisable(GL_BLEND);
 		drawQuad(pass_prog, 0, 0, 1, 1, depthTexture);
 		break;
 	case DISPLAY_MODE_IMAGE:
 		drawColorImageBufferToTexture(colorTexture);
-		glBlendFunc(GL_ZERO, GL_ONE);//Overwrite
+		glDisable(GL_BLEND);
 		drawQuad(pass_prog, 0, 0, 1, 1, colorTexture);
 		break;
 	case DISPLAY_MODE_OVERLAY:
