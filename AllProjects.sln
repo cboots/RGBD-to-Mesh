@@ -1,10 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SimpleViewer", "Simple Viewer\SimpleViewer.vcxproj", "{BDA3BF24-550A-4BF9-83E5-7B56134EED40}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "EventBasedRead", "EventBasedRead\EventBasedRead.vcxproj", "{BDA3BF24-5555-4BF9-83E5-7B56134EDD40}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CUDA-Mesh", "CUDA-Mesh\CUDA-Mesh.vcxproj", "{4A84529F-726E-42A3-802B-0AA0FFE4501D}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Viewer-Recorder", "Recorder-Viewer\Recorder-Viewer.vcxproj", "{190FE85B-189F-4244-BCDF-2279229D32A8}"
@@ -19,30 +15,6 @@ Global
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{BDA3BF24-550A-4BF9-83E5-7B56134EED40}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
-		{BDA3BF24-550A-4BF9-83E5-7B56134EED40}.Debug|Mixed Platforms.Build.0 = Debug|Win32
-		{BDA3BF24-550A-4BF9-83E5-7B56134EED40}.Debug|Win32.ActiveCfg = Debug|Win32
-		{BDA3BF24-550A-4BF9-83E5-7B56134EED40}.Debug|Win32.Build.0 = Debug|Win32
-		{BDA3BF24-550A-4BF9-83E5-7B56134EED40}.Debug|x64.ActiveCfg = Debug|x64
-		{BDA3BF24-550A-4BF9-83E5-7B56134EED40}.Debug|x64.Build.0 = Debug|x64
-		{BDA3BF24-550A-4BF9-83E5-7B56134EED40}.Release|Mixed Platforms.ActiveCfg = Release|Win32
-		{BDA3BF24-550A-4BF9-83E5-7B56134EED40}.Release|Mixed Platforms.Build.0 = Release|Win32
-		{BDA3BF24-550A-4BF9-83E5-7B56134EED40}.Release|Win32.ActiveCfg = Release|Win32
-		{BDA3BF24-550A-4BF9-83E5-7B56134EED40}.Release|Win32.Build.0 = Release|Win32
-		{BDA3BF24-550A-4BF9-83E5-7B56134EED40}.Release|x64.ActiveCfg = Release|x64
-		{BDA3BF24-550A-4BF9-83E5-7B56134EED40}.Release|x64.Build.0 = Release|x64
-		{BDA3BF24-5555-4BF9-83E5-7B56134EDD40}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
-		{BDA3BF24-5555-4BF9-83E5-7B56134EDD40}.Debug|Mixed Platforms.Build.0 = Debug|Win32
-		{BDA3BF24-5555-4BF9-83E5-7B56134EDD40}.Debug|Win32.ActiveCfg = Debug|Win32
-		{BDA3BF24-5555-4BF9-83E5-7B56134EDD40}.Debug|Win32.Build.0 = Debug|Win32
-		{BDA3BF24-5555-4BF9-83E5-7B56134EDD40}.Debug|x64.ActiveCfg = Debug|x64
-		{BDA3BF24-5555-4BF9-83E5-7B56134EDD40}.Debug|x64.Build.0 = Debug|x64
-		{BDA3BF24-5555-4BF9-83E5-7B56134EDD40}.Release|Mixed Platforms.ActiveCfg = Release|Win32
-		{BDA3BF24-5555-4BF9-83E5-7B56134EDD40}.Release|Mixed Platforms.Build.0 = Release|Win32
-		{BDA3BF24-5555-4BF9-83E5-7B56134EDD40}.Release|Win32.ActiveCfg = Release|Win32
-		{BDA3BF24-5555-4BF9-83E5-7B56134EDD40}.Release|Win32.Build.0 = Release|Win32
-		{BDA3BF24-5555-4BF9-83E5-7B56134EDD40}.Release|x64.ActiveCfg = Release|x64
-		{BDA3BF24-5555-4BF9-83E5-7B56134EDD40}.Release|x64.Build.0 = Release|x64
 		{4A84529F-726E-42A3-802B-0AA0FFE4501D}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
 		{4A84529F-726E-42A3-802B-0AA0FFE4501D}.Debug|Mixed Platforms.Build.0 = Debug|Win32
 		{4A84529F-726E-42A3-802B-0AA0FFE4501D}.Debug|Win32.ActiveCfg = Debug|Win32
