@@ -10,6 +10,7 @@
 #define SCALE_Y 0.393910475614942392
 #define SCALE_X 0.542955699638436879
 #define PI      3.141592653589793238
+#define MIN_EIG_RATIO 1.5
 
 ColorPixel* dev_colorImageBuffer;
 DPixel* dev_depthImageBuffer;
@@ -44,11 +45,11 @@ __global__ void makePointCloud(ColorPixel* colorPixels, DPixel* dPixels, int xRe
 	}
 }
 
-__device__ EigenResult eigenSymmetric33(glm::mat3 A) {
-	// Given a real symmetric 3x3 matrix A, computes the eigenvalues and eigenvectors
-	EigenResult result;
-	// Compute eigenvalues
-	// see: http://en.wikipedia.org/wiki/Eigenvalue_algorithm#3.C3.973_matrices
+__device__ glm::vec3 normalFrom3x3Covar(glm::mat3 A) {
+	// Given a (real, symmetric) 3x3 covariance matrix A, returns the eigenvector corresponding to the min eigenvalue
+	// (see: http://en.wikipedia.org/wiki/Eigenvalue_algorithm#3.C3.973_matrices)
+    glm::vec3 eigs;
+    glm::vec3 normal = glm::vec3(0.0f);
 	float p1 = pow(A[0][1], 2) + pow(A[0][2], 2) + pow(A[1][2], 2);
 	if (p1 == 0) { // A is diagonal
 		result.eigenVals = glm::vec3(A[0][0], A[1][1], A[2][2]);
@@ -67,13 +68,24 @@ __device__ EigenResult eigenSymmetric33(glm::mat3 A) {
 		} else {
 			phi = glm::acos(r)/3;
 		}
-		result.eigenVals.x = q + 2*p*glm::cos(phi);
-		result.eigenVals.z = q + 2*p*glm::cos(phi + 2*PI/3);
-		result.eigenVals.y = 3*q - result.eigenVals.x - result.eigenVals.z;
+		eigs[0] = q + 2*p*glm::cos(phi);
+		eigs[1] = q + 2*p*glm::cos(phi + 2*PI/3);
+		eigs[2] = 3*q - eigs.x - eigs.z;
+        float tmp;
+        int i, eig_i;
+        // sorting: swap first pair if necessary, then second pair, then first pair again
+        for (i=0; i<3; i++) {
+            eig_i = i%2;
+            tmp = eigs[eig_i];
+            eigs[eig_i] = glm::min(tmp, eigs[eig_i+1]);
+            eigs[eig_i+1] = glm::max(tmp, eigs[eig_i+1]);
+        }
 	}
-	// Compute eigenvectors
-	//glm::vec3 eigVec1 = glm::cross(A[0] - glm::vec3(0.0f, result.eigenVals[0], 0.0f
-	// TODO: refactor to impose condition on smallest eigenvalue and just return normal vector
+	// compute eigenvector from min eigenvalue if point cloud is sufficiently "flat"
+    if (eigs[1]/eigs[0] >= MIN_EIG_RATIO)
+	  normal = glm::cross(A[0] - glm::vec3(eigs[0], 0.0f, 0.0f), A[1] - glm::vec3(0.0f, eigs[0], 0.0f));
+    }
+    return normal;
 }
 
 __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) {
