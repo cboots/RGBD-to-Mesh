@@ -384,24 +384,24 @@ void MeshViewer::display()
 	{
 	case DISPLAY_MODE_DEPTH:
 		drawDepthImageBufferToTexture(depthTexture);
-		glDisable(GL_BLEND);
+		
 		drawQuad(depth_prog, 0, 0, 1, 1, depthTexture);
 		break;
 	case DISPLAY_MODE_IMAGE:
 		drawColorImageBufferToTexture(colorTexture);
-		glDisable(GL_BLEND);
+		
 		drawQuad(color_prog, 0, 0, 1, 1, colorTexture);
 		break;
 	case DISPLAY_MODE_OVERLAY:
 		drawDepthImageBufferToTexture(depthTexture);
 		drawColorImageBufferToTexture(colorTexture);
-
-
-		glDisable(GL_BLEND);
+		
+		
 		drawQuad(color_prog, 0, 0, 1, 1, colorTexture);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);//Alpha blending
 		drawQuad(depth_prog, 0, 0, 1, 1, depthTexture);
+		glDisable(GL_BLEND);
 		break;
 	}
 
