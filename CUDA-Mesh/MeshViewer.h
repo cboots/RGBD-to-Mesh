@@ -10,6 +10,7 @@
 #include "device_structs.h"
 #include "Device.h"
 #include "Utility.h"
+#include "LogDevice.h"
 
 using namespace glm;
 
@@ -18,7 +19,8 @@ enum DisplayModes
 	DISPLAY_MODE_OVERLAY,
 	DISPLAY_MODE_DEPTH,
 	DISPLAY_MODE_IMAGE,
-	DISPLAY_MODE_POINT_CLOUD
+	DISPLAY_MODE_POINT_CLOUD,
+	DISPLAY_MODE_3WAY_DEPTH_IMAGE_OVERLAY
 };
 
 namespace quad_attributes {

@@ -403,6 +403,20 @@ void MeshViewer::display()
 		drawQuad(depth_prog, 0, 0, 1, 1, depthTexture);
 		glDisable(GL_BLEND);
 		break;
+	case DISPLAY_MODE_3WAY_DEPTH_IMAGE_OVERLAY:
+		drawDepthImageBufferToTexture(depthTexture);
+		drawColorImageBufferToTexture(colorTexture);
+		
+		drawQuad(color_prog, -0.5, -0.5, 0.5, 0.5, colorTexture);
+		drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, depthTexture);
+		
+		drawQuad(color_prog, 0.5, 0, 0.5, 1, colorTexture);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);//Alpha blending
+		drawQuad(depth_prog, 0.5, 0, 0.5, 1, depthTexture);
+		glDisable(GL_BLEND);
+		break;
+		break;
 	}
 
 	glutSwapBuffers();
@@ -453,9 +467,26 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	case '3':
 		mViewState = DISPLAY_MODE_IMAGE;
 		break;
+	case '4':
+		mViewState = DISPLAY_MODE_3WAY_DEPTH_IMAGE_OVERLAY;
+		break;
 	case('r'):
 		cout << "Reloading Shaders" <<endl;
 		initShader();
+		break;
+	case('p'):
+		cout << "Restarting Playback" << endl;
+		((LogDevice*) mDevice)->restartPlayback();
+		break;
+	case '=':
+		newPlayback = ((LogDevice*) mDevice)->getPlaybackSpeed()+0.1;
+		cout <<"Playback speed: " << newPlayback << endl;
+		((LogDevice*) mDevice)->setPlaybackSpeed(newPlayback);
+		break;
+	case '-':
+		newPlayback = ((LogDevice*) mDevice)->getPlaybackSpeed()-0.1;
+		cout <<"Playback speed: " << newPlayback << endl;
+		((LogDevice*) mDevice)->setPlaybackSpeed(newPlayback);
 		break;
 	}
 

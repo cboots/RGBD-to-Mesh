@@ -34,7 +34,7 @@ class RGBDFrameListener : public RGBDDevice::NewRGBDFrameListener
 public:
 	void onNewRGBDFrame(RGBDFramePtr frame) override
 	{
-		//printf("C[%08llu]D[%08llu] New Frame Recieved: Has Color %d Has Depth %d\n", frame->getColorTimestamp(), frame->getDepthTimestamp(), frame->hasColor(), frame->hasDepth());
+		printf("C[%08llu]D[%08llu] New Frame Recieved: Has Color %d Has Depth %d\n", frame->getColorTimestamp(), frame->getDepthTimestamp(), frame->hasColor(), frame->hasDepth());
 	}
 };
 
@@ -42,10 +42,10 @@ public:
 int main(int argc, char** argv)
 {
 
-	//LogDevice device;
-	//device.setSourceDirectory("logs\\siglab");
-	//device.setLoopStreams(true);
-	ONIKinectDevice device;
+	LogDevice device;
+	device.setSourceDirectory("logs\\siglab");
+	device.setLoopStreams(true);
+	//ONIKinectDevice device;
 	
 	RGBDDeviceListener deviceStateListener;
 	RGBDFrameListener frameListener;
