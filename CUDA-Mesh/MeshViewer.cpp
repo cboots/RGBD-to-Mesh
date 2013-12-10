@@ -55,6 +55,12 @@ MeshViewer::~MeshViewer(void)
 	msSelf = NULL;
 }
 
+//Does not return;
+void MeshViewer::run()
+{
+	glutMainLoop();
+}
+
 DeviceStatus MeshViewer::init(int argc, char **argv)
 {
 	//Stream Validation
@@ -291,7 +297,7 @@ void MeshViewer::initPBO()
 	glBufferData(GL_PIXEL_UNPACK_BUFFER, size_tex_data, NULL, GL_DYNAMIC_COPY);
 	cudaGLRegisterBufferObject( imagePBO0);
 
-	
+
 	// Make this the current UNPACK buffer (OpenGL is state-based)
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, imagePBO1);
 
@@ -299,7 +305,7 @@ void MeshViewer::initPBO()
 	glBufferData(GL_PIXEL_UNPACK_BUFFER, size_tex_data, NULL, GL_DYNAMIC_COPY);
 	cudaGLRegisterBufferObject( imagePBO1);
 
-	
+
 	// Make this the current UNPACK buffer (OpenGL is state-based)
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, imagePBO2);
 
@@ -328,6 +334,26 @@ void MeshViewer::initFullScreenPBO()
 	glBufferData(GL_PIXEL_UNPACK_BUFFER, size_tex_data, NULL, GL_DYNAMIC_COPY);
 	cudaGLRegisterBufferObject( fullscreenPBO);
 }
+
+void MeshViewer::initPointCloudVBO()
+{
+	// Generate a buffer ID called a PBO (Pixel Buffer Object)
+	if(pointCloudVBO){
+		glDeleteBuffers(1, &pointCloudVBO);
+	}
+
+	//Max num elements
+	int max_elements = mWidth*mHeight;
+	int size_buf_data = sizeof(PointCloud) * max_elements;
+	glGenBuffers(1,&pointCloudVBO);
+
+	glBindBuffer(GL_ARRAY_BUFFER, pointCloudVBO);
+	glBufferData(GL_ARRAY_BUFFER, size_buf_data, NULL, GL_DYNAMIC_DRAW);
+
+	cudaGLRegisterBufferObject( pointCloudVBO);
+}
+
+
 
 void MeshViewer::initQuad() {
 	vertex2_t verts [] = { {vec3(-1,1,0),vec2(0,0)},
@@ -439,11 +465,7 @@ void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale,
 	glBindVertexArray(0);
 }
 
-//Does not return;
-void MeshViewer::run()
-{
-	glutMainLoop();
-}
+
 
 
 bool MeshViewer::drawColorImageBufferToTexture(GLuint texture)
@@ -520,6 +542,19 @@ void MeshViewer::drawPCBtoTextures(GLuint posTexture, GLuint colTexture, GLuint 
 	}
 }
 
+int MeshViewer::fillPointCloudVBO()
+{
+	PointCloud* dptr;
+	
+	cudaGLMapBufferObject((void**)&dptr, pointCloudVBO);
+	//Do CUDA stuff
+	int numElements = compactPointCloudToVBO(dptr, mXRes*mYRes);
+	cudaGLUnmapBufferObject(pointCloudVBO);
+
+	return numElements;
+}
+
+
 ////All the important runtime stuff happens here:
 void MeshViewer::display()
 {
@@ -538,6 +573,9 @@ void MeshViewer::display()
 
 	//Compute normals
 	computePointCloudNormals();
+
+	//Stream compaction, prep for rendering
+	fillPointCloudVBO();
 
 	cudaDeviceSynchronize();
 	//=====RENDERING======

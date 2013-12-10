@@ -344,3 +344,12 @@ __host__ bool drawPCBToPBO(float4* dptrPosition, float4* dptrColor, float4* dptr
 
 	return true;
 }
+
+//Takes a device pointer to the point cloud VBO and copies the contents of VBO using stream compaction.
+//maxSize should be equal to the number of elements in dev_pointCloudBuffer
+__host__ int compactPointCloudToVBO(PointCloud* vbo, int maxSize)
+{
+	//TODO: Implement
+
+	return 0;
+}

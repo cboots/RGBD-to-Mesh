@@ -101,10 +101,15 @@ protected:
 
 	GLuint fullscreenPBO;
 
+	//PC VBO
+	GLuint pointCloudVBO; 
+
+
 	void initShader();
 	void initQuad();
 	void initPBO();
 	void initFullScreenPBO();
+	void initPointCloudVBO();
 
 	void drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale, float heightScale, GLuint* textures, int numTextures);
 
@@ -119,6 +124,10 @@ protected:
 	bool drawColorImageBufferToTexture(GLuint texture);
 
 	void drawPCBtoTextures(GLuint posTexture, GLuint colTexture, GLuint normTexture);
+
+	//Compacts the valid points from the point cloud buffer into the VBO.
+	//Returns the number of valid elements
+	int fillPointCloudVBO();
 
 	static void glutIdle();
 	static void glutDisplay();
