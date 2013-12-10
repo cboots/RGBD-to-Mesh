@@ -45,11 +45,11 @@ __global__ void makePointCloud(ColorPixel* colorPixels, DPixel* dPixels, int xRe
 		float u = (c - (xRes-1)/2.0f + 1) / (xRes-1); // image plane u coordinate
 		float v = ((yRes-1)/2.0f - r) / (yRes-1); // image plane v coordinate
 		float Z = dPixels[i].depth/1000.0f; // depth in mm
-        if (Z > 0.0f) {
-		    pointCloud[r][c].pos = glm::vec3(u*Z*SCALE_X, v*Z*SCALE_Y, Z); // convert uv to XYZ
-        } else {
-            pointCloud[r][c].pos = glm::vec3(0.0f);
-        }
+		if (Z > 0.0f) {
+			pointCloud[r][c].pos = glm::vec3(u*Z*SCALE_X, v*Z*SCALE_Y, Z); // convert uv to XYZ
+		} else {
+			pointCloud[r][c].pos = glm::vec3(0.0f);
+		}
 		pointCloud[r][c].color = glm::vec3(colorPixels[i].r, colorPixels[i].g, colorPixels[i].b); // copy over texture
 	}
 }
@@ -57,8 +57,8 @@ __global__ void makePointCloud(ColorPixel* colorPixels, DPixel* dPixels, int xRe
 __device__ glm::vec3 normalFrom3x3Covar(glm::mat3 A) {
 	// Given a (real, symmetric) 3x3 covariance matrix A, returns the eigenvector corresponding to the min eigenvalue
 	// (see: http://en.wikipedia.org/wiki/Eigenvalue_algorithm#3.C3.973_matrices)
-    glm::vec3 eigs;
-    glm::vec3 normal = glm::vec3(0.0f);
+	glm::vec3 eigs;
+	glm::vec3 normal = glm::vec3(0.0f);
 	float p1 = pow(A[0][1], 2) + pow(A[0][2], 2) + pow(A[1][2], 2);
 	if (p1 == 0) { // A is diagonal
 		eigs = glm::vec3(A[0][0], A[1][1], A[2][2]);
@@ -80,21 +80,21 @@ __device__ glm::vec3 normalFrom3x3Covar(glm::mat3 A) {
 		eigs[0] = q + 2*p*glm::cos(phi);
 		eigs[1] = q + 2*p*glm::cos(phi + 2*PI/3);
 		eigs[2] = 3*q - eigs.x - eigs.z;
-        float tmp;
-        int i, eig_i;
-        // sorting: swap first pair if necessary, then second pair, then first pair again
-        for (i=0; i<3; i++) {
-            eig_i = i%2;
-            tmp = eigs[eig_i];
-            eigs[eig_i] = glm::min(tmp, eigs[eig_i+1]);
-            eigs[eig_i+1] = glm::max(tmp, eigs[eig_i+1]);
-        }
+		float tmp;
+		int i, eig_i;
+		// sorting: swap first pair if necessary, then second pair, then first pair again
+		for (i=0; i<3; i++) {
+			eig_i = i%2;
+			tmp = eigs[eig_i];
+			eigs[eig_i] = glm::min(tmp, eigs[eig_i+1]);
+			eigs[eig_i+1] = glm::max(tmp, eigs[eig_i+1]);
+		}
 	}
 	// compute eigenvector from min eigenvalue if point cloud is sufficiently "flat"
-    if (eigs[1]/eigs[0] >= MIN_EIG_RATIO) {
-	  normal = glm::cross(A[0] - glm::vec3(eigs[0], 0.0f, 0.0f), A[1] - glm::vec3(0.0f, eigs[0], 0.0f));
-    }
-    return normal;
+	if (eigs[1]/eigs[0] >= MIN_EIG_RATIO) {
+		normal = glm::cross(A[0] - glm::vec3(eigs[0], 0.0f, 0.0f), A[1] - glm::vec3(0.0f, eigs[0], 0.0f));
+	}
+	return normal;
 }
 
 __global__ void computePointNormals(PointCloud** pointCloud, int xRes, int yRes) {
@@ -148,6 +148,36 @@ __global__ void sendColorImageBufferToPBO(float4* PBOpos, glm::vec2 resolution, 
 		PBOpos[index].y = color.g;
 		PBOpos[index].z = color.b;
 		PBOpos[index].w = 1.0f;
+	}
+}
+
+
+__global__ void sendPCBToPBOs(float4* dptrPosition, float4* dptrColor, float4* dptrNormal, glm::vec2 resolution, PointCloud* dev_pcb)
+{
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int index = x + (y * resolution.x);
+
+	if(x<resolution.x && y<resolution.y){
+
+		PointCloud point = dev_pcb[index];
+
+		// Each thread writes one pixel location in the texture (textel)
+
+		dptrPosition[index].x = point.pos.x;
+		dptrPosition[index].y = point.pos.y;
+		dptrPosition[index].z = point.pos.z;
+		dptrPosition[index].w = 1.0;
+
+		dptrColor[index].x = point.color.r;
+		dptrColor[index].y = point.color.g;
+		dptrColor[index].z = point.color.b;
+		dptrColor[index].w = 1.0;
+
+		dptrNormal[index].x = point.normal.x;
+		dptrNormal[index].y = point.normal.y;
+		dptrNormal[index].z = point.normal.z;
+		dptrNormal[index].w = 0.0;
 	}
 }
 
@@ -246,7 +276,7 @@ bool drawDepthImageBufferToPBO(float4* dev_PBOpos, int texWidth, int texHeight)
 		(int)ceil(float(texHeight)/float(tileSize)));
 
 	sendDepthImageBufferToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(dev_PBOpos, glm::vec2(texWidth, texHeight), dev_depthImageBuffer);
-	
+
 	return true;
 }
 
@@ -266,7 +296,7 @@ bool drawColorImageBufferToPBO(float4* dev_PBOpos, int texWidth, int texHeight)
 		(int)ceil(float(texHeight)/float(tileSize)));
 
 	sendColorImageBufferToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(dev_PBOpos, glm::vec2(texWidth, texHeight), dev_colorImageBuffer);
-	
+
 	return true;
 }
 
@@ -280,7 +310,18 @@ __host__ void drawPointCloudVBOToTexture(GLuint texture, int texWidth, int texHe
 //Renders various debug information about the 2D point cloud buffer to the texture.
 //Texture width and height must match the resolution of the point cloud buffer.
 //Returns false if width or height does not match, true otherwise
-__host__ bool drawPCBToPBO(float4* dptrPosition, float4* dptrColor, float4* dptrNormal, int mXRes, int mYRes)
+__host__ bool drawPCBToPBO(float4* dptrPosition, float4* dptrColor, float4* dptrNormal, int texWidth, int texHeight)
 {
-	return false;
+	if(texWidth != cuImageWidth || texHeight != cuImageHeight)
+		return false;
+
+	int tileSize = 8;
+
+	dim3 threadsPerBlock(tileSize, tileSize);
+	dim3 fullBlocksPerGrid((int)ceil(float(texWidth)/float(tileSize)), 
+		(int)ceil(float(texHeight)/float(tileSize)));
+
+	sendPCBToPBOs<<<fullBlocksPerGrid, threadsPerBlock>>>(dptrPosition, dptrColor, dptrNormal, glm::vec2(texWidth, texHeight), dev_pointCloudBuffer);
+
+	return true;
 }
