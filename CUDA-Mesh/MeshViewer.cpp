@@ -506,6 +506,7 @@ void MeshViewer::onNewRGBDFrame(RGBDFramePtr frame)
 
 void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 {
+	LogDevice* device = NULL;
 	float newPlayback = 1.0;
 	switch (key)
 	{
@@ -538,17 +539,30 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		break;
 	case('p'):
 		cout << "Restarting Playback" << endl;
-		((LogDevice*) mDevice)->restartPlayback();
+		device = dynamic_cast<LogDevice*>(mDevice);
+		if(device != 0) {
+			// old was safely casted to LogDevice
+			device->restartPlayback();
+		}
+
 		break;
 	case '=':
-		newPlayback = ((LogDevice*) mDevice)->getPlaybackSpeed()+0.1;
-		cout <<"Playback speed: " << newPlayback << endl;
-		((LogDevice*) mDevice)->setPlaybackSpeed(newPlayback);
+		device = dynamic_cast<LogDevice*>(mDevice);
+		if(device != 0) {
+			// old was safely casted to LogDevice
+			newPlayback = device->getPlaybackSpeed()+0.1;
+			cout <<"Playback speed: " << newPlayback << endl;
+			device->setPlaybackSpeed(newPlayback);		
+		}
 		break;
 	case '-':
-		newPlayback = ((LogDevice*) mDevice)->getPlaybackSpeed()-0.1;
-		cout <<"Playback speed: " << newPlayback << endl;
-		((LogDevice*) mDevice)->setPlaybackSpeed(newPlayback);
+		device = dynamic_cast<LogDevice*>(mDevice);
+		if(device != 0) {
+			// old was safely casted to LogDevice
+			newPlayback = device->getPlaybackSpeed()-0.1;
+			cout <<"Playback speed: " << newPlayback << endl;
+			device->setPlaybackSpeed(newPlayback);		
+		}
 		break;
 	}
 
