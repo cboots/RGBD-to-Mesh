@@ -28,6 +28,11 @@ void MeshViewer::glutReshape(int w, int h)
 
 //End platform specific code
 
+const GLuint MeshViewer::positionLocation = 0;
+const GLuint MeshViewer::texcoordsLocation = 1;
+const char * MeshViewer::attributeLocations[] = { "Position", "Texcoords" };
+
+
 
 MeshViewer* MeshViewer::msSelf = NULL;
 
@@ -153,25 +158,12 @@ void MeshViewer::initShader()
 	const char * depth_frag = "shaders/depthFS.glsl";
 
 	//Color image shader
-	Utility::shaders_t shaders = Utility::loadShaders(color_vert, color_frag);
-
-	color_prog = glCreateProgram();
-
-	glBindAttribLocation(color_prog, quad_attributes::POSITION, "vs_position");
-	glBindAttribLocation(color_prog, quad_attributes::TEXCOORD, "vs_texCoord");
-
-	Utility::attachAndLinkProgram(color_prog,shaders);
-	
+	color_prog = glslUtility::createProgram(color_vert, NULL, color_frag, attributeLocations, 2);
 
 	//DEPTH image shader
-	shaders = Utility::loadShaders(depth_vert, depth_frag);
+	depth_prog = glslUtility::createProgram(depth_vert, NULL, depth_frag, attributeLocations, 2);
 
-	depth_prog = glCreateProgram();
 
-	glBindAttribLocation(depth_prog, quad_attributes::POSITION, "vs_position");
-	glBindAttribLocation(depth_prog, quad_attributes::TEXCOORD, "vs_texCoord");
-
-	Utility::attachAndLinkProgram(depth_prog,shaders);
 }
 
 
@@ -295,10 +287,10 @@ void MeshViewer::initQuad() {
 	glBindBuffer(GL_ARRAY_BUFFER, device_quad.vbo_data);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
 	//Use of strided data, Array of Structures instead of Structures of Arrays
-	glVertexAttribPointer(quad_attributes::POSITION, 3, GL_FLOAT, GL_FALSE,sizeof(vertex2_t),0);
-	glVertexAttribPointer(quad_attributes::TEXCOORD, 2, GL_FLOAT, GL_FALSE,sizeof(vertex2_t),(void*)sizeof(vec3));
-	glEnableVertexAttribArray(quad_attributes::POSITION);
-	glEnableVertexAttribArray(quad_attributes::TEXCOORD);
+	glVertexAttribPointer(positionLocation, 3, GL_FLOAT, GL_FALSE,sizeof(vertex2_t),0);
+	glVertexAttribPointer(texcoordsLocation, 2, GL_FLOAT, GL_FALSE,sizeof(vertex2_t),(void*)sizeof(vec3));
+	glEnableVertexAttribArray(positionLocation);
+	glEnableVertexAttribArray(texcoordsLocation);
 
 	//indices
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, device_quad.vbo_indices);

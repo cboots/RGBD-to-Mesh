@@ -9,7 +9,7 @@
 #include "FrameLogger.h"
 #include "device_structs.h"
 #include "Device.h"
-#include "Utility.h"
+#include "glslUtility.h"
 #include "LogDevice.h"
 
 using namespace glm;
@@ -23,17 +23,18 @@ enum DisplayModes
 	DISPLAY_MODE_3WAY_DEPTH_IMAGE_OVERLAY
 };
 
-namespace quad_attributes {
-	enum {
-		POSITION,
-		TEXCOORD
-	};
-}
 
 
 
 class MeshViewer : public RGBDDevice::NewRGBDFrameListener
 {
+private:
+	static const GLuint positionLocation;
+	static const GLuint texcoordsLocation;
+	static const char *attributeLocations[];
+
+
+
 public:
 	MeshViewer(RGBDDevice* device, int screenwidth, int screenheight);
 	~MeshViewer(void);
