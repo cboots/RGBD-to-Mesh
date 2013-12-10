@@ -201,6 +201,30 @@ void MeshViewer::initTextures()
 
 	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F , mXRes, mYRes, 0, GL_RGBA, GL_FLOAT,0);
 
+	//Setup position texture
+	glBindTexture(GL_TEXTURE_2D, positionTexture);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+
+	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F , mXRes, mYRes, 0, GL_RGBA, GL_FLOAT,0);
+
+	//Setup normals texture
+	glBindTexture(GL_TEXTURE_2D, normalTexture);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+
+	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F , mXRes, mYRes, 0, GL_RGBA, GL_FLOAT,0);
+
+
+
 	//Setup point cloud texture
 	glBindTexture(GL_TEXTURE_2D, pointCloudTexture);
 
@@ -217,8 +241,13 @@ void MeshViewer::initTextures()
 
 void MeshViewer::cleanupTextures()
 {
+	//Image space textures
 	glDeleteTextures(1, &colorTexture);
 	glDeleteTextures(1, &depthTexture);
+	glDeleteTextures(1, &positionTexture);
+	glDeleteTextures(1, &normalTexture);
+
+	//screen space textures
 	glDeleteTextures(1, &pointCloudTexture);
 }
 
@@ -246,7 +275,7 @@ void MeshViewer::initPBO()
 
 void MeshViewer::initFullScreenPBO()
 {
-// Generate a buffer ID called a PBO (Pixel Buffer Object)
+	// Generate a buffer ID called a PBO (Pixel Buffer Object)
 	if(fullscreenPBO){
 		glDeleteBuffers(1, &fullscreenPBO);
 	}
@@ -302,7 +331,7 @@ void MeshViewer::initQuad() {
 
 
 //Normalized device coordinates (-1 : 1, -1 : 1) center of viewport, and scale being 
-void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale, float heightScale, GLuint texture)
+void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale, float heightScale, GLuint* textures, int numTextures)
 {
 	//Setup program and uniforms
 	glUseProgram(prog);
@@ -319,10 +348,24 @@ void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale,
 	glUniformMatrix4fv(glGetUniformLocation(prog, "u_projMatrix"),1, GL_FALSE, &persp[0][0] );
 	glUniformMatrix4fv(glGetUniformLocation(prog, "u_viewMatrix"),1, GL_FALSE, &viewmat[0][0] );
 
-	//Bind texture
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	glUniform1i(glGetUniformLocation(prog, "u_ColorTex"),0);
+	//Setup textures
+
+	if(prog == color_prog || prog == depth_prog)
+	{
+		if(numTextures < 1){
+			cout << "Error, not enough textures provided for this program" << endl;
+			return;
+		}
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, textures[0]);
+		glUniform1i(glGetUniformLocation(prog, "u_ColorTex"),0);
+	}
+
+
+
+
+
 
 	//Draw quad
 	glBindVertexArray(device_quad.vertex_array);
@@ -403,36 +446,36 @@ void MeshViewer::display()
 	{
 	case DISPLAY_MODE_DEPTH:
 		drawDepthImageBufferToTexture(depthTexture);
-		
-		drawQuad(depth_prog, 0, 0, 1, 1, depthTexture);
+
+		drawQuad(depth_prog, 0, 0, 1, 1, &depthTexture, 1);
 		break;
 	case DISPLAY_MODE_IMAGE:
 		drawColorImageBufferToTexture(colorTexture);
-		
-		drawQuad(color_prog, 0, 0, 1, 1, colorTexture);
+
+		drawQuad(color_prog, 0, 0, 1, 1, &colorTexture, 1);
 		break;
 	case DISPLAY_MODE_OVERLAY:
 		drawDepthImageBufferToTexture(depthTexture);
 		drawColorImageBufferToTexture(colorTexture);
-		
-		
-		drawQuad(color_prog, 0, 0, 1, 1, colorTexture);
+
+
+		drawQuad(color_prog, 0, 0, 1, 1, &colorTexture, 1);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);//Alpha blending
-		drawQuad(depth_prog, 0, 0, 1, 1, depthTexture);
+		drawQuad(depth_prog, 0, 0, 1, 1, &depthTexture, 1);
 		glDisable(GL_BLEND);
 		break;
 	case DISPLAY_MODE_3WAY_DEPTH_IMAGE_OVERLAY:
 		drawDepthImageBufferToTexture(depthTexture);
 		drawColorImageBufferToTexture(colorTexture);
-		
-		drawQuad(color_prog, -0.5, -0.5, 0.5, 0.5, colorTexture);
-		drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, depthTexture);
-		
-		drawQuad(color_prog, 0.5, 0, 0.5, 1, colorTexture);
+
+		drawQuad(color_prog, -0.5, -0.5, 0.5, 0.5, &colorTexture, 1);
+		drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, &depthTexture, 1);
+
+		drawQuad(color_prog, 0.5, 0, 0.5, 1, &colorTexture, 1);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);//Alpha blending
-		drawQuad(depth_prog, 0.5, 0, 0.5, 1, depthTexture);
+		drawQuad(depth_prog, 0.5, 0, 0.5, 1, &depthTexture, 1);
 		glDisable(GL_BLEND);
 		break;
 		break;
@@ -518,7 +561,7 @@ void MeshViewer::reshape(int w, int h)
 	mHeight = h;
 	glBindFramebuffer(GL_FRAMEBUFFER,0);
 	glViewport(0,0,(GLsizei)w,(GLsizei)h);
-	
+
 	initTextures();
 	initFullScreenPBO();//Refresh fullscreen PBO for new resolution
 }

@@ -61,9 +61,14 @@ protected:
 	void initOpenGLHooks();
 
 	//Textures
-	GLuint colorTexture;//Image size
-	GLuint depthTexture;//Image size
-	GLuint pointCloudTexture;//Screen size
+	//Image space textures
+	GLuint colorTexture;
+	GLuint depthTexture;
+	GLuint positionTexture;
+	GLuint normalTexture;
+
+	//Screen space textures
+	GLuint pointCloudTexture;
 
 
 private:
@@ -92,7 +97,7 @@ private:
 	void initPBO();
 	void initFullScreenPBO();
 
-	void drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale, float heightScale, GLuint texture);
+	void drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale, float heightScale, GLuint* textures, int numTextures);
 
 	//Draws depth image buffer to the texture.
 	//Texture width and height must match the resolution of the depth image.
