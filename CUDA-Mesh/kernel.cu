@@ -13,6 +13,10 @@
 #define PI      3.141592653589793238
 #define MIN_EIG_RATIO 1.5
 
+#define RAD_WIN 4
+#define RAD_NN 0.05
+#define MIN_NN int((2*RAD_WIN+1)*0.5)
+
 ColorPixel* dev_colorImageBuffer;
 DPixel* dev_depthImageBuffer;
 PointCloud* dev_pointCloudBuffer;
@@ -41,7 +45,11 @@ __global__ void makePointCloud(ColorPixel* colorPixels, DPixel* dPixels, int xRe
 		float u = (c - (xRes-1)/2.0f + 1) / (xRes-1); // image plane u coordinate
 		float v = ((yRes-1)/2.0f - r) / (yRes-1); // image plane v coordinate
 		float Z = dPixels[i].depth/1000.0f; // depth in mm
-		pointCloud[i].pos = glm::vec3(u*Z*SCALE_X, v*Z*SCALE_Y, Z); // convert uv to XYZ
+        if (Z > 0.0f) {
+		    pointCloud[i].pos = glm::vec3(u*Z*SCALE_X, v*Z*SCALE_Y, Z); // convert uv to XYZ
+        } else {
+            pointCloud[i].pos = glm::vec3(0.0f);
+        }
 		pointCloud[i].color = glm::vec3(colorPixels[i].r, colorPixels[i].g, colorPixels[i].b); // copy over texture
 	}
 }
@@ -94,7 +102,6 @@ __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) 
 	int r = i / xRes;
 	int c = i % xRes;
 
-
 }
 
 
@@ -105,7 +112,7 @@ __global__ void sendDepthImageBufferToPBO(float4* PBOpos, glm::vec2 resolution, 
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 	int index = x + (y * resolution.x);
 
-	if(x<resolution.x && y<resolution.y){
+	if(x<resolution.x && y<resolution.y) {
 
 		//Cast to float for storage
 		float depth = depthBuffer[index].depth;
