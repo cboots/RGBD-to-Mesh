@@ -36,7 +36,7 @@ __host__ void checkCUDAError(const char *msg) {
 
 
 
-__global__ void makePointCloud(ColorPixel* colorPixels, DPixel* dPixels, int xRes, int yRes, PointCloud** pointCloud) {
+__global__ void makePointCloud(ColorPixel* colorPixels, DPixel* dPixels, int xRes, int yRes, PointCloud* pointCloud) {
 	int i = (blockIdx.y*gridDim.x + blockIdx.x)*(blockDim.y*blockDim.x) + (threadIdx.y*blockDim.x) + threadIdx.x;
 	int r = i / xRes;
 	int c = i % xRes;
@@ -46,11 +46,11 @@ __global__ void makePointCloud(ColorPixel* colorPixels, DPixel* dPixels, int xRe
 		float v = ((yRes-1)/2.0f - r) / (yRes-1); // image plane v coordinate
 		float Z = dPixels[i].depth/1000.0f; // depth in mm
         if (Z > 0.0f) {
-		    pointCloud[r][c].pos = glm::vec3(u*Z*SCALE_X, v*Z*SCALE_Y, Z); // convert uv to XYZ
+		    pointCloud[i].pos = glm::vec3(u*Z*SCALE_X, v*Z*SCALE_Y, Z); // convert uv to XYZ
         } else {
-            pointCloud[r][c].pos = glm::vec3(0.0f);
+            pointCloud[i].pos = glm::vec3(0.0f);
         }
-		pointCloud[r][c].color = glm::vec3(colorPixels[i].r, colorPixels[i].g, colorPixels[i].b); // copy over texture
+		pointCloud[i].color = glm::vec3(colorPixels[i].r, colorPixels[i].g, colorPixels[i].b); // copy over texture
 	}
 }
 

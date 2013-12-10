@@ -43,7 +43,7 @@ int main(int argc, char** argv)
 {
 
 	LogDevice device;
-	device.setSourceDirectory("logs\\chairlogs");
+	device.setSourceDirectory("logs\\siglab");
 	device.setLoopStreams(true);
 	//ONIKinectDevice device;
 	
