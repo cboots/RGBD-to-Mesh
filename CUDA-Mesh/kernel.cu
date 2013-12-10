@@ -53,8 +53,9 @@ __global__ void makePointCloud(ColorPixel* colorPixels, DPixel* dPixels, int xRe
 		} else {
 			pointCloud[i].pos = glm::vec3(0.0f);
 			pointCloud[i].color = glm::vec3(0.0f);
-			pointCloud[i].normal = glm::vec3(0.0f);
 		}
+		//Always clear normals
+		pointCloud[i].normal = glm::vec3(0.0f);
 	}
 }
 
@@ -106,40 +107,40 @@ __global__ void computePointNormals(PointCloud** pointCloud, int xRes, int yRes)
 	int r = i / xRes;
 	int c = i % xRes;
 
-    int N = 0; // number of nearest neighbors
-    glm::vec3 neighbor;
-    glm::vec3 center = pointCloud[r][c].pos;
-    glm::mat3 covariance = glm::mat3(0.0f);
+	int N = 0; // number of nearest neighbors
+	glm::vec3 neighbor;
+	glm::vec3 center = pointCloud[r][c].pos;
+	glm::mat3 covariance = glm::mat3(0.0f);
 	int win_r, win_c;
 	for (win_r = r-RAD_WIN; win_r <= r+RAD_WIN; win_r++) {
 		for (win_c = c-RAD_WIN; win_c <= c+RAD_WIN; win_c++) {
-            // exclude center from neighbor search
+			// exclude center from neighbor search
 			if (win_r != r && win_c != c) {
-                // check if neighbor is in frame
-                if (win_r >= 0 && win_r < yRes && win_c >= 0 && win_c < xRes) {
-                    neighbor = pointCloud[win_r][win_c].pos;
-                    // check if neighbor has valid depth data
-                    if (glm::length(neighbor) > EPSILON) {
-                        // check if neighbor is close enough in world space
-                        if (glm::distance(neighbor, center) < RAD_NN) {
-                            N += 1; // valid neighbor found
-                            glm::vec3 difference = neighbor - center;
-                            // remember GLM is column major
-                            covariance[0] += (difference * difference[0]);
-                            covariance[1] += (difference * difference[1]);
-                            covariance[2] += (difference * difference[2]);
-                        }
-                    }
-                }
+				// check if neighbor is in frame
+				if (win_r >= 0 && win_r < yRes && win_c >= 0 && win_c < xRes) {
+					neighbor = pointCloud[win_r][win_c].pos;
+					// check if neighbor has valid depth data
+					if (glm::length(neighbor) > EPSILON) {
+						// check if neighbor is close enough in world space
+						if (glm::distance(neighbor, center) < RAD_NN) {
+							N += 1; // valid neighbor found
+							glm::vec3 difference = neighbor - center;
+							// remember GLM is column major
+							covariance[0] += (difference * difference[0]);
+							covariance[1] += (difference * difference[1]);
+							covariance[2] += (difference * difference[2]);
+						}
+					}
+				}
 			}
 		}
 	}
-    // check if enough nearest neighbors were found
-    if (N >= MIN_NN) {
-        covariance = covariance/N; // average covariance
-        // compute and assign normal (0 if not "flat" enough)
-        pointCloud[r][c].normal = normalFrom3x3Covar(covariance);
-    }
+	// check if enough nearest neighbors were found
+	if (N >= MIN_NN) {
+		covariance = covariance/N; // average covariance
+		// compute and assign normal (0 if not "flat" enough)
+		pointCloud[r][c].normal = normalFrom3x3Covar(covariance);
+	}
 }
 
 
