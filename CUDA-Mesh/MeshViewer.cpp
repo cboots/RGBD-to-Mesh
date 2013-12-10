@@ -577,10 +577,14 @@ void MeshViewer::display()
 		drawQuad(depth_prog, 0.5, 0, 0.5, 1, &depthTexture, 1);
 		glDisable(GL_BLEND);
 		break;
-	case DISPLAY_MODE_PCB_COLOR:
-	case DISPLAY_MODE_PCB_POSITION:
-	case DISPLAY_MODE_PCB_NORMAL:
+	case DISPLAY_MODE_4WAY_PCB:
+		drawDepthImageBufferToTexture(depthTexture);
 		drawPCBtoTextures(positionTexture, colorTexture, normalTexture);
+		drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, &depthTexture, 1);//Upper left
+		drawQuad(color_prog,  0.5,  0.5, 0.5, 0.5, &positionTexture, 1);//Upper Right
+		drawQuad(color_prog, -0.5, -0.5, 0.5, 0.5, &colorTexture, 1);//Lower Left
+		drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, &normalTexture, 1);//Lower Right
+
 		break;
 	}
 
@@ -635,6 +639,9 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		break;
 	case '4':
 		mViewState = DISPLAY_MODE_3WAY_DEPTH_IMAGE_OVERLAY;
+		break;
+	case '5':
+		mViewState = DISPLAY_MODE_4WAY_PCB;
 		break;
 	case('r'):
 		cout << "Reloading Shaders" <<endl;

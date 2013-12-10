@@ -37,20 +37,21 @@ __host__ void checkCUDAError(const char *msg) {
 
 
 __global__ void makePointCloud(ColorPixel* colorPixels, DPixel* dPixels, int xRes, int yRes, PointCloud* pointCloud) {
-	int i = (blockIdx.y*gridDim.x + blockIdx.x)*(blockDim.y*blockDim.x) + (threadIdx.y*blockDim.x) + threadIdx.x;
-	int r = i / xRes;
-	int c = i % xRes;
+	
+	int r = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int c = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int i = r + (c * xRes);
 
 	if (dPixels[i].depth > 0.0f) {
 		float u = (c - (xRes-1)/2.0f + 1) / (xRes-1); // image plane u coordinate
 		float v = ((yRes-1)/2.0f - r) / (yRes-1); // image plane v coordinate
 		float Z = dPixels[i].depth/1000.0f; // depth in mm
 
-        if (Z > 0.0f) {
-		    pointCloud[i].pos = glm::vec3(u*Z*SCALE_X, v*Z*SCALE_Y, Z); // convert uv to XYZ
-        } else {
-            pointCloud[i].pos = glm::vec3(0.0f);
-        }
+		if (Z > 0.0f) {
+			pointCloud[i].pos = glm::vec3(u*Z*SCALE_X, v*Z*SCALE_Y, Z); // convert uv to XYZ
+		} else {
+			pointCloud[i].pos = glm::vec3(0.0f);
+		}
 		pointCloud[i].color = glm::vec3(colorPixels[i].r, colorPixels[i].g, colorPixels[i].b); // copy over texture
 	}
 }
@@ -250,8 +251,13 @@ __host__ bool pushColorArrayToBuffer(ColorPixel* hColorArray, int width, int hei
 //Converts the color and depth images currently in GPU buffers into point cloud buffer
 __host__ void convertToPointCloud()
 {
-	//TODO: Implement
+	int tileSize = 8;
 
+	dim3 threadsPerBlock(tileSize, tileSize);
+	dim3 fullBlocksPerGrid((int)ceil(float(cuImageWidth)/float(tileSize)), 
+		(int)ceil(float(cuImageHeight)/float(tileSize)));
+
+	makePointCloud<<<fullBlocksPerGrid, threadsPerBlock>>>(dev_colorImageBuffer, dev_depthImageBuffer, cuImageWidth, cuImageHeight, dev_pointCloudBuffer);
 }
 
 //Computes normals for point cloud in buffer and writes back to the point cloud buffer.
