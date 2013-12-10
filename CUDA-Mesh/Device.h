@@ -55,4 +55,4 @@ void drawPointCloudVBOToTexture(GLuint texture, int texWidth, int texHeight /*TO
 //Renders various debug information about the 2D point cloud buffer to the texture.
 //Texture width and height must match the resolution of the point cloud buffer.
 //Returns false if width or height does not match, true otherwise
-bool drawPointCloudDebugToTexture(GLuint texture, int texWidth, int texHeight /*TODO: More vizualization parameters here*/);
+bool drawPCBToPBO(float4* dptrPosition, float4* dptrColor, float4* dptrNormal, int mXRes, int mYRes);

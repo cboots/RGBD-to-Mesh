@@ -20,7 +20,10 @@ enum DisplayModes
 	DISPLAY_MODE_DEPTH,
 	DISPLAY_MODE_IMAGE,
 	DISPLAY_MODE_POINT_CLOUD,
-	DISPLAY_MODE_3WAY_DEPTH_IMAGE_OVERLAY
+	DISPLAY_MODE_3WAY_DEPTH_IMAGE_OVERLAY,
+	DISPLAY_MODE_PCB_COLOR,
+	DISPLAY_MODE_PCB_POSITION,
+	DISPLAY_MODE_PCB_NORMAL
 };
 
 
@@ -29,10 +32,15 @@ enum DisplayModes
 class MeshViewer : public RGBDDevice::NewRGBDFrameListener
 {
 private:
-	static const GLuint positionLocation;
-	static const GLuint texcoordsLocation;
-	static const char *attributeLocations[];
 
+	static const GLuint MeshViewer::quadPositionLocation;
+	static const GLuint MeshViewer::quadTexcoordsLocation;
+	static const char * MeshViewer::quadAttributeLocations[];
+
+	static const GLuint MeshViewer::vbopositionLocation;
+	static const GLuint MeshViewer::vbocolorLocation;
+	static const GLuint MeshViewer::vbonormalLocation;
+	static const char * MeshViewer::vboAttributeLocations[];
 
 
 public:
@@ -70,8 +78,6 @@ protected:
 	//Screen space textures
 	GLuint pointCloudTexture;
 
-
-private:
 	device_mesh2_t device_quad;
 	static MeshViewer* msSelf;
 	RGBDDevice* mDevice;
@@ -87,9 +93,14 @@ private:
 	//Shader programs
 	GLuint depth_prog;
 	GLuint color_prog;
+	GLuint pcbdebug_prog;
+	GLuint pcvbo_prog;
 
 	//PBOs
-	GLuint imagePBO;
+	GLuint imagePBO0;
+	GLuint imagePBO1;
+	GLuint imagePBO2;
+
 	GLuint fullscreenPBO;
 
 	void initShader();
@@ -108,6 +119,8 @@ private:
 	//Texture width and height must match the resolution of the color image.
 	//Returns false if width or height does not match, true otherwise
 	bool drawColorImageBufferToTexture(GLuint texture);
+
+	void drawPCBtoTextures(GLuint posTexture, GLuint colTexture, GLuint normTexture);
 
 	static void glutIdle();
 	static void glutDisplay();

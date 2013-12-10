@@ -28,11 +28,14 @@ void MeshViewer::glutReshape(int w, int h)
 
 //End platform specific code
 
-const GLuint MeshViewer::positionLocation = 0;
-const GLuint MeshViewer::texcoordsLocation = 1;
-const char * MeshViewer::attributeLocations[] = { "Position", "Texcoords" };
+const GLuint MeshViewer::quadPositionLocation = 0;
+const GLuint MeshViewer::quadTexcoordsLocation = 1;
+const char * MeshViewer::quadAttributeLocations[] = { "Position", "Texcoords" };
 
-
+const GLuint MeshViewer::vbopositionLocation = 0;
+const GLuint MeshViewer::vbocolorLocation = 1;
+const GLuint MeshViewer::vbonormalLocation = 2;
+const char * MeshViewer::vboAttributeLocations[] = { "Position", "Color", "Normal" };
 
 MeshViewer* MeshViewer::msSelf = NULL;
 
@@ -151,19 +154,26 @@ void MeshViewer::initOpenGLHooks()
 
 void MeshViewer::initShader()
 {
-	//Passthrough shaders that sample textures
-	const char * color_vert = "shaders/colorVS.glsl";
+
+	const char * pass_vert  = "shaders/passVS.glsl";
 	const char * color_frag = "shaders/colorFS.glsl";
-	const char * depth_vert = "shaders/depthVS.glsl";
 	const char * depth_frag = "shaders/depthFS.glsl";
+	const char * pcbdebug_frag = "shaders/pointCloudBufferDebugFS.glsl";
+	const char * pcvbo_vert = "shaders/pointCloudVBO_FS.glsl";
+	const char * pcvbo_geom = "shaders/pointCloudVBO_FS.glsl";
+	const char * pcvbo_frag = "shaders/pointCloudVBO_FS.glsl";
 
 	//Color image shader
-	color_prog = glslUtility::createProgram(color_vert, NULL, color_frag, attributeLocations, 2);
+	color_prog = glslUtility::createProgram(pass_vert, NULL, color_frag, quadAttributeLocations, 2);
 
 	//DEPTH image shader
-	depth_prog = glslUtility::createProgram(depth_vert, NULL, depth_frag, attributeLocations, 2);
+	depth_prog = glslUtility::createProgram(pass_vert, NULL, depth_frag, quadAttributeLocations, 2);
 
+	//Point Cloud Buffer Debug Shader
+	pcbdebug_prog = glslUtility::createProgram(pass_vert, NULL, pcbdebug_frag, quadAttributeLocations, 2);
 
+	//Point cloud VBO renderer
+	pcvbo_prog = glslUtility::createProgram(pass_vert, NULL, pcbdebug_frag, vboAttributeLocations, 3);
 }
 
 
@@ -255,21 +265,47 @@ void MeshViewer::cleanupTextures()
 void MeshViewer::initPBO()
 {
 	// Generate a buffer ID called a PBO (Pixel Buffer Object)
-	if(imagePBO){
-		glDeleteBuffers(1, &imagePBO);
+	if(imagePBO0){
+		glDeleteBuffers(1, &imagePBO0);
+	}
+
+	if(imagePBO1){
+		glDeleteBuffers(1, &imagePBO1);
+	}
+
+	if(imagePBO2){
+		glDeleteBuffers(1, &imagePBO2);
 	}
 
 	int num_texels = mXRes*mYRes;
 	int num_values = num_texels * 4;
 	int size_tex_data = sizeof(GLfloat) * num_values;
-	glGenBuffers(1,&imagePBO);
+	glGenBuffers(1,&imagePBO0);
+	glGenBuffers(1,&imagePBO1);
+	glGenBuffers(1,&imagePBO2);
 
 	// Make this the current UNPACK buffer (OpenGL is state-based)
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, imagePBO);
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, imagePBO0);
 
 	// Allocate data for the buffer. 4-channel float image
 	glBufferData(GL_PIXEL_UNPACK_BUFFER, size_tex_data, NULL, GL_DYNAMIC_COPY);
-	cudaGLRegisterBufferObject( imagePBO);
+	cudaGLRegisterBufferObject( imagePBO0);
+
+	
+	// Make this the current UNPACK buffer (OpenGL is state-based)
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, imagePBO1);
+
+	// Allocate data for the buffer. 4-channel float image
+	glBufferData(GL_PIXEL_UNPACK_BUFFER, size_tex_data, NULL, GL_DYNAMIC_COPY);
+	cudaGLRegisterBufferObject( imagePBO1);
+
+	
+	// Make this the current UNPACK buffer (OpenGL is state-based)
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, imagePBO2);
+
+	// Allocate data for the buffer. 4-channel float image
+	glBufferData(GL_PIXEL_UNPACK_BUFFER, size_tex_data, NULL, GL_DYNAMIC_COPY);
+	cudaGLRegisterBufferObject( imagePBO2);
 }
 
 
@@ -316,10 +352,10 @@ void MeshViewer::initQuad() {
 	glBindBuffer(GL_ARRAY_BUFFER, device_quad.vbo_data);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
 	//Use of strided data, Array of Structures instead of Structures of Arrays
-	glVertexAttribPointer(positionLocation, 3, GL_FLOAT, GL_FALSE,sizeof(vertex2_t),0);
-	glVertexAttribPointer(texcoordsLocation, 2, GL_FLOAT, GL_FALSE,sizeof(vertex2_t),(void*)sizeof(vec3));
-	glEnableVertexAttribArray(positionLocation);
-	glEnableVertexAttribArray(texcoordsLocation);
+	glVertexAttribPointer(quadPositionLocation, 3, GL_FLOAT, GL_FALSE,sizeof(vertex2_t),0);
+	glVertexAttribPointer(quadTexcoordsLocation, 2, GL_FLOAT, GL_FALSE,sizeof(vertex2_t),(void*)sizeof(vec3));
+	glEnableVertexAttribArray(quadPositionLocation);
+	glEnableVertexAttribArray(quadTexcoordsLocation);
 
 	//indices
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, device_quad.vbo_indices);
@@ -351,6 +387,22 @@ void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale,
 	//Setup textures
 	int location = -1;
 	switch(numTextures){
+	case 5:
+		if ((location = glGetUniformLocation(prog, "u_Texture4")) != -1)
+		{
+			//has texture
+			glActiveTexture(GL_TEXTURE4);
+			glBindTexture(GL_TEXTURE_2D, textures[4]);
+			glUniform1i(location,0);
+		}
+	case 4:
+		if ((location = glGetUniformLocation(prog, "u_Texture3")) != -1)
+		{
+			//has texture
+			glActiveTexture(GL_TEXTURE3);
+			glBindTexture(GL_TEXTURE_2D, textures[3]);
+			glUniform1i(location,0);
+		}
 	case 3:
 		if ((location = glGetUniformLocation(prog, "u_Texture2")) != -1)
 		{
@@ -378,10 +430,6 @@ void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale,
 	}
 
 
-
-
-
-
 	//Draw quad
 	glBindVertexArray(device_quad.vertex_array);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, device_quad.vbo_indices);
@@ -401,12 +449,12 @@ void MeshViewer::run()
 bool MeshViewer::drawColorImageBufferToTexture(GLuint texture)
 {
 	float4* dptr;
-	cudaGLMapBufferObject((void**)&dptr, imagePBO);
+	cudaGLMapBufferObject((void**)&dptr, imagePBO0);
 	bool result = drawColorImageBufferToPBO(dptr, mXRes, mYRes);
-	cudaGLUnmapBufferObject(imagePBO);
+	cudaGLUnmapBufferObject(imagePBO0);
 	if(result){
 		//Draw to texture
-		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO);
+		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
 		glBindTexture(GL_TEXTURE_2D, texture);
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
 			GL_RGBA, GL_FLOAT, NULL);
@@ -420,12 +468,12 @@ bool MeshViewer::drawColorImageBufferToTexture(GLuint texture)
 bool MeshViewer::drawDepthImageBufferToTexture(GLuint texture)
 {	
 	float4* dptr;
-	cudaGLMapBufferObject((void**)&dptr, imagePBO);
+	cudaGLMapBufferObject((void**)&dptr, imagePBO0);
 	bool result = drawDepthImageBufferToPBO(dptr, mXRes, mYRes);
-	cudaGLUnmapBufferObject(imagePBO);
+	cudaGLUnmapBufferObject(imagePBO0);
 	if(result){
 		//Draw to texture
-		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO);
+		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
 		glBindTexture(GL_TEXTURE_2D, texture);
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
 			GL_RGBA, GL_FLOAT, NULL);
@@ -434,6 +482,42 @@ bool MeshViewer::drawDepthImageBufferToTexture(GLuint texture)
 	}
 
 	return result;
+}
+
+void MeshViewer::drawPCBtoTextures(GLuint posTexture, GLuint colTexture, GLuint normTexture)
+{
+	float4* dptrPosition;
+	float4* dptrColor;
+	float4* dptrNormal;
+	cudaGLMapBufferObject((void**)&dptrPosition, imagePBO0);
+	cudaGLMapBufferObject((void**)&dptrColor, imagePBO1);
+	cudaGLMapBufferObject((void**)&dptrNormal, imagePBO2);
+
+	bool result = drawPCBToPBO(dptrPosition, dptrColor, dptrNormal, mXRes, mYRes);
+
+	cudaGLUnmapBufferObject(imagePBO0);
+	cudaGLUnmapBufferObject(imagePBO1);
+	cudaGLUnmapBufferObject(imagePBO2);
+	if(result){
+		//Unpack to textures
+		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
+		glBindTexture(GL_TEXTURE_2D, positionTexture);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+			GL_RGBA, GL_FLOAT, NULL);
+
+		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO1);
+		glBindTexture(GL_TEXTURE_2D, colorTexture);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+			GL_RGBA, GL_FLOAT, NULL);
+
+		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO2);
+		glBindTexture(GL_TEXTURE_2D, normalTexture);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+			GL_RGBA, GL_FLOAT, NULL);
+
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+	}
 }
 
 ////All the important runtime stuff happens here:
@@ -493,6 +577,10 @@ void MeshViewer::display()
 		drawQuad(depth_prog, 0.5, 0, 0.5, 1, &depthTexture, 1);
 		glDisable(GL_BLEND);
 		break;
+	case DISPLAY_MODE_PCB_COLOR:
+	case DISPLAY_MODE_PCB_POSITION:
+	case DISPLAY_MODE_PCB_NORMAL:
+		drawPCBtoTextures(positionTexture, colorTexture, normalTexture);
 		break;
 	}
 
