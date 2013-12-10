@@ -37,7 +37,7 @@ __host__ void checkCUDAError(const char *msg) {
 
 
 __global__ void makePointCloud(ColorPixel* colorPixels, DPixel* dPixels, int xRes, int yRes, PointCloud* pointCloud) {
-	
+
 	int r = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int c = (blockIdx.y * blockDim.y) + threadIdx.y;
 	int i = r + (c * xRes);
@@ -46,12 +46,14 @@ __global__ void makePointCloud(ColorPixel* colorPixels, DPixel* dPixels, int xRe
 		float u = (c - (xRes-1)/2.0f + 1) / (xRes-1); // image plane u coordinate
 		float v = ((yRes-1)/2.0f - r) / (yRes-1); // image plane v coordinate
 		float Z = dPixels[i].depth/1000.0f; // depth in mm
-        if (Z > 0.0f) {
-		    pointCloud[i].pos = glm::vec3(u*Z*SCALE_X, v*Z*SCALE_Y, Z); // convert uv to XYZ
-        } else {
-            pointCloud[i].pos = glm::vec3(0.0f);
-        }
+		if (Z > 0.0f) {
+			pointCloud[i].pos = glm::vec3(u*Z*SCALE_X, v*Z*SCALE_Y, Z); // convert uv to XYZ
+		}
 		pointCloud[i].color = glm::vec3(colorPixels[i].r/255.0f, colorPixels[i].g/255.0f, colorPixels[i].b/255.0f); // copy over texture
+	}else{
+		pointCloud[i].pos = glm::vec3(0.0f);
+		pointCloud[i].color = glm::vec3(0.0f);
+		pointCloud[i].normal = glm::vec3(0.0f);
 	}
 }
 
@@ -103,14 +105,14 @@ __global__ void computePointNormals(PointCloud** pointCloud, int xRes, int yRes)
 	int r = i / xRes;
 	int c = i % xRes;
 
-    int win_r, win_c;
-    for (win_r = r-RAD_WIN; win_r <= r+RAD_WIN; win_r++) {
-        for (win_c = c-RAD_WIN; win_c <= c+RAD_WIN; win_c++) {
-            if (win_r != r && win_c != c) {
-            }
-        }
-    };
-    
+	int win_r, win_c;
+	for (win_r = r-RAD_WIN; win_r <= r+RAD_WIN; win_r++) {
+		for (win_c = c-RAD_WIN; win_c <= c+RAD_WIN; win_c++) {
+			if (win_r != r && win_c != c) {
+			}
+		}
+	};
+
 }
 
 
