@@ -13,9 +13,9 @@
 #define PI      3.141592653589793238
 #define MIN_EIG_RATIO 1.5
 
-#define RAD_WIN 4
-#define RAD_NN 0.05
-#define MIN_NN int((2*RAD_WIN+1)*0.5)
+#define RAD_WIN 4 // search window for nearest neighbors
+#define RAD_NN 0.05 // nearest neighbor radius in world space (mm)
+#define MIN_NN 10 // minimum number of nearest neighbors for valid normal
 
 #define EPSILON 0.000000001
 
@@ -37,10 +37,9 @@ __host__ void checkCUDAError(const char *msg) {
 }
 
 __global__ void makePointCloud(ColorPixel* colorPixels, DPixel* dPixels, int xRes, int yRes, PointCloud* pointCloud) {
-
-	int c = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int r = (blockIdx.y * blockDim.y) + threadIdx.y;
-	int i = c + (r * xRes);
+	int c = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int i = (r * xRes) + c;
 
 	if(r < yRes && c < xRes) {
 		//In range
@@ -102,45 +101,47 @@ __device__ glm::vec3 normalFrom3x3Covar(glm::mat3 A) {
 	return normal;
 }
 
-__global__ void computePointNormals(PointCloud** pointCloud, int xRes, int yRes) {
-	int i = (blockIdx.y*gridDim.x + blockIdx.x)*(blockDim.y*blockDim.x) + (threadIdx.y*blockDim.x) + threadIdx.x;
-	int r = i / xRes;
-	int c = i % xRes;
+__global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) {
+	int r = (blockIdx.y * blockDim.y) + threadIdx.y;
+    int c = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int i = (r * xRes) + c;
 
-	int N = 0; // number of nearest neighbors
-	glm::vec3 neighbor;
-	glm::vec3 center = pointCloud[r][c].pos;
-	glm::mat3 covariance = glm::mat3(0.0f);
-	int win_r, win_c;
+
+    int N = 0; // number of nearest neighbors
+    glm::vec3 neighbor;
+    glm::vec3 center = pointCloud[i].pos;
+    glm::mat3 covariance = glm::mat3(0.0f);
+	int win_r, win_c, win_i;
 	for (win_r = r-RAD_WIN; win_r <= r+RAD_WIN; win_r++) {
 		for (win_c = c-RAD_WIN; win_c <= c+RAD_WIN; win_c++) {
 			// exclude center from neighbor search
 			if (win_r != r && win_c != c) {
-				// check if neighbor is in frame
-				if (win_r >= 0 && win_r < yRes && win_c >= 0 && win_c < xRes) {
-					neighbor = pointCloud[win_r][win_c].pos;
-					// check if neighbor has valid depth data
-					if (glm::length(neighbor) > EPSILON) {
-						// check if neighbor is close enough in world space
-						if (glm::distance(neighbor, center) < RAD_NN) {
-							N += 1; // valid neighbor found
-							glm::vec3 difference = neighbor - center;
-							// remember GLM is column major
-							covariance[0] += (difference * difference[0]);
-							covariance[1] += (difference * difference[1]);
-							covariance[2] += (difference * difference[2]);
-						}
-					}
-				}
+                // check if neighbor is in frame
+                if (win_r >= 0 && win_r < yRes && win_c >= 0 && win_c < xRes) {
+                    win_i = (win_r * xRes) + win_c;
+                    neighbor = pointCloud[win_i].pos;
+                    // check if neighbor has valid depth data
+                    if (glm::length(neighbor) > EPSILON) {
+                        // check if neighbor is close enough in world space
+                        if (glm::distance(neighbor, center) < RAD_NN) {
+                            N += 1; // valid neighbor found
+                            glm::vec3 difference = neighbor - center;
+                            // remember GLM is column major
+                            covariance[0] += (difference * difference[0]);
+                            covariance[1] += (difference * difference[1]);
+                            covariance[2] += (difference * difference[2]);
+                        }
+                    }
+                }
 			}
 		}
 	}
-	// check if enough nearest neighbors were found
-	if (N >= MIN_NN) {
-		covariance = covariance/N; // average covariance
-		// compute and assign normal (0 if not "flat" enough)
-		pointCloud[r][c].normal = normalFrom3x3Covar(covariance);
-	}
+    // check if enough nearest neighbors were found
+    if (N >= MIN_NN) {
+        covariance = covariance/N; // average covariance
+        // compute and assign normal (0 if not "flat" enough)
+        pointCloud[i].normal = normalFrom3x3Covar(covariance);
+    }
 }
 
 
