@@ -38,11 +38,11 @@ __host__ void checkCUDAError(const char *msg) {
 
 __global__ void makePointCloud(ColorPixel* colorPixels, DPixel* dPixels, int xRes, int yRes, PointCloud* pointCloud) {
 
-	int r = (blockIdx.x * blockDim.x) + threadIdx.x;
-	int c = (blockIdx.y * blockDim.y) + threadIdx.y;
-	int i = r + (c * xRes);
+	int c = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int r = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int i = c + (r * xRes);
 
-	if(r<xRes && c < yRes) 
+	if(r<yRes && c < xRes) 
 	{
 		//In range
 		if (dPixels[i].depth > 0) {//Don't use float, creates floating point errors
