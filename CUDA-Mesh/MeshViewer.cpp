@@ -407,8 +407,8 @@ void MeshViewer::display()
 		drawDepthImageBufferToTexture(depthTexture);
 		drawColorImageBufferToTexture(colorTexture);
 		
-		drawQuad(color_prog, -0.5, -0.5, 0.5, 0.5, colorTexture);
-		drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, depthTexture);
+		drawQuad(color_prog, -0.5,  0.5, 0.5, 0.5, colorTexture);
+		drawQuad(depth_prog, -0.5, -0.5, 0.5, 0.5, depthTexture);
 		
 		drawQuad(color_prog, 0.5, 0, 0.5, 1, colorTexture);
 		glEnable(GL_BLEND);
