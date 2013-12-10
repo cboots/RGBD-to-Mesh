@@ -1,4 +1,5 @@
 #include "Device.h"
+#include <math_functions.h>
 
 /*
 #define FOV_Y 43 # degrees
@@ -52,7 +53,7 @@ __device__ glm::vec3 normalFrom3x3Covar(glm::mat3 A) {
     glm::vec3 normal = glm::vec3(0.0f);
 	float p1 = pow(A[0][1], 2) + pow(A[0][2], 2) + pow(A[1][2], 2);
 	if (p1 == 0) { // A is diagonal
-		result.eigenVals = glm::vec3(A[0][0], A[1][1], A[2][2]);
+		eigs = glm::vec3(A[0][0], A[1][1], A[2][2]);
 	} else {
 		float q = (A[0][0] + A[1][1] + A[2][2])/3.0f; // mean(trace(A))
 		float p2 = pow(A[0][0]-q, 2) + pow(A[1][1]-q, 2) + pow(A[2][2]-q, 2) + 2*p1;
@@ -82,7 +83,7 @@ __device__ glm::vec3 normalFrom3x3Covar(glm::mat3 A) {
         }
 	}
 	// compute eigenvector from min eigenvalue if point cloud is sufficiently "flat"
-    if (eigs[1]/eigs[0] >= MIN_EIG_RATIO)
+    if (eigs[1]/eigs[0] >= MIN_EIG_RATIO) {
 	  normal = glm::cross(A[0] - glm::vec3(eigs[0], 0.0f, 0.0f), A[1] - glm::vec3(0.0f, eigs[0], 0.0f));
     }
     return normal;
@@ -92,6 +93,7 @@ __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) 
 	int i = (blockIdx.y*gridDim.x + blockIdx.x)*(blockDim.y*blockDim.x) + (threadIdx.y*blockDim.x) + threadIdx.x;
 	int r = i / xRes;
 	int c = i % xRes;
+
 
 }
 
