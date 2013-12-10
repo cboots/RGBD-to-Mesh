@@ -2,7 +2,7 @@
 
 uniform mat4 u_projMatrix;
 uniform mat4 u_viewMatrix;
-uniform sampler2D u_ColorTex;
+uniform sampler2D u_Texture0;
 
 in vec2 fs_texCoord;
 
@@ -11,7 +11,7 @@ out vec4 FragColor;
 void main()
 {
 	//get depth in mm
-	float depth = texture(u_ColorTex, fs_texCoord).r;
+	float depth = texture(u_Texture0, fs_texCoord).r;
 	
 	float shade = 1.0-clamp(depth/(64.0*255.0), 0.0, 1.0);
 	

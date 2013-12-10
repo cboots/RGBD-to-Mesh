@@ -349,17 +349,32 @@ void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale,
 	glUniformMatrix4fv(glGetUniformLocation(prog, "u_viewMatrix"),1, GL_FALSE, &viewmat[0][0] );
 
 	//Setup textures
-
-	if(prog == color_prog || prog == depth_prog)
-	{
-		if(numTextures < 1){
-			cout << "Error, not enough textures provided for this program" << endl;
-			return;
+	int location = -1;
+	switch(numTextures){
+	case 3:
+		if ((location = glGetUniformLocation(prog, "u_Texture2")) != -1)
+		{
+			//has texture
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, textures[2]);
+			glUniform1i(location,0);
 		}
-
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, textures[0]);
-		glUniform1i(glGetUniformLocation(prog, "u_ColorTex"),0);
+	case 2:
+		if ((location = glGetUniformLocation(prog, "u_Texture1")) != -1)
+		{
+			//has texture
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, textures[1]);
+			glUniform1i(location,0);
+		}
+	case 1:
+		if ((location = glGetUniformLocation(prog, "u_Texture0")) != -1)
+		{
+			//has texture
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, textures[0]);
+			glUniform1i(location,0);
+		}
 	}
 
 
