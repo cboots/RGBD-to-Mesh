@@ -128,6 +128,7 @@ DeviceStatus MeshViewer::initOpenGL(int argc, char **argv)
 	initShader();
 	initQuad();
 	initPBO();
+	initFullScreenPBO();
 
 	return DEVICESTATUS_OK;
 }
@@ -176,6 +177,11 @@ void MeshViewer::initShader()
 
 void MeshViewer::initTextures()
 {
+	//Clear textures
+	if (depthTexture != 0 || colorTexture != 0 || pointCloudTexture != 0) {
+		cleanupTextures();
+	}
+
 	glGenTextures(1, &depthTexture);
 	glGenTextures(1, &colorTexture);
 	glGenTextures(1, &pointCloudTexture);
@@ -227,9 +233,10 @@ void MeshViewer::cleanupTextures()
 
 void MeshViewer::initPBO()
 {
-	// set up vertex data parameter
-
 	// Generate a buffer ID called a PBO (Pixel Buffer Object)
+	if(imagePBO){
+		glDeleteBuffers(1, &imagePBO);
+	}
 
 	int num_texels = mXRes*mYRes;
 	int num_values = num_texels * 4;
@@ -242,7 +249,27 @@ void MeshViewer::initPBO()
 	// Allocate data for the buffer. 4-channel float image
 	glBufferData(GL_PIXEL_UNPACK_BUFFER, size_tex_data, NULL, GL_DYNAMIC_COPY);
 	cudaGLRegisterBufferObject( imagePBO);
+}
 
+
+void MeshViewer::initFullScreenPBO()
+{
+// Generate a buffer ID called a PBO (Pixel Buffer Object)
+	if(fullscreenPBO){
+		glDeleteBuffers(1, &fullscreenPBO);
+	}
+
+	int num_texels = mWidth*mHeight;
+	int num_values = num_texels * 4;
+	int size_tex_data = sizeof(GLfloat) * num_values;
+	glGenBuffers(1,&fullscreenPBO);
+
+	// Make this the current UNPACK buffer (OpenGL is state-based)
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, fullscreenPBO);
+
+	// Allocate data for the buffer. 4-channel float image
+	glBufferData(GL_PIXEL_UNPACK_BUFFER, size_tex_data, NULL, GL_DYNAMIC_COPY);
+	cudaGLRegisterBufferObject( fullscreenPBO);
 }
 
 void MeshViewer::initQuad() {
@@ -499,8 +526,7 @@ void MeshViewer::reshape(int w, int h)
 	mHeight = h;
 	glBindFramebuffer(GL_FRAMEBUFFER,0);
 	glViewport(0,0,(GLsizei)w,(GLsizei)h);
-	if (depthTexture != 0 || colorTexture != 0 || pointCloudTexture != 0) {
-		cleanupTextures();
-	}
+	
 	initTextures();
+	initFullScreenPBO();//Refresh fullscreen PBO for new resolution
 }

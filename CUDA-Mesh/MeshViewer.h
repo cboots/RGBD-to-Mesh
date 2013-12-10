@@ -84,10 +84,12 @@ private:
 
 	//PBOs
 	GLuint imagePBO;
+	GLuint fullscreenPBO;
 
 	void initShader();
 	void initQuad();
 	void initPBO();
+	void initFullScreenPBO();
 
 	void drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale, float heightScale, GLuint texture);
 
