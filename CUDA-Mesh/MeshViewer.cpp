@@ -393,7 +393,7 @@ void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale,
 			//has texture
 			glActiveTexture(GL_TEXTURE4);
 			glBindTexture(GL_TEXTURE_2D, textures[4]);
-			glUniform1i(location,0);
+			glUniform1i(location,4);
 		}
 	case 4:
 		if ((location = glGetUniformLocation(prog, "u_Texture3")) != -1)
@@ -401,7 +401,7 @@ void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale,
 			//has texture
 			glActiveTexture(GL_TEXTURE3);
 			glBindTexture(GL_TEXTURE_2D, textures[3]);
-			glUniform1i(location,0);
+			glUniform1i(location,3);
 		}
 	case 3:
 		if ((location = glGetUniformLocation(prog, "u_Texture2")) != -1)
@@ -409,7 +409,7 @@ void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale,
 			//has texture
 			glActiveTexture(GL_TEXTURE2);
 			glBindTexture(GL_TEXTURE_2D, textures[2]);
-			glUniform1i(location,0);
+			glUniform1i(location,2);
 		}
 	case 2:
 		if ((location = glGetUniformLocation(prog, "u_Texture1")) != -1)
@@ -417,7 +417,7 @@ void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale,
 			//has texture
 			glActiveTexture(GL_TEXTURE1);
 			glBindTexture(GL_TEXTURE_2D, textures[1]);
-			glUniform1i(location,0);
+			glUniform1i(location,1);
 		}
 	case 1:
 		if ((location = glGetUniformLocation(prog, "u_Texture0")) != -1)
@@ -578,12 +578,13 @@ void MeshViewer::display()
 		glDisable(GL_BLEND);
 		break;
 	case DISPLAY_MODE_4WAY_PCB:
-		drawDepthImageBufferToTexture(depthTexture);
 		drawPCBtoTextures(positionTexture, colorTexture, normalTexture);
-		drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, &depthTexture, 1);//Upper left
-		drawQuad(color_prog,  0.5,  0.5, 0.5, 0.5, &positionTexture, 1);//Upper Right
-		drawQuad(color_prog, -0.5, -0.5, 0.5, 0.5, &colorTexture, 1);//Lower Left
-		drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, &normalTexture, 1);//Lower Right
+		drawQuad(color_prog, -0.5,  0.5, 0.5, 0.5, &colorTexture, 1);//Upper Left
+		drawQuad(color_prog, -0.5, -0.5, 0.5, 0.5, &positionTexture, 1);//Lower Left
+		drawQuad(color_prog,  0.5,  0.5, 0.5, 0.5, &normalTexture, 1);//Upper Right
+
+		GLuint pcbTextures[] = { positionTexture, colorTexture, normalTexture};
+		drawQuad(pcbdebug_prog, 0.5, -0.5, 0.5, 0.5, &pcbTextures[0], 3);//Lower right
 
 		break;
 	}

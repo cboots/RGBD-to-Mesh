@@ -14,7 +14,8 @@ out vec4 FragColor;
 
 void main()
 {
-	//Just pass through for now
-	vec4 color = texture(u_Texture1, fs_texCoord);
-	FragColor = color;
+	vec4 position = texture(u_Texture0, fs_texCoord);
+	vec4 color = 	texture(u_Texture1, fs_texCoord);
+	vec4 normal = 	texture(u_Texture2, fs_texCoord);
+	FragColor = vec4(0.0, 0.0, position.x, 1.0)+vec4(-position.y, position.y, 0.0, 1.0);
 }

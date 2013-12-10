@@ -42,18 +42,23 @@ __global__ void makePointCloud(ColorPixel* colorPixels, DPixel* dPixels, int xRe
 	int c = (blockIdx.y * blockDim.y) + threadIdx.y;
 	int i = r + (c * xRes);
 
-	if (dPixels[i].depth > 0.0f) {
-		float u = (c - (xRes-1)/2.0f + 1) / (xRes-1); // image plane u coordinate
-		float v = ((yRes-1)/2.0f - r) / (yRes-1); // image plane v coordinate
-		float Z = dPixels[i].depth/1000.0f; // depth in mm
-		if (Z > 0.0f) {
-			pointCloud[i].pos = glm::vec3(u*Z*SCALE_X, v*Z*SCALE_Y, Z); // convert uv to XYZ
+	if(r<xRes && c < yRes) 
+	{
+		//In range
+		if (dPixels[i].depth > 0) {//Don't use float, creates floating point errors
+
+			float u = (c - (xRes-1)/2.0f + 1) / (xRes-1); // image plane u coordinate
+			float v = ((yRes-1)/2.0f - r) / (yRes-1); // image plane v coordinate
+			float Z = dPixels[i].depth/1000.0f; // depth in mm
+			if (Z > 0.0f) {
+				pointCloud[i].pos = glm::vec3(u*Z*SCALE_X, v*Z*SCALE_Y, Z); // convert uv to XYZ
+			}
+			pointCloud[i].color = glm::vec3(colorPixels[i].r/255.0f, colorPixels[i].g/255.0f, colorPixels[i].b/255.0f); // copy over texture
+		}else{
+			pointCloud[i].pos = glm::vec3(0.0f);
+			pointCloud[i].color = glm::vec3(0.0f);
+			pointCloud[i].normal = glm::vec3(0.0f);
 		}
-		pointCloud[i].color = glm::vec3(colorPixels[i].r/255.0f, colorPixels[i].g/255.0f, colorPixels[i].b/255.0f); // copy over texture
-	}else{
-		pointCloud[i].pos = glm::vec3(0.0f);
-		pointCloud[i].color = glm::vec3(0.0f);
-		pointCloud[i].normal = glm::vec3(0.0f);
 	}
 }
 
