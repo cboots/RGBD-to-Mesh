@@ -31,7 +31,7 @@ __global__ void makePointCloud(ColorPixel* colorPixels, DPixel* dPixels, int xRe
 	int i = (r * xRes) + c;
 
 	if(r < yRes && c < xRes) {
-		//In range
+		// In range
 		if (dPixels[i].depth != 0) {
 			float u = (c - (xRes-1)/2.0f + 1) / (xRes-1); // image plane u coordinate
 			float v = ((yRes-1)/2.0f - r) / (yRes-1); // image plane v coordinate
@@ -42,7 +42,7 @@ __global__ void makePointCloud(ColorPixel* colorPixels, DPixel* dPixels, int xRe
 			pointCloud[i].pos = glm::vec3(0.0f);
 			pointCloud[i].color = glm::vec3(0.0f);
 		}
-		//Always clear normals
+		// Always clear normals
 		pointCloud[i].normal = glm::vec3(0.0f);
 	}
 }
@@ -132,7 +132,7 @@ __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) 
     }
 }
 
-//Kernel that writes the depth image to the OpenGL PBO directly.
+// Kernel that writes the depth image to the OpenGL PBO directly.
 __global__ void sendDepthImageBufferToPBO(float4* PBOpos, glm::vec2 resolution, DPixel* depthBuffer){
 
 	int r = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -141,11 +141,11 @@ __global__ void sendDepthImageBufferToPBO(float4* PBOpos, glm::vec2 resolution, 
 
 	if(r<resolution.y && c<resolution.x) {
 
-		//Cast to float for storage
+		// Cast to float for storage
 		float depth = depthBuffer[i].depth;
 
 		// Each thread writes one pixel location in the texture (textel)
-		//Store depth in every component except alpha
+		// Store depth in every component except alpha
 		PBOpos[i].x = depth;
 		PBOpos[i].y = depth;
 		PBOpos[i].z = depth;
@@ -153,7 +153,7 @@ __global__ void sendDepthImageBufferToPBO(float4* PBOpos, glm::vec2 resolution, 
 	}
 }
 
-//Kernel that writes the image to the OpenGL PBO directly.
+// Kernel that writes the image to the OpenGL PBO directly.
 __global__ void sendColorImageBufferToPBO(float4* PBOpos, glm::vec2 resolution, ColorPixel* colorBuffer){
 
 	int r = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -217,10 +217,10 @@ __host__ void deletePBO(GLuint *pbo)
 	}
 }
 
-//Intialize pipeline buffers
+// Intialize pipeline buffers
 __host__ void initCuda(int width, int height)
 {
-	//Allocate buffers
+	// Allocate buffers
 	cudaMalloc((void**) &dev_colorImageBuffer, sizeof(ColorPixel)*width*height);
 	cudaMalloc((void**) &dev_depthImageBuffer, sizeof(DPixel)*width*height);
 	cudaMalloc((void**) &dev_pointCloudBuffer, sizeof(PointCloud)*width*height);
@@ -228,6 +228,7 @@ __host__ void initCuda(int width, int height)
 	cuImageHeight = height;
 
     // Set up CUB DeviceSelectIf call for normals compaction
+    // see: http://nvlabs.github.io/cub/structcub_1_1_device_select.html
     void* dev_compactionTempStorage = NULL;
     dev_compactionTempStorageBytes = 0;
     cudaMalloc(&dev_compactionNumValid, sizeof(int));
@@ -235,7 +236,7 @@ __host__ void initCuda(int width, int height)
     cudaMalloc(&dev_compactionTempStorage, dev_compactionTempStorageBytes);
 }
 
-//Free all allocated buffers and close out environment
+// Free all allocated buffers and close out environment
 __host__ void cleanupCuda()
 {
 	if(imagePBO) deletePBO(&imagePBO);
@@ -252,8 +253,8 @@ __host__ void cleanupCuda()
 
 }
 
-//Copies a depth image to the GPU buffer. 
-//Returns false if width and height do not match buffer size set by initCuda(), true if success
+// Copies a depth image to the GPU buffer. 
+// Returns false if width and height do not match buffer size set by initCuda(), true if success
 __host__ bool pushDepthArrayToBuffer(DPixel* hDepthArray, int width, int height)
 {
 	if(width != cuImageWidth || height != cuImageHeight)
@@ -263,18 +264,18 @@ __host__ bool pushDepthArrayToBuffer(DPixel* hDepthArray, int width, int height)
 	return true;
 }
 
-//Copies a color image to the GPU buffer. 
-//Returns false if width and height do not match buffer size set by initCuda(), true if success
+// Copies a color image to the GPU buffer. 
+// Returns false if width and height do not match buffer size set by initCuda(), true if success
 __host__ bool pushColorArrayToBuffer(ColorPixel* hColorArray, int width, int height)
 {
 	if(width != cuImageWidth || height != cuImageHeight)
-		return false;//Buffer wrong size
+		return false; //Buffer wrong size
 
 	cudaMemcpy((void*)dev_colorImageBuffer, hColorArray, sizeof(ColorPixel)*width*height, cudaMemcpyHostToDevice);
 	return true;
 }
 
-//Converts the color and depth images currently in GPU buffers into point cloud buffer
+// Converts the color and depth images currently in GPU buffers into point cloud buffer
 __host__ void convertToPointCloud()
 {
 	int tileSize = 8;
@@ -286,7 +287,7 @@ __host__ void convertToPointCloud()
 	makePointCloud<<<fullBlocksPerGrid, threadsPerBlock>>>(dev_colorImageBuffer, dev_depthImageBuffer, cuImageWidth, cuImageHeight, dev_pointCloudBuffer);
 }
 
-//Computes normals for point cloud in buffer and writes back to the point cloud buffer.
+// Computes normals for point cloud in buffer and writes back to the point cloud buffer.
 __host__ void computePointCloudNormals()
 {
 	int tileSize = 8;
@@ -299,9 +300,9 @@ __host__ void computePointCloudNormals()
 }
 
 
-//Draws depth image buffer to the texture.
-//Texture width and height must match the resolution of the depth image.
-//Returns false if width or height does not match, true otherwise
+// Draws depth image buffer to the texture.
+// Texture width and height must match the resolution of the depth image.
+// Returns false if width or height does not match, true otherwise
 bool drawDepthImageBufferToPBO(float4* dev_PBOpos, int texWidth, int texHeight)
 {
 	if(texWidth != cuImageWidth || texHeight != cuImageHeight)
@@ -318,10 +319,10 @@ bool drawDepthImageBufferToPBO(float4* dev_PBOpos, int texWidth, int texHeight)
 	return true;
 }
 
-//Draws color image buffer to the texture.
-//Texture width and height must match the resolution of the color image.
-//Returns false if width or height does not match, true otherwise
-//dev_PBOpos must be a CUDA device pointer
+// Draws color image buffer to the texture.
+// Texture width and height must match the resolution of the color image.
+// Returns false if width or height does not match, true otherwise
+// dev_PBOpos must be a CUDA device pointer
 bool drawColorImageBufferToPBO(float4* dev_PBOpos, int texWidth, int texHeight)
 {
 	if(texWidth != cuImageWidth || texHeight != cuImageHeight)
@@ -338,16 +339,16 @@ bool drawColorImageBufferToPBO(float4* dev_PBOpos, int texWidth, int texHeight)
 	return true;
 }
 
-//Renders the point cloud as stored in the VBO to the texture
+// Renders the point cloud as stored in the VBO to the texture
 __host__ void drawPointCloudVBOToTexture(GLuint texture, int texWidth, int texHeight /*TODO: More vizualization parameters here*/)
 {
-	//TODO: Implement
+	// TODO: Implement
 
 }
 
-//Renders various debug information about the 2D point cloud buffer to the texture.
-//Texture width and height must match the resolution of the point cloud buffer.
-//Returns false if width or height does not match, true otherwise
+// Renders various debug information about the 2D point cloud buffer to the texture.
+// Texture width and height must match the resolution of the point cloud buffer.
+// Returns false if width or height does not match, true otherwise
 __host__ bool drawPCBToPBO(float4* dptrPosition, float4* dptrColor, float4* dptrNormal, int texWidth, int texHeight)
 {
 	if(texWidth != cuImageWidth || texHeight != cuImageHeight)
@@ -364,7 +365,8 @@ __host__ bool drawPCBToPBO(float4* dptrPosition, float4* dptrColor, float4* dptr
 	return true;
 }
 
-//Takes a device pointer to the point cloud VBO and copies the contents of the PointCloud buffer to the VBO using stream compaction.
+// Takes a device pointer to the point cloud VBO and copies the contents of the PointCloud buffer to the VBO using stream compaction.
+// See: http://nvlabs.github.io/cub/structcub_1_1_device_select.html
 __host__ int compactPointCloudToVBO(PointCloud* vbo) {
     int numValid[1];
     cub::DeviceSelect::If(dev_compactionTempStorage, dev_compactionTempStorageBytes, dev_pointCloudBuffer, vbo, dev_compactionNumValid, cuImageWidth*cuImageHeight, selectOp);
