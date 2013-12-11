@@ -337,6 +337,7 @@ void MeshViewer::initFBO()
 
 	glGenFramebuffers(1, &fullscreenFBO);
 	glBindFramebuffer(GL_FRAMEBUFFER, fullscreenFBO);
+	glViewport(0,0,(GLsizei)mWidth, (GLsizei)mHeight);
 
 	//Bind FBO
 	glReadBuffer(GL_NONE);
@@ -707,7 +708,7 @@ void MeshViewer::drawPointCloudVBOtoFBO(int numPoints)
 
 	//Setup uniforms
 	mat4 persp = glm::perspective(45.0f, float(mWidth)/float(mHeight), 0.1f, 100.0f);
-	mat4 viewmat = glm::lookAt(vec3(0.0f), vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 1.0f, 0.0f));
+	mat4 viewmat = glm::lookAt(vec3(0.0f), vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, -1.0f, 0.0f));
 	mat4 viewInvTrans = inverse(transpose(viewmat));
 	
 
@@ -715,10 +716,9 @@ void MeshViewer::drawPointCloudVBOtoFBO(int numPoints)
 	glUniformMatrix4fv(glGetUniformLocation(pcvbo_prog, "u_viewMatrix"),1, GL_FALSE, &viewmat[0][0] );
 	glUniformMatrix4fv(glGetUniformLocation(pcvbo_prog, "u_viewInvTrans"),1, GL_FALSE, &viewInvTrans[0][0] );
 
-	cout << "Num Points: " << numPoints << endl;
 	
 	if(numPoints > 0){
-		glPointSize(5.0f); 
+		glPointSize(2.0f); 
 		glDrawArrays(GL_POINTS, 0, numPoints);
 		glPointSize(1.0f); 
 	}
@@ -915,8 +915,12 @@ void MeshViewer::reshape(int w, int h)
 {
 	mWidth = w;
 	mHeight = h;
+	
+
 	glBindFramebuffer(GL_FRAMEBUFFER,0);
 	glViewport(0,0,(GLsizei)w,(GLsizei)h);
+
+
 
 	initTextures();
 	initFullScreenPBO();//Refresh fullscreen PBO for new resolution
