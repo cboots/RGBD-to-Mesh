@@ -22,6 +22,8 @@
 ColorPixel* dev_colorImageBuffer;
 DPixel* dev_depthImageBuffer;
 PointCloud* dev_pointCloudBuffer;
+int* dev_compactionIndices;
+int* dev_compactionLogicals;
 
 int	cuImageWidth = 0;
 int	cuImageHeight = 0;
@@ -76,7 +78,7 @@ __device__ glm::vec3 normalFrom3x3Covar(glm::mat3 A) {
 		float phi;
 		if (r <= -1) {
 			phi = PI / 3;
-		} else if (r >= 1) {
+		} else if (r >= 1) { 
 			phi = 0;
 		} else {
 			phi = glm::acos(r)/3;
@@ -240,6 +242,7 @@ __host__ void initCuda(int width, int height)
 	cudaMalloc((void**) &dev_colorImageBuffer, sizeof(ColorPixel)*width*height);
 	cudaMalloc((void**) &dev_depthImageBuffer, sizeof(DPixel)*width*height);
 	cudaMalloc((void**) &dev_pointCloudBuffer, sizeof(PointCloud)*width*height);
+    
 	cuImageWidth = width;
 	cuImageHeight = height;
 
