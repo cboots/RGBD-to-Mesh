@@ -23,7 +23,7 @@
 
 #define RAD_WIN 4 // search window for nearest neighbors
 #define RAD_NN 0.05 // nearest neighbor radius in world space (meters)
-#define MIN_NN 10 // minimum number of nearest neighbors for valid normal
+#define MIN_NN 3 // minimum number of nearest neighbors for valid normal
 
 #define EPSILON 0.000000001
 

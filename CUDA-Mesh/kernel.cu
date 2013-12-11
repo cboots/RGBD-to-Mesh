@@ -96,6 +96,7 @@ __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) 
 	int i = (r * xRes) + c;
 
     int N = 0; // number of nearest neighbors
+
     glm::vec3 neighbor;
     glm::vec3 center = pointCloud[i].pos;
     glm::mat3 covariance = glm::mat3(0.0f);

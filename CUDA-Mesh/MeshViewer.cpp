@@ -186,12 +186,14 @@ void MeshViewer::initShader()
 void MeshViewer::initTextures()
 {
 	//Clear textures
-	if (depthTexture != 0 || colorTexture != 0 || pointCloudTexture != 0) {
+	if (depthTexture != 0 || colorTexture != 0 || pointCloudTexture != 0 || positionTexture != 0 || normalTexture != 0) {
 		cleanupTextures();
 	}
 
 	glGenTextures(1, &depthTexture);
 	glGenTextures(1, &colorTexture);
+	glGenTextures(1, &normalTexture);
+	glGenTextures(1, &positionTexture);
 	glGenTextures(1, &pointCloudTexture);
 
 	//Setup depth texture
@@ -482,6 +484,7 @@ bool MeshViewer::drawColorImageBufferToTexture(GLuint texture)
 			GL_RGBA, GL_FLOAT, NULL);
 
 		glBindTexture(GL_TEXTURE_2D, 0);
+		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
 	}
 
 	return result;
@@ -501,6 +504,7 @@ bool MeshViewer::drawDepthImageBufferToTexture(GLuint texture)
 			GL_RGBA, GL_FLOAT, NULL);
 
 		glBindTexture(GL_TEXTURE_2D, 0);
+		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
 	}
 
 	return result;
@@ -522,23 +526,30 @@ void MeshViewer::drawPCBtoTextures(GLuint posTexture, GLuint colTexture, GLuint 
 	cudaGLUnmapBufferObject(imagePBO2);
 	if(result){
 		//Unpack to textures
-		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
-		glBindTexture(GL_TEXTURE_2D, positionTexture);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
-			GL_RGBA, GL_FLOAT, NULL);
-
-		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO1);
-		glBindTexture(GL_TEXTURE_2D, colorTexture);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
-			GL_RGBA, GL_FLOAT, NULL);
-
+		
+		glActiveTexture(GL_TEXTURE12);
 		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO2);
 		glBindTexture(GL_TEXTURE_2D, normalTexture);
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
 			GL_RGBA, GL_FLOAT, NULL);
 
 
+		glActiveTexture(GL_TEXTURE11);
+		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO1);
+		glBindTexture(GL_TEXTURE_2D, colorTexture);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+			GL_RGBA, GL_FLOAT, NULL);
+
+		glActiveTexture(GL_TEXTURE10);
+		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
+		glBindTexture(GL_TEXTURE_2D, positionTexture);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+			GL_RGBA, GL_FLOAT, NULL);
+		
+
+		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
 		glBindTexture(GL_TEXTURE_2D, 0);
+		glActiveTexture(GL_TEXTURE0);
 	}
 }
 
