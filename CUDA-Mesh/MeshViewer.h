@@ -117,6 +117,16 @@ protected:
 	static void glutDisplay();
 	static void glutKeyboard(unsigned char key, int x, int y);
 	static void glutReshape(int w, int h);
+	static void glutMouse(int button, int state, int x, int y);
+	static void glutMotion(int x, int y);
+
+	//MOUSE STUFF
+	bool dragging;
+	bool rightclick;
+	int drag_x_last;
+	int drag_y_last;
+	void mouse_click(int button, int state, int x, int y); 
+	void mouse_move(int x, int y);
 
 private:
 	//Open GL stuff

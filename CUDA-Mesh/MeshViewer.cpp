@@ -26,6 +26,18 @@ void MeshViewer::glutReshape(int w, int h)
 }
 
 
+void MeshViewer::glutMouse(int button, int state, int x, int y)
+{
+	MeshViewer::msSelf->mouse_click(button, state, x, y);
+}
+
+
+
+void MeshViewer::glutMotion(int x, int y)
+{
+	MeshViewer::msSelf->mouse_move(x, y);
+}
+
 //End platform specific code
 
 const GLuint MeshViewer::quadPositionLocation = 0;
@@ -168,6 +180,8 @@ void MeshViewer::initOpenGLHooks()
 	glutDisplayFunc(glutDisplay);
 	glutIdleFunc(glutIdle);
 	glutReshapeFunc(glutReshape);	
+	glutMouseFunc(glutMouse);
+	glutMotionFunc(glutMotion);
 }
 
 
@@ -1008,4 +1022,50 @@ void MeshViewer::resetCamera()
 	mCamera.fovy = 23.5f;
 	mCamera.zFar = 100.0f;
 	mCamera.zNear = 0.01;
+}
+
+
+
+//MOUSE STUFF
+void MeshViewer::mouse_click(int button, int state, int x, int y) {
+	if(button == GLUT_LEFT_BUTTON) {
+		if(state == GLUT_DOWN) {
+			dragging = true;
+			drag_x_last = x;
+			drag_y_last = y;
+		}
+		else{
+			dragging = false;
+		}
+	}
+	if(button == GLUT_RIGHT_BUTTON) {
+		if(state == GLUT_DOWN)
+		{
+			rightclick = true;
+		}else{
+			rightclick = false;
+		}
+	}
+}
+
+void MeshViewer::mouse_move(int x, int y) {
+	if(dragging) {
+		float delX = x-drag_x_last;
+		float delY = y-drag_y_last;
+
+		float rotSpeed = 0.1f*PI/180.0f;
+
+		vec3 Up = mCamera.up;
+		vec3 Right = normalize(cross(mCamera.view, -mCamera.up));
+
+		if(rightclick)
+		{
+		
+		}else{
+			//Simple rotation
+			mCamera.view = vec3(glm::rotate(glm::rotate(mat4(1.0f), rotSpeed*delY, Right), rotSpeed*delX, Up)*vec4(mCamera.view, 0.0f));
+		}
+		drag_x_last = x;
+		drag_y_last = y;
+	}
 }
