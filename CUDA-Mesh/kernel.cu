@@ -5,6 +5,7 @@
 ColorPixel* dev_colorImageBuffer;
 DPixel* dev_depthImageBuffer;
 PointCloud* dev_pointCloudBuffer;
+PointCloud* dev_pointCloudVBO;
 
 int	cuImageWidth = 0;
 int	cuImageHeight = 0;
@@ -225,6 +226,7 @@ __host__ void initCuda(int width, int height)
 	cudaMalloc((void**) &dev_colorImageBuffer, sizeof(ColorPixel)*width*height);
 	cudaMalloc((void**) &dev_depthImageBuffer, sizeof(DPixel)*width*height);
 	cudaMalloc((void**) &dev_pointCloudBuffer, sizeof(PointCloud)*width*height);
+	cudaMalloc((void**) &dev_pointCloudVBO, sizeof(PointCloud)*width*height);
 	cuImageWidth = width;
 	cuImageHeight = height;
 
@@ -238,6 +240,7 @@ __host__ void cleanupCuda()
 	cudaFree(dev_colorImageBuffer);
 	cudaFree(dev_depthImageBuffer);
 	cudaFree(dev_pointCloudBuffer);
+	cudaFree(dev_pointCloudVBO);
 	cuImageWidth = 0;
 	cuImageHeight = 0;
 
@@ -357,16 +360,12 @@ __host__ bool drawPCBToPBO(float4* dptrPosition, float4* dptrColor, float4* dptr
 __host__ int compactPointCloudToVBO(PointCloud* vbo) {
 	int numValid;
 
-	PointCloud* dptr;
-	cudaMalloc((void**)&dptr, cuImageWidth*cuImageHeight*sizeof(PointCloud));
-	
 	thrust::device_ptr<PointCloud> dp_buffer(dev_pointCloudBuffer);
-	thrust::device_ptr<PointCloud> dp_vbo(dptr);
+	thrust::device_ptr<PointCloud> dp_vbo(dev_pointCloudVBO);
 	thrust::device_ptr<PointCloud> last = thrust::copy_if(dp_buffer, dp_buffer+(cuImageWidth*cuImageHeight), dp_vbo, IsValidPoint());
 
 	numValid = last - dp_vbo;
 	
-	cudaMemcpy(vbo, dptr, numValid*sizeof(PointCloud), cudaMemcpyDeviceToDevice);
-	cudaFree(dptr);
+	cudaMemcpy(vbo, dev_pointCloudVBO, numValid*sizeof(PointCloud), cudaMemcpyDeviceToDevice);
 	return numValid;
 }

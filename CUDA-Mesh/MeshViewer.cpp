@@ -855,7 +855,7 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 
 		cleanupCuda();
 		cleanupTextures();
-		exit (1);
+		exit (0);
 		break;
 	case '1':
 		mViewState = DISPLAY_MODE_OVERLAY;
