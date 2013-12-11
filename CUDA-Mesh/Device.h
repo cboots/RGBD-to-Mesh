@@ -8,7 +8,9 @@
 #include "device_structs.h"
 #include <glm/glm.hpp>
 #include <cuda_gl_interop.h>
-
+#include <thrust/copy.h>
+#include <thrust/execution_policy.h>
+#include <thrust/device_ptr.h>
 /*
 #define FOV_Y 43 # degrees
 #define FOV_X 57
@@ -69,19 +71,17 @@ bool drawDepthImageBufferToPBO(float4* pbo, int texWidth, int texHeight);
 //Returns false if width or height does not match, true otherwise
 bool drawColorImageBufferToPBO(float4* pbo, int texWidth, int texHeight);
 
-//Renders the point cloud as stored in the VBO to the texture
-void drawPointCloudVBOToTexture(GLuint texture, int texWidth, int texHeight /*TODO: More vizualization parameters here*/);
-
 //Renders various debug information about the 2D point cloud buffer to the texture.
 //Texture width and height must match the resolution of the point cloud buffer.
 //Returns false if width or height does not match, true otherwise
 bool drawPCBToPBO(float4* dptrPosition, float4* dptrColor, float4* dptrNormal, int mXRes, int mYRes);
 
-struct IsValidNormal
+struct IsValidPoint
 {
     template <typename T>
     __host__ __device__ __forceinline__
-    bool operator() (const T &a) const {
-        return (glm::length(a.normal) > EPSILON);
+    bool operator() (const T a) const {
+		return true;
+        //return (glm::length(a.normal) > EPSILON);
     }
 };

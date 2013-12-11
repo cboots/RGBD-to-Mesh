@@ -11,6 +11,7 @@
 #include "Device.h"
 #include "glslUtility.h"
 #include "LogDevice.h"
+#include "glm/gtc/matrix_transform.hpp"
 
 using namespace glm;
 
@@ -74,7 +75,8 @@ protected:
 	GLuint normalTexture;
 
 	//Screen space textures
-	GLuint pointCloudTexture;
+	GLuint FBOColorTexture;
+	GLuint FBODepthTexture;
 
 	device_mesh2_t device_quad;
 	static MeshViewer* msSelf;
@@ -103,13 +105,27 @@ protected:
 
 	//PC VBO
 	GLuint pointCloudVBO; 
+	//VBO attribs
 
+	static const GLuint PCVBOPositionLocation;//vec3
+	static const GLuint PCVBOColorLocation;//vec3
+	static const GLuint PCVBONormalLocation;//vec3
+
+	static const GLuint PCVBOStride;//3*vec3
+	static const GLuint PCVBO_PositionOffset;
+	static const GLuint PCVBO_ColorOffset;
+	static const GLuint PCVBO_NormalOffset;
+
+	//FBO
+	GLuint fullscreenFBO;
 
 	void initShader();
 	void initQuad();
 	void initPBO();
 	void initFullScreenPBO();
 	void initPointCloudVBO();
+	void initFBO();
+	void cleanupFBO();
 
 	void drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale, float heightScale, GLuint* textures, int numTextures);
 
@@ -128,6 +144,8 @@ protected:
 	//Compacts the valid points from the point cloud buffer into the VBO.
 	//Returns the number of valid elements
 	int fillPointCloudVBO();
+
+	void drawPointCloudVBOtoFBO(int numPoints);
 
 	static void glutIdle();
 	static void glutDisplay();

@@ -255,7 +255,7 @@ void SampleViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	case '1':
 		m_eViewState = DISPLAY_MODE_OVERLAY;
 		mDevice->setImageRegistrationMode(RGBDImageRegistrationMode::REGISTRATION_DEPTH_TO_COLOR);
-		mDevice->setSyncColorAndDepth(false);
+		mDevice->setSyncColorAndDepth(true);
 		break;
 	case '2':
 		m_eViewState = DISPLAY_MODE_DEPTH;
