@@ -132,7 +132,7 @@ __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) 
 		}
 		pointCloud[i].normal = normal;
 	}
-	*/
+	
 }
 */
 
