@@ -708,7 +708,7 @@ void MeshViewer::drawPointCloudVBOtoFBO(int numPoints)
 
 	//Setup uniforms
 	mat4 persp = glm::perspective(45.0f, float(mWidth)/float(mHeight), 0.1f, 100.0f);
-	mat4 viewmat = glm::lookAt(vec3(0.0f), vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, -1.0f, 0.0f));
+	mat4 viewmat = glm::lookAt(vec3(1.0, 1.0, 1.0), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, -1.0f, 0.0f));
 	mat4 viewInvTrans = inverse(transpose(viewmat));
 	
 

@@ -89,7 +89,24 @@ __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) 
 	int r = (blockIdx.y * blockDim.y) + threadIdx.y;
 	int c = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int i = (r * xRes) + c;
+	int idown = (r+1)*xRes + c;
+	int iright = r*xRes + (c+1);
 
+	if(r < yRes - 1 && c < xRes - 1)
+	{
+		glm::vec3 center = pointCloud[i].pos;
+		glm::vec3 right = pointCloud[iright].pos;
+		glm::vec3 down = pointCloud[idown].pos;
+
+		glm::vec3 normal = glm::normalize(glm::cross(down-center, right-center));
+		if (glm::dot(center, normal) > 0) {
+			normal = -normal;
+		}
+		pointCloud[i].normal = normal;
+	}
+	
+
+	/*
 	int N = 0; // number of nearest neighbors
 
 	glm::vec3 neighbor;
@@ -132,6 +149,7 @@ __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) 
 		}
 		pointCloud[i].normal = normal;
 	}
+	*/
 }
 
 // Kernel that writes the depth image to the OpenGL PBO directly.
