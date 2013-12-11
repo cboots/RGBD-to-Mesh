@@ -15,6 +15,15 @@
 
 using namespace glm;
 
+struct Camera{
+	vec3 eye;
+	vec3 view;
+	vec3 up;
+	float fovy;
+	float zNear;
+	float zFar;
+};
+
 enum DisplayModes
 {
 	DISPLAY_MODE_OVERLAY,
@@ -30,16 +39,6 @@ enum DisplayModes
 
 class MeshViewer : public RGBDDevice::NewRGBDFrameListener
 {
-private:
-
-	static const GLuint MeshViewer::quadPositionLocation;
-	static const GLuint MeshViewer::quadTexcoordsLocation;
-	static const char * MeshViewer::quadAttributeLocations[];
-
-	static const GLuint MeshViewer::vbopositionLocation;
-	static const GLuint MeshViewer::vbocolorLocation;
-	static const GLuint MeshViewer::vbonormalLocation;
-	static const char * MeshViewer::vboAttributeLocations[];
 
 
 public:
@@ -55,28 +54,15 @@ public:
 	void onNewRGBDFrame(RGBDFramePtr frame) override;
 protected:
 	//Display functions
+	Camera mCamera;
 	virtual void display();
 	virtual void displayPostDraw(){};	// Overload to draw over the screen image
 	virtual void reshape(int w, int h);
 
 	virtual void onKey(unsigned char key, int x, int y);
 
-	virtual DeviceStatus initOpenGL(int argc, char **argv);
-	virtual void initTextures();
-	virtual void cleanupTextures();
 
-	void initOpenGLHooks();
-
-	//Textures
-	//Image space textures
-	GLuint colorTexture;
-	GLuint depthTexture;
-	GLuint positionTexture;
-	GLuint normalTexture;
-
-	//Screen space textures
-	GLuint FBOColorTexture;
-	GLuint FBODepthTexture;
+	void resetCamera();
 
 	device_mesh2_t device_quad;
 	static MeshViewer* msSelf;
@@ -89,6 +75,69 @@ protected:
 	RGBDFramePtr mLatestFrame;
 	ColorPixelArray mColorArray;
 	DPixelArray mDepthArray;
+
+
+
+	//Open GL Init/cleanup routines
+	void initShader();
+	void initQuad();
+	void initPBO();
+	void initFullScreenPBO();
+	void initPointCloudVBO();
+	void initFBO();
+	void cleanupFBO();
+
+	virtual DeviceStatus initOpenGL(int argc, char **argv);
+	virtual void initTextures();
+	virtual void cleanupTextures();
+
+	void initOpenGLHooks();
+
+	void drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale, float heightScale, GLuint* textures, int numTextures);
+
+	//Draws depth image buffer to the texture.
+	//Texture width and height must match the resolution of the depth image.
+	//Returns false if width or height does not match, true otherwise
+	bool drawDepthImageBufferToTexture(GLuint texture);
+
+	//Draws color image buffer to the texture.
+	//Texture width and height must match the resolution of the color image.
+	//Returns false if width or height does not match, true otherwise
+	bool drawColorImageBufferToTexture(GLuint texture);
+
+	void drawPCBtoTextures(GLuint posTexture, GLuint colTexture, GLuint normTexture);
+
+	//Compacts the valid points from the point cloud buffer into the VBO.
+	//Returns the number of valid elements
+	int fillPointCloudVBO();
+
+	void drawPointCloudVBOtoFBO(int numPoints);
+
+	static void glutIdle();
+	static void glutDisplay();
+	static void glutKeyboard(unsigned char key, int x, int y);
+	static void glutReshape(int w, int h);
+	static void glutMouse(int button, int state, int x, int y);
+	static void glutMotion(int x, int y);
+
+	//MOUSE STUFF
+	bool dragging;
+	bool rightclick;
+	int drag_x_last;
+	int drag_y_last;
+	void mouse_click(int button, int state, int x, int y); 
+	void mouse_move(int x, int y);
+
+private:
+	//Open GL stuff
+	static const GLuint MeshViewer::quadPositionLocation;
+	static const GLuint MeshViewer::quadTexcoordsLocation;
+	static const char * MeshViewer::quadAttributeLocations[];
+
+	static const GLuint MeshViewer::vbopositionLocation;
+	static const GLuint MeshViewer::vbocolorLocation;
+	static const GLuint MeshViewer::vbonormalLocation;
+	static const char * MeshViewer::vboAttributeLocations[];
 
 	//Shader programs
 	GLuint depth_prog;
@@ -119,37 +168,17 @@ protected:
 	//FBO
 	GLuint fullscreenFBO;
 
-	void initShader();
-	void initQuad();
-	void initPBO();
-	void initFullScreenPBO();
-	void initPointCloudVBO();
-	void initFBO();
-	void cleanupFBO();
 
-	void drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale, float heightScale, GLuint* textures, int numTextures);
+	//Textures
+	//Image space textures
+	GLuint colorTexture;
+	GLuint depthTexture;
+	GLuint positionTexture;
+	GLuint normalTexture;
 
-	//Draws depth image buffer to the texture.
-	//Texture width and height must match the resolution of the depth image.
-	//Returns false if width or height does not match, true otherwise
-	bool drawDepthImageBufferToTexture(GLuint texture);
+	//Screen space textures
+	GLuint FBOColorTexture;
+	GLuint FBODepthTexture;
 
-	//Draws color image buffer to the texture.
-	//Texture width and height must match the resolution of the color image.
-	//Returns false if width or height does not match, true otherwise
-	bool drawColorImageBufferToTexture(GLuint texture);
-
-	void drawPCBtoTextures(GLuint posTexture, GLuint colTexture, GLuint normTexture);
-
-	//Compacts the valid points from the point cloud buffer into the VBO.
-	//Returns the number of valid elements
-	int fillPointCloudVBO();
-
-	void drawPointCloudVBOtoFBO(int numPoints);
-
-	static void glutIdle();
-	static void glutDisplay();
-	static void glutKeyboard(unsigned char key, int x, int y);
-	static void glutReshape(int w, int h);
 };
 

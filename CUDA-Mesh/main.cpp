@@ -48,7 +48,7 @@ int main(int argc, char** argv)
 	device.setSourceDirectory("logs\\flat-wall-synced");
 	device.setLoopStreams(true);
 	//ONIKinectDevice device;
-	
+
 	RGBDDeviceListener deviceStateListener;
 	RGBDFrameListener frameListener;
 	device.addDeviceConnectedListener(&deviceStateListener);

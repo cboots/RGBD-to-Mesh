@@ -26,6 +26,18 @@ void MeshViewer::glutReshape(int w, int h)
 }
 
 
+void MeshViewer::glutMouse(int button, int state, int x, int y)
+{
+	MeshViewer::msSelf->mouse_click(button, state, x, y);
+}
+
+
+
+void MeshViewer::glutMotion(int x, int y)
+{
+	MeshViewer::msSelf->mouse_move(x, y);
+}
+
 //End platform specific code
 
 const GLuint MeshViewer::quadPositionLocation = 0;
@@ -56,6 +68,8 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	mWidth = screenwidth;
 	mHeight = screenheight;
 	mViewState = DISPLAY_MODE_OVERLAY;
+
+	resetCamera();
 }
 
 
@@ -166,6 +180,8 @@ void MeshViewer::initOpenGLHooks()
 	glutDisplayFunc(glutDisplay);
 	glutIdleFunc(glutIdle);
 	glutReshapeFunc(glutReshape);	
+	glutMouseFunc(glutMouse);
+	glutMotionFunc(glutMotion);
 }
 
 
@@ -707,8 +723,8 @@ void MeshViewer::drawPointCloudVBOtoFBO(int numPoints)
 	
 
 	//Setup uniforms
-	mat4 persp = glm::perspective(45.0f, float(mWidth)/float(mHeight), 0.1f, 100.0f);
-	mat4 viewmat = glm::lookAt(vec3(1.0, 1.0, 1.0), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, -1.0f, 0.0f));
+	mat4 persp = glm::perspective(radians(mCamera.fovy), float(mWidth)/float(mHeight), mCamera.zNear, mCamera.zFar);
+	mat4 viewmat = glm::lookAt(mCamera.eye, mCamera.eye+mCamera.view, -mCamera.up);
 	mat4 viewInvTrans = inverse(transpose(viewmat));
 	
 
@@ -844,6 +860,10 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 {
 	LogDevice* device = NULL;
 	float newPlayback = 1.0;
+	vec3 right = vec3(0.0f);
+
+	float cameraHighSpeed = 0.1f;
+	float cameraLowSpeed = 0.025f;
 	switch (key)
 	{
 	case 27://ESC
@@ -906,6 +926,71 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 			device->setPlaybackSpeed(newPlayback);		
 		}
 		break;
+	case 'F':
+		mCamera.fovy += 0.5;
+		cout << "FOVY :" << mCamera.fovy << endl;
+		break;
+	case 'f':
+		mCamera.fovy -= 0.5;
+		cout << "FOVY :" << mCamera.fovy << endl;
+		break;
+	case 'Q':
+		mCamera.eye += cameraLowSpeed*mCamera.up;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+	case 'Z':
+		mCamera.eye -= cameraLowSpeed*mCamera.up;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+	case 'W':
+		mCamera.eye += cameraLowSpeed*mCamera.view;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+	case 'S':
+		mCamera.eye -= cameraLowSpeed*mCamera.view;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+	case 'D':
+		right = normalize(cross(mCamera.view, -mCamera.up));
+		mCamera.eye += cameraLowSpeed*right;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+	case 'A':
+		right = normalize(cross(mCamera.view, -mCamera.up));
+		mCamera.eye -= cameraLowSpeed*right;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+
+	case 'q':
+		mCamera.eye += cameraHighSpeed*mCamera.up;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+	case 'z':
+		mCamera.eye -= cameraHighSpeed*mCamera.up;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+	case 'w':
+		mCamera.eye += cameraHighSpeed*mCamera.view;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+	case 's':
+		mCamera.eye -= cameraHighSpeed*mCamera.view;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+	case 'd':
+		right = normalize(cross(mCamera.view, -mCamera.up));
+		mCamera.eye += cameraHighSpeed*right;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+	case 'a':
+		right = normalize(cross(mCamera.view, -mCamera.up));
+		mCamera.eye -= cameraHighSpeed*right;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+	case 'x':
+		resetCamera();
+		cout << "Reset Camera" << endl;
+		break;
 	}
 
 }
@@ -925,4 +1010,62 @@ void MeshViewer::reshape(int w, int h)
 	initTextures();
 	initFullScreenPBO();//Refresh fullscreen PBO for new resolution
 	initFBO();
+}
+
+
+
+void MeshViewer::resetCamera()
+{
+	mCamera.eye = vec3(0.0f);
+	mCamera.view = vec3(0.0f, 0.0f, -1.0f);
+	mCamera.up = vec3(0.0f, 1.0f, 0.0f);
+	mCamera.fovy = 23.5f;
+	mCamera.zFar = 100.0f;
+	mCamera.zNear = 0.01;
+}
+
+
+
+//MOUSE STUFF
+void MeshViewer::mouse_click(int button, int state, int x, int y) {
+	if(button == GLUT_LEFT_BUTTON) {
+		if(state == GLUT_DOWN) {
+			dragging = true;
+			drag_x_last = x;
+			drag_y_last = y;
+		}
+		else{
+			dragging = false;
+		}
+	}
+	if(button == GLUT_RIGHT_BUTTON) {
+		if(state == GLUT_DOWN)
+		{
+			rightclick = true;
+		}else{
+			rightclick = false;
+		}
+	}
+}
+
+void MeshViewer::mouse_move(int x, int y) {
+	if(dragging) {
+		float delX = x-drag_x_last;
+		float delY = y-drag_y_last;
+
+		float rotSpeed = 0.1f*PI/180.0f;
+
+		vec3 Up = mCamera.up;
+		vec3 Right = normalize(cross(mCamera.view, -mCamera.up));
+
+		if(rightclick)
+		{
+		
+		}else{
+			//Simple rotation
+			mCamera.view = vec3(glm::rotate(glm::rotate(mat4(1.0f), rotSpeed*delY, Right), rotSpeed*delX, Up)*vec4(mCamera.view, 0.0f));
+		}
+		drag_x_last = x;
+		drag_y_last = y;
+	}
 }
