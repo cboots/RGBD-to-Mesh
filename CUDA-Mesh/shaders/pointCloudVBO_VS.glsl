@@ -8,13 +8,16 @@ in vec3 vs_color;
 in vec3 vs_normal;
 
 
-out vec3 gs_eyeNormal;
-out vec3 gs_color;
+
+out VertexData{
+	vec3 EyeNormal;
+	vec3 Color;
+}vertexData;
 
 //Transform each vertex to projection space
 void main(void)
 {
-	gl_Position = u_projMatrix*u_viewMatrix*vs_position;
-	gs_eyeNormal = vec3(u_viewInvTrans*vec4(vs_up,0.0));
-	gs_color = vs_color;
+	gl_Position = u_projMatrix*u_viewMatrix*vec4(vs_position,1.0);
+	vertexData.EyeNormal = vec3(u_viewInvTrans*vec4(vs_normal,0.0));
+	vertexData.Color = vs_color;
 }

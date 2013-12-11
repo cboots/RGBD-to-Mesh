@@ -175,8 +175,8 @@ void MeshViewer::initShader()
 	const char * color_frag = "shaders/colorFS.glsl";
 	const char * depth_frag = "shaders/depthFS.glsl";
 	const char * pcbdebug_frag = "shaders/pointCloudBufferDebugFS.glsl";
-	const char * pcvbo_vert = "shaders/pointCloudVBO_FS.glsl";
-	const char * pcvbo_geom = "shaders/pointCloudVBO_FS.glsl";
+	const char * pcvbo_vert = "shaders/pointCloudVBO_VS.glsl";
+	const char * pcvbo_geom = "shaders/pointCloudVBO_GS.glsl";
 	const char * pcvbo_frag = "shaders/pointCloudVBO_FS.glsl";
 
 	//Color image shader
@@ -189,7 +189,7 @@ void MeshViewer::initShader()
 	pcbdebug_prog = glslUtility::createProgram(pass_vert, NULL, pcbdebug_frag, quadAttributeLocations, 2);
 
 	//Point cloud VBO renderer
-	pcvbo_prog = glslUtility::createProgram(pass_vert, NULL, pcbdebug_frag, vboAttributeLocations, 3);
+	pcvbo_prog = glslUtility::createProgram(pcvbo_vert, pcvbo_geom, pcvbo_frag, vboAttributeLocations, 3);
 }
 
 
@@ -355,6 +355,11 @@ void MeshViewer::initFBO()
 		printf("GL_FRAMEBUFFER_COMPLETE failed, CANNOT use FBO[0]\n");
 		checkFramebufferStatus(FBOstatus);
 	}
+	
+	// switch back to window-system-provided framebuffer
+	glClear(GL_DEPTH_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void MeshViewer::cleanupFBO()
@@ -837,6 +842,9 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		break;
 	case '5':
 		mViewState = DISPLAY_MODE_4WAY_PCB;
+		break;
+	case '6':
+		mViewState = DISPLAY_MODE_POINT_CLOUD;
 		break;
 	case('r'):
 		cout << "Reloading Shaders" <<endl;
