@@ -98,7 +98,7 @@ __device__ glm::vec3 normalFrom3x3Covar(glm::mat3 A) {
 	if (eigs[1]/eigs[0] >= MIN_EIG_RATIO) {
 		normal = glm::cross(A[0] - glm::vec3(eigs[0], 0.0f, 0.0f), A[1] - glm::vec3(0.0f, eigs[0], 0.0f));
 	}
-	return normal;
+	return glm::normalize(normal);
 }
 
 __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) {
@@ -299,8 +299,13 @@ __host__ void convertToPointCloud()
 //Computes normals for point cloud in buffer and writes back to the point cloud buffer.
 __host__ void computePointCloudNormals()
 {
-	//TODO: Implement
+	int tileSize = 8;
 
+	dim3 threadsPerBlock(tileSize, tileSize);
+	dim3 fullBlocksPerGrid((int)ceil(float(cuImageWidth)/float(tileSize)), 
+		(int)ceil(float(cuImageHeight)/float(tileSize)));
+
+	computePointNormals<<<fullBlocksPerGrid, threadsPerBlock>>>(dev_pointCloudBuffer, cuImageWidth, cuImageHeight);
 }
 
 
