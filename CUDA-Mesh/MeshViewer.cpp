@@ -37,6 +37,15 @@ const GLuint MeshViewer::vbocolorLocation = 1;
 const GLuint MeshViewer::vbonormalLocation = 2;
 const char * MeshViewer::vboAttributeLocations[] = { "Position", "Color", "Normal" };
 
+const GLuint MeshViewer::PCVBOPositionLocation = 0;//vec3
+const GLuint MeshViewer::PCVBOColorLocation = 1;//vec3
+const GLuint MeshViewer::PCVBONormalLocation = 2;//vec3
+
+const GLuint MeshViewer::PCVBOStride = 9;//3*vec3
+const GLuint MeshViewer::PCVBO_PositionOffset = 0;
+const GLuint MeshViewer::PCVBO_ColorOffset = 3;
+const GLuint MeshViewer::PCVBO_NormalOffset = 6;
+
 MeshViewer* MeshViewer::msSelf = NULL;
 
 
@@ -143,6 +152,7 @@ DeviceStatus MeshViewer::initOpenGL(int argc, char **argv)
 	initQuad();
 	initPBO();
 	initFullScreenPBO();
+	initFBO();
 
 	return DEVICESTATUS_OK;
 }
@@ -186,7 +196,7 @@ void MeshViewer::initShader()
 void MeshViewer::initTextures()
 {
 	//Clear textures
-	if (depthTexture != 0 || colorTexture != 0 || pointCloudTexture != 0 || positionTexture != 0 || normalTexture != 0) {
+	if (depthTexture != 0 || colorTexture != 0 ||  positionTexture != 0 || normalTexture != 0) {
 		cleanupTextures();
 	}
 
@@ -194,7 +204,6 @@ void MeshViewer::initTextures()
 	glGenTextures(1, &colorTexture);
 	glGenTextures(1, &normalTexture);
 	glGenTextures(1, &positionTexture);
-	glGenTextures(1, &pointCloudTexture);
 
 	//Setup depth texture
 	glBindTexture(GL_TEXTURE_2D, depthTexture);
@@ -243,17 +252,6 @@ void MeshViewer::initTextures()
 
 
 
-	//Setup point cloud texture
-	glBindTexture(GL_TEXTURE_2D, pointCloudTexture);
-
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-
-	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F , mWidth, mHeight, 0, GL_RGBA, GL_FLOAT,0);
-
 }
 
 
@@ -265,8 +263,106 @@ void MeshViewer::cleanupTextures()
 	glDeleteTextures(1, &positionTexture);
 	glDeleteTextures(1, &normalTexture);
 
-	//screen space textures
-	glDeleteTextures(1, &pointCloudTexture);
+}
+
+
+void checkFramebufferStatus(GLenum framebufferStatus) {
+	switch (framebufferStatus) {
+	case GL_FRAMEBUFFER_COMPLETE_EXT: break;
+	case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_EXT:
+		printf("Attachment Point Unconnected\n");
+		break;
+	case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT:
+		printf("Missing Attachment\n");
+		break;
+	case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT:
+		printf("Dimensions do not match\n");
+		break;
+	case GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT:
+		printf("Formats\n");
+		break;
+	case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER_EXT:
+		printf("Draw Buffer\n");
+		break;
+	case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT:
+		printf("Read Buffer\n");
+		break;
+	case GL_FRAMEBUFFER_UNSUPPORTED_EXT:
+		printf("Unsupported Framebuffer Configuration\n");
+		break;
+	default:
+		printf("Unkown Framebuffer Object Failure\n");
+		break;
+	}
+}
+
+
+
+void MeshViewer::initFBO()
+{
+	GLenum FBOstatus;
+	if(fullscreenFBO != 0)
+		cleanupFBO();
+
+	glActiveTexture(GL_TEXTURE9);
+
+
+	glGenTextures(1, &FBOColorTexture);
+	glGenTextures(1, &FBODepthTexture);
+
+	//Set up depth FBO
+	glBindTexture(GL_TEXTURE_2D, FBODepthTexture);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_INTENSITY);
+
+	glTexImage2D( GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, mWidth, mHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+
+
+	//Setup point cloud texture
+	glBindTexture(GL_TEXTURE_2D, FBOColorTexture);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+
+	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F , mWidth, mHeight, 0, GL_RGBA, GL_FLOAT,0);
+
+	glGenFramebuffers(1, &fullscreenFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, fullscreenFBO);
+
+	//Bind FBO
+	glReadBuffer(GL_NONE);
+	GLint color_loc = glGetFragDataLocation(pcvbo_prog,"out_Color");
+	GLenum draws [1];
+	draws[color_loc] = GL_COLOR_ATTACHMENT0;
+	glDrawBuffers(1, draws);
+
+
+	glBindTexture(GL_TEXTURE_2D, FBODepthTexture);
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, FBODepthTexture, 0);
+	glBindTexture(GL_TEXTURE_2D, FBOColorTexture);    
+	glFramebufferTexture(GL_FRAMEBUFFER, draws[color_loc], FBOColorTexture, 0);
+
+	FBOstatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if(FBOstatus != GL_FRAMEBUFFER_COMPLETE) {
+		printf("GL_FRAMEBUFFER_COMPLETE failed, CANNOT use FBO[0]\n");
+		checkFramebufferStatus(FBOstatus);
+	}
+}
+
+void MeshViewer::cleanupFBO()
+{
+
+	glDeleteTextures(1,&FBODepthTexture);
+	glDeleteTextures(1,&FBOColorTexture);
+	glDeleteFramebuffers(1,&fullscreenFBO);
 }
 
 
@@ -526,7 +622,7 @@ void MeshViewer::drawPCBtoTextures(GLuint posTexture, GLuint colTexture, GLuint 
 	cudaGLUnmapBufferObject(imagePBO2);
 	if(result){
 		//Unpack to textures
-		
+
 		glActiveTexture(GL_TEXTURE12);
 		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO2);
 		glBindTexture(GL_TEXTURE_2D, normalTexture);
@@ -545,7 +641,7 @@ void MeshViewer::drawPCBtoTextures(GLuint posTexture, GLuint colTexture, GLuint 
 		glBindTexture(GL_TEXTURE_2D, positionTexture);
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
 			GL_RGBA, GL_FLOAT, NULL);
-		
+
 
 		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
 		glBindTexture(GL_TEXTURE_2D, 0);
@@ -553,10 +649,54 @@ void MeshViewer::drawPCBtoTextures(GLuint posTexture, GLuint colTexture, GLuint 
 	}
 }
 
+
+void MeshViewer::drawPointCloudVBOtoFBO(int numPoints)
+{
+	//Bind FBO
+	glDisable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D,0); //Bad mojo to unbind the framebuffer using the texture
+	glBindFramebuffer(GL_FRAMEBUFFER, fullscreenFBO);
+	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_DEPTH_TEST);
+
+	//Setup VBO
+	
+	glUseProgram(pcvbo_prog);
+
+	const GLuint PCVBOStride = 9;//3*vec3
+	const GLuint PCVBO_PositionOffset = 0;
+	const GLuint PCVBO_ColorOffset = 3;
+	const GLuint PCVBO_NormalOffset = 6;
+	glEnableVertexAttribArray(PCVBOPositionLocation);
+	glEnableVertexAttribArray(PCVBOColorLocation);
+	glEnableVertexAttribArray(PCVBONormalLocation);
+
+	glBindBuffer(GL_ARRAY_BUFFER, pointCloudVBO);
+	//Setup interleaved buffer
+	glVertexAttribPointer(PCVBOPositionLocation, 3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_PositionOffset*sizeof(GLfloat))); 
+	glVertexAttribPointer(PCVBOColorLocation,    3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_ColorOffset*sizeof(GLfloat))); 
+	glVertexAttribPointer(PCVBONormalLocation,   3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_NormalOffset*sizeof(GLfloat))); 
+
+	//Setup uniforms
+	mat4 persp = mat4(1.0f);//Identity
+	mat4 viewmat = mat4(1.0f);
+	mat4 viewInvTrans = inverse(transpose(viewmat));
+
+
+	glUniformMatrix4fv(glGetUniformLocation(pcvbo_prog, "u_projMatrix"),1, GL_FALSE, &persp[0][0] );
+	glUniformMatrix4fv(glGetUniformLocation(pcvbo_prog, "u_viewMatrix"),1, GL_FALSE, &viewmat[0][0] );
+	glUniformMatrix4fv(glGetUniformLocation(pcvbo_prog, "u_viewInvTrans"),1, GL_FALSE, &viewInvTrans[0][0] );
+
+
+	glPointSize(5.0f); 
+	glDrawArrays(GL_POINTS, 0, numPoints);
+	glPointSize(1.0f); 
+}
+
 int MeshViewer::fillPointCloudVBO()
 {
 	PointCloud* dptr;
-	
+
 	cudaGLMapBufferObject((void**)&dptr, pointCloudVBO);
 	//Do CUDA stuff
 	int numElements = compactPointCloudToVBO(dptr);
@@ -586,10 +726,12 @@ void MeshViewer::display()
 	computePointCloudNormals();
 
 	//Stream compaction, prep for rendering
-	fillPointCloudVBO();
+	int numCompactedPoints = fillPointCloudVBO();
 
 	cudaDeviceSynchronize();
 	//=====RENDERING======
+
+	GLuint pcbTextures[] = { positionTexture, colorTexture, normalTexture};
 	switch(mViewState)
 	{
 	case DISPLAY_MODE_DEPTH:
@@ -632,9 +774,12 @@ void MeshViewer::display()
 		drawQuad(color_prog, -0.5, -0.5, 0.5, 0.5, &positionTexture, 1);//Lower Left
 		drawQuad(color_prog,  0.5,  0.5, 0.5, 0.5, &normalTexture, 1);//Upper Right
 
-		GLuint pcbTextures[] = { positionTexture, colorTexture, normalTexture};
 		drawQuad(pcbdebug_prog, 0.5, -0.5, 0.5, 0.5, &pcbTextures[0], 3);//Lower right
 
+		break;
+	case DISPLAY_MODE_POINT_CLOUD:
+		drawPointCloudVBOtoFBO(numCompactedPoints);
+		drawQuad(color_prog, 0, 0, 1, 1, &FBOColorTexture, 1);
 		break;
 	}
 
@@ -738,4 +883,5 @@ void MeshViewer::reshape(int w, int h)
 
 	initTextures();
 	initFullScreenPBO();//Refresh fullscreen PBO for new resolution
+	initFBO();
 }
