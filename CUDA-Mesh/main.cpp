@@ -44,11 +44,19 @@ int main(int argc, char** argv)
 	boost::filesystem::path full_path( boost::filesystem::current_path() );
 	cout << full_path << endl;
 
+<<<<<<< HEAD
+	LogDevice device;
+	device.setSourceDirectory("logs\\flat-wall-synced");
+	device.setLoopStreams(true);
+	//ONIKinectDevice device;
+	
+=======
 	//LogDevice device;
 	//device.setSourceDirectory("logs\\chairlogs");
 	//device.setLoopStreams(true);
 	ONIKinectDevice device;
 
+>>>>>>> 38df2996c3a3880010023ed4c51bb236075dc537
 	RGBDDeviceListener deviceStateListener;
 	RGBDFrameListener frameListener;
 	device.addDeviceConnectedListener(&deviceStateListener);
