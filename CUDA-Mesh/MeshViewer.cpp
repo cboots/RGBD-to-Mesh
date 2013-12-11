@@ -448,18 +448,33 @@ void MeshViewer::initPointCloudVBO()
 	//Max num elements
 	int max_elements = mWidth*mHeight;
 	int size_buf_data = sizeof(PointCloud) * max_elements;
+
+	//Fill with data
+	GLfloat *bodies    = new GLfloat[size_buf_data];
+	for(int i = 0; i < max_elements; i++)
+	{
+		//Position
+		bodies[i*PCVBOStride+0] = 0.0;
+		bodies[i*PCVBOStride+1] = 0.0;
+		bodies[i*PCVBOStride+2] = -10.0;
+
+		//Color
+		bodies[i*PCVBOStride+3] = 1.0;
+		bodies[i*PCVBOStride+4] = 1.0;
+		bodies[i*PCVBOStride+5] = 0.0;
+
+		//Normal
+		bodies[i*PCVBOStride+6] = 0.0;
+		bodies[i*PCVBOStride+7] = 0.0;
+		bodies[i*PCVBOStride+8] = 0.0;
+	}
+
 	glGenBuffers(1,&pointCloudVBO);
-
+	
 	glBindBuffer(GL_ARRAY_BUFFER, pointCloudVBO);
-	glBufferData(GL_ARRAY_BUFFER, size_buf_data, NULL, GL_DYNAMIC_DRAW);
-	//Setup interleaved buffer
-	glVertexAttribPointer(PCVBOPositionLocation, 3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_PositionOffset*sizeof(GLfloat))); 
-	glVertexAttribPointer(PCVBOColorLocation,    3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_ColorOffset*sizeof(GLfloat))); 
-	glVertexAttribPointer(PCVBONormalLocation,   3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_NormalOffset*sizeof(GLfloat))); 
+	glBufferData(GL_ARRAY_BUFFER, size_buf_data, bodies, GL_DYNAMIC_DRAW);//Initialize
 
-	glEnableVertexAttribArray(PCVBOPositionLocation);
-	glEnableVertexAttribArray(PCVBOColorLocation);
-	glEnableVertexAttribArray(PCVBONormalLocation);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 	cudaGLRegisterBufferObject( pointCloudVBO);
 }
@@ -676,24 +691,37 @@ void MeshViewer::drawPointCloudVBOtoFBO(int numPoints)
 
 	glUseProgram(pcvbo_prog);
 
+	glEnableVertexAttribArray(PCVBOPositionLocation);
+	glEnableVertexAttribArray(PCVBOColorLocation);
+	glEnableVertexAttribArray(PCVBONormalLocation);
+
+	
 	glBindBuffer(GL_ARRAY_BUFFER, pointCloudVBO);
 
-	//Setup uniforms
-	mat4 persp = mat4(1.0f);//Identity
-	mat4 viewmat = mat4(1.0f);
-	mat4 viewInvTrans = inverse(transpose(viewmat));
+	//Setup interleaved buffer
+	glVertexAttribPointer(PCVBOPositionLocation, 3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_PositionOffset*sizeof(GLfloat))); 
+	glVertexAttribPointer(PCVBOColorLocation,    3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_ColorOffset*sizeof(GLfloat))); 
+	glVertexAttribPointer(PCVBONormalLocation,   3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_NormalOffset*sizeof(GLfloat))); 
+	
 
+	//Setup uniforms
+	mat4 persp = glm::perspective(45.0f, float(mWidth)/float(mHeight), 0.1f, 100.0f);
+	mat4 viewmat = glm::lookAt(vec3(0.0f), vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 1.0f, 0.0f));
+	mat4 viewInvTrans = inverse(transpose(viewmat));
+	
 
 	glUniformMatrix4fv(glGetUniformLocation(pcvbo_prog, "u_projMatrix"),1, GL_FALSE, &persp[0][0] );
 	glUniformMatrix4fv(glGetUniformLocation(pcvbo_prog, "u_viewMatrix"),1, GL_FALSE, &viewmat[0][0] );
 	glUniformMatrix4fv(glGetUniformLocation(pcvbo_prog, "u_viewInvTrans"),1, GL_FALSE, &viewInvTrans[0][0] );
 
 	cout << "Num Points: " << numPoints << endl;
+	
 	if(numPoints > 0){
 		glPointSize(5.0f); 
 		glDrawArrays(GL_POINTS, 0, numPoints);
 		glPointSize(1.0f); 
 	}
+	
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -731,8 +759,8 @@ void MeshViewer::display()
 	computePointCloudNormals();
 
 	//Stream compaction, prep for rendering
-	int numCompactedPoints = fillPointCloudVBO();
-
+	//int numCompactedPoints = fillPointCloudVBO();
+	int numCompactedPoints = mXRes*mYRes;
 	cudaDeviceSynchronize();
 	//=====RENDERING======
 

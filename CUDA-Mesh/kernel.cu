@@ -362,7 +362,7 @@ __host__ int compactPointCloudToVBO(PointCloud* vbo) {
 	numValid[0] = 1;
 
 	PointCloud* dptr;
-	cudaMalloc((void**)&dptr, cuImageWidth*cuImageHeight);
+	cudaMalloc((void**)&dptr, cuImageWidth*cuImageHeight*sizeof(PointCloud));
 	//cudaMemcpy(debugBuff1, dev_pointCloudBuffer, 100000*sizeof(PointCloud), cudaMemcpyDeviceToHost);
 
 	//cudaMemcpy(debugBuff2, vbo, 100000*sizeof(PointCloud), cudaMemcpyDeviceToHost);
