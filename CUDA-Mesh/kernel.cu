@@ -1,29 +1,16 @@
 #include "Device.h"
-#include <math_functions.h>
-
-/*
-#define FOV_Y 43 # degrees
-#define FOV_X 57
-
-#define SCALE_Y tan((FOV_Y/2)*pi/180)
-#define SCALE_X tan((FOV_X/2)*pi/180)
-*/
-#define SCALE_Y 0.393910475614942392
-#define SCALE_X 0.542955699638436879
-#define PI      3.141592653589793238
-#define MIN_EIG_RATIO 1.0
-
-#define RAD_WIN 4 // search window for nearest neighbors
-#define RAD_NN 0.05 // nearest neighbor radius in world space (meters)
-#define MIN_NN 10 // minimum number of nearest neighbors for valid normal
-
-#define EPSILON 0.000000001
+#include "device_launch_parameters.h"
+#include "math_functions.h"
+#include <cub/cub.cuh>
+#define CUB_CDP
 
 ColorPixel* dev_colorImageBuffer;
 DPixel* dev_depthImageBuffer;
 PointCloud* dev_pointCloudBuffer;
-int* dev_compactionIndices;
-int* dev_compactionLogicals;
+void* dev_compactionTempStorage;
+size_t dev_compactionTempStorageBytes;
+int* dev_compactionNumValid;
+IsValidNormal selectOp;
 
 int	cuImageWidth = 0;
 int	cuImageHeight = 0;
@@ -108,7 +95,6 @@ __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) 
     int c = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int i = (r * xRes) + c;
 
-
     int N = 0; // number of nearest neighbors
     glm::vec3 neighbor;
     glm::vec3 center = pointCloud[i].pos;
@@ -146,78 +132,144 @@ __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) 
     }
 }
 
+/*
+//Takes a device pointer to the point cloud VBO and copies the contents of VBO using stream compaction.
+//maxSize should be equal to the number of elements in dev_pointCloudBuffer
+__global__ void filterPointCloud(PointCloud* filteredPointCloud, PointCloud* pointCloud, int xRes, int yRes, int compactionBufSize, int* dev_compactionFlags, int* dev_compactionIndexBuffer, int* numElements)
+{
+	int i = blockIdx.x * (blockDim.x * blockDim.y) + threadIdx.y * (blockDim.x) + threadIdx.x;
+    int r = i / xRes;
+	int c = i % xRes;
+
+    // FLAGS
+    // identify points with valid normals
+    if (r < yRes && c < xRes) {
+        if (glm::length(pointCloud[i].normal) > EPSILON) {
+            dev_compactionFlags[i] = 1;
+            dev_compactionIndexBuffer[i] = 1;
+        } else {
+            dev_compactionFlags[i] = 0;
+            dev_compactionIndexBuffer[i] = 0;
+        }
+    } else {
+        dev_compactionIndexBuffer[i] = 0;
+    }
+    __syncthreads();
+
+    // PREFIX SCAN
+    // upsweep
+    int stride = 2;
+    while (stride < compactionBufSize) {
+        if (!(i % stride)) {
+            dev_compactionIndexBuffer[i] += dev_compactionIndexBuffer[i-stride/2];
+        }
+        stride << 1;
+        __syncthreads();
+    }
+    // downsweep
+    if (i == compactionBufSize - 1) { // zero-seed end element
+        dev_compactionIndexBuffer[i] = 0;
+    }
+    stride = compactionBufSize;
+    __syncthreads();
+    int tmp;
+    while (stride >= 2) {
+        if (!(i % stride)) {
+            tmp = dev_compactionIndexBuffer[i];
+            dev_compactionIndexBuffer[i] += dev_compactionIndexBuffer[i-stride/2];
+            dev_compactionIndexBuffer[i-stride/2] = tmp;
+        }
+        stride >> 1;
+        __syncthreads();
+    }
+
+    // POPULATE COMPACTION BUFFER
+    if (dev_compactionFlags[i]) {
+        filteredPointCloud[dev_compactionIndexBuffer[i]] = pointCloud[i];
+    }
+    // DETERMINE NUMBER OF ELEMENTS
+    if (i == xRes*yRes - 1) {
+        if (dev_compactionFlags[i]) {
+            *numElements = dev_compactionIndexBuffer[i] + 1;
+        } else {
+            *numElements = dev_compactionIndexBuffer[i];
+        }
+    }
+}
+*/
+
 
 //Kernel that writes the depth image to the OpenGL PBO directly.
 __global__ void sendDepthImageBufferToPBO(float4* PBOpos, glm::vec2 resolution, DPixel* depthBuffer){
 
-	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
-	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
-	int index = x + (y * resolution.x);
+	int r = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int c = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int i = (r * resolution.x) + c;
 
-	if(x<resolution.x && y<resolution.y) {
+	if(r<resolution.y && c<resolution.x) {
 
 		//Cast to float for storage
-		float depth = depthBuffer[index].depth;
+		float depth = depthBuffer[i].depth;
 
 		// Each thread writes one pixel location in the texture (textel)
 		//Store depth in every component except alpha
-		PBOpos[index].x = depth;
-		PBOpos[index].y = depth;
-		PBOpos[index].z = depth;
-		PBOpos[index].w = 1.0f;
+		PBOpos[i].x = depth;
+		PBOpos[i].y = depth;
+		PBOpos[i].z = depth;
+		PBOpos[i].w = 1.0f;
 	}
 }
 
 //Kernel that writes the image to the OpenGL PBO directly.
 __global__ void sendColorImageBufferToPBO(float4* PBOpos, glm::vec2 resolution, ColorPixel* colorBuffer){
 
-	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
-	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
-	int index = x + (y * resolution.x);
+	int r = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int c = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int i = (r * resolution.x) + c;
 
-	if(x<resolution.x && y<resolution.y){
+	if(r<resolution.y && c<resolution.x){
 
 		glm::vec3 color;
-		color.r = colorBuffer[index].r/255.0f;
-		color.g = colorBuffer[index].g/255.0f;
-		color.b = colorBuffer[index].b/255.0f;
+		color.r = colorBuffer[i].r/255.0f;
+		color.g = colorBuffer[i].g/255.0f;
+		color.b = colorBuffer[i].b/255.0f;
 
 
 		// Each thread writes one pixel location in the texture (textel)
-		PBOpos[index].x = color.r;
-		PBOpos[index].y = color.g;
-		PBOpos[index].z = color.b;
-		PBOpos[index].w = 1.0f;
+		PBOpos[i].x = color.r;
+		PBOpos[i].y = color.g;
+		PBOpos[i].z = color.b;
+		PBOpos[i].w = 1.0f;
 	}
 }
 
 
 __global__ void sendPCBToPBOs(float4* dptrPosition, float4* dptrColor, float4* dptrNormal, glm::vec2 resolution, PointCloud* dev_pcb)
 {
-	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
-	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
-	int index = x + (y * resolution.x);
+	int r = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int c = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int i = (r * resolution.x) + c;
 
-	if(x<resolution.x && y<resolution.y){
+	if(r<resolution.y && c<resolution.x){
 
-		PointCloud point = dev_pcb[index];
+		PointCloud point = dev_pcb[i];
 
 		// Each thread writes one pixel location in the texture (textel)
 
-		dptrPosition[index].x = point.pos.x;
-		dptrPosition[index].y = point.pos.y;
-		dptrPosition[index].z = point.pos.z;
-		dptrPosition[index].w = 1.0;
+		dptrPosition[i].x = point.pos.x;
+		dptrPosition[i].y = point.pos.y;
+		dptrPosition[i].z = point.pos.z;
+		dptrPosition[i].w = 1.0f;
 
-		dptrColor[index].x = point.color.r;
-		dptrColor[index].y = point.color.g;
-		dptrColor[index].z = point.color.b;
-		dptrColor[index].w = 1.0;
+		dptrColor[i].x = point.color.r;
+		dptrColor[i].y = point.color.g;
+		dptrColor[i].z = point.color.b;
+		dptrColor[i].w = 1.0f;
 
-		dptrNormal[index].x = point.normal.x;
-		dptrNormal[index].y = point.normal.y;
-		dptrNormal[index].z = point.normal.z;
-		dptrNormal[index].w = 0.0;
+		dptrNormal[i].x = point.normal.x;
+		dptrNormal[i].y = point.normal.y;
+		dptrNormal[i].z = point.normal.z;
+		dptrNormal[i].w = 0.0f;
 	}
 }
 
@@ -234,7 +286,6 @@ __host__ void deletePBO(GLuint *pbo)
 	}
 }
 
-
 //Intialize pipeline buffers
 __host__ void initCuda(int width, int height)
 {
@@ -242,10 +293,18 @@ __host__ void initCuda(int width, int height)
 	cudaMalloc((void**) &dev_colorImageBuffer, sizeof(ColorPixel)*width*height);
 	cudaMalloc((void**) &dev_depthImageBuffer, sizeof(DPixel)*width*height);
 	cudaMalloc((void**) &dev_pointCloudBuffer, sizeof(PointCloud)*width*height);
-    
+    //cudaMalloc((void**) &dev_compactionFlags, sizeof(int)*width*height);
+    //cuCompactionBufSize = int(pow(ceil(log((float)width*height)), 2));
+    //cudaMalloc((void**) &dev_compactionIndexBuffer, sizeof(int)*cuCompactionBufSize);
 	cuImageWidth = width;
 	cuImageHeight = height;
 
+    // Set up CUB DeviceSelectIf call for normals compaction
+    void* dev_compactionTempStorage = NULL;
+    dev_compactionTempStorageBytes = 0;
+    cudaMalloc(&dev_compactionNumValid, sizeof(int));
+    cub::DeviceSelect::If(dev_compactionTempStorage, dev_compactionTempStorageBytes, dev_pointCloudBuffer, dev_pointCloudBuffer, dev_compactionNumValid, width*height, selectOp); 
+    cudaMalloc(&dev_compactionTempStorage, dev_compactionTempStorageBytes);
 }
 
 //Free all allocated buffers and close out environment
@@ -256,6 +315,10 @@ __host__ void cleanupCuda()
 	cudaFree(dev_colorImageBuffer);
 	cudaFree(dev_depthImageBuffer);
 	cudaFree(dev_pointCloudBuffer);
+    //cudaFree(dev_compactionFlags);
+    //cudaFree(dev_compactionIndexBuffer);
+    cudaFree(dev_compactionTempStorage);
+    cudaFree(dev_compactionNumValid);
 	cuImageWidth = 0;
 	cuImageHeight = 0;
 
@@ -369,8 +432,8 @@ __host__ bool drawPCBToPBO(float4* dptrPosition, float4* dptrColor, float4* dptr
 	int tileSize = 8;
 
 	dim3 threadsPerBlock(tileSize, tileSize);
-	dim3 fullBlocksPerGrid((int)ceil(float(texWidth)/float(tileSize)), 
-		(int)ceil(float(texHeight)/float(tileSize)));
+	dim3 fullBlocksPerGrid( (int)ceil(float(texWidth)/float(tileSize)), 
+		                    (int)ceil(float(texHeight)/float(tileSize)) );
 
 	sendPCBToPBOs<<<fullBlocksPerGrid, threadsPerBlock>>>(dptrPosition, dptrColor, dptrNormal, glm::vec2(texWidth, texHeight), dev_pointCloudBuffer);
 
@@ -378,10 +441,23 @@ __host__ bool drawPCBToPBO(float4* dptrPosition, float4* dptrColor, float4* dptr
 }
 
 //Takes a device pointer to the point cloud VBO and copies the contents of VBO using stream compaction.
-//maxSize should be equal to the number of elements in dev_pointCloudBuffer
-__host__ int compactPointCloudToVBO(PointCloud* vbo, int maxSize)
+/*
+__host__ int compactPointCloudToVBO(PointCloud* vbo)
 {
-	//TODO: Implement
+	int tileSize = 8; // must be power of 2!
 
-	return 0;
+	dim3 threadsPerBlock(tileSize, tileSize);
+	dim3 fullBlocksPerGrid(cuCompactionBufSize/(tileSize*tileSize));
+
+    int *numElements;
+    filterPointCloud<<<fullBlocksPerGrid, threadsPerBlock>>>(vbo, dev_pointCloudBuffer, cuImageWidth, cuImageHeight, cuCompactionBufSize, dev_compactionFlags, dev_compactionIndexBuffer, numElements);
+	return *numElements;
+}
+*/
+
+__host__ int compactPointCloudToVBO(PointCloud* vbo) {
+    int numValid[1];
+    cub::DeviceSelect::If(dev_compactionTempStorage, dev_compactionTempStorageBytes, dev_pointCloudBuffer, vbo, dev_compactionNumValid, cuImageWidth*cuImageHeight, selectOp);
+    cudaMemcpy(numValid, dev_compactionNumValid, sizeof(int), cudaMemcpyDeviceToHost);
+    return numValid[0];
 }
