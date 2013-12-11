@@ -19,7 +19,7 @@ void main()
 	vec4 normal = 	texture(u_Texture2, fs_texCoord);
 	//FragColor = vec4(-position.y, position.y, 0.0, 1.0);
 	//FragColor = vec4(-position.zzz/10.0, 1.0);
-	FragColor = vec4(position.x, position.y, -position.z, 1.0);
-	//FragColor = abs(normal);
+	//FragColor = vec4(position.x, position.y, -position.z, 1.0);
+	FragColor = abs(normal);
 	
 }
