@@ -760,8 +760,8 @@ void MeshViewer::display()
 	computePointCloudNormals();
 
 	//Stream compaction, prep for rendering
-	//int numCompactedPoints = fillPointCloudVBO();
-	int numCompactedPoints = mXRes*mYRes;
+	int numCompactedPoints = fillPointCloudVBO();
+	
 	cudaDeviceSynchronize();
 	//=====RENDERING======
 

@@ -352,32 +352,21 @@ __host__ bool drawPCBToPBO(float4* dptrPosition, float4* dptrColor, float4* dptr
 }
 
 
-PointCloud debugBuff1[100000];
-
-PointCloud debugBuff2[100000];
 // Takes a device pointer to the point cloud VBO and copies the contents of the PointCloud buffer to the VBO using stream compaction.
 // See: http://nvlabs.github.io/cub/structcub_1_1_device_select.html
 __host__ int compactPointCloudToVBO(PointCloud* vbo) {
-	int numValid[1];
-	numValid[0] = 1;
+	int numValid;
 
 	PointCloud* dptr;
 	cudaMalloc((void**)&dptr, cuImageWidth*cuImageHeight*sizeof(PointCloud));
-	//cudaMemcpy(debugBuff1, dev_pointCloudBuffer, 100000*sizeof(PointCloud), cudaMemcpyDeviceToHost);
-
-	//cudaMemcpy(debugBuff2, vbo, 100000*sizeof(PointCloud), cudaMemcpyDeviceToHost);
-	//numValid[0] = streamCompaction(dev_pointCloudBuffer, vbo, cuImageWidth*cuImageHeight, ValidPoint());
-
+	
 	thrust::device_ptr<PointCloud> dp_buffer(dev_pointCloudBuffer);
 	thrust::device_ptr<PointCloud> dp_vbo(dptr);
 	thrust::device_ptr<PointCloud> last = thrust::copy_if(dp_buffer, dp_buffer+(cuImageWidth*cuImageHeight), dp_vbo, IsValidPoint());
 
-	numValid[0] = last - dp_vbo;
-
-	//cudaMemcpy(debugBuff1, dev_pointCloudBuffer, 100000*sizeof(PointCloud), cudaMemcpyDeviceToHost);
+	numValid = last - dp_vbo;
 	
-	//cudaMemcpy(debugBuff2, vbo, 100000*sizeof(PointCloud), cudaMemcpyDeviceToHost);
+	cudaMemcpy(vbo, dptr, numValid*sizeof(PointCloud), cudaMemcpyDeviceToDevice);
 	cudaFree(dptr);
-
-	return numValid[0];
+	return numValid;
 }
