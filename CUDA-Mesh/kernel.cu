@@ -1,16 +1,10 @@
 #include "Device.h"
 #include "device_launch_parameters.h"
 #include "math_functions.h"
-#include <cub/cub.cuh>
-#define CUB_CDP
 
 ColorPixel* dev_colorImageBuffer;
 DPixel* dev_depthImageBuffer;
 PointCloud* dev_pointCloudBuffer;
-void* dev_compactionTempStorage;
-size_t dev_compactionTempStorageBytes;
-int* dev_compactionNumValid;
-IsValidNormal selectOp;
 
 int	cuImageWidth = 0;
 int	cuImageHeight = 0;
@@ -92,51 +86,51 @@ __device__ glm::vec3 normalFrom3x3Covar(glm::mat3 A) {
 
 __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) {
 	int r = (blockIdx.y * blockDim.y) + threadIdx.y;
-    int c = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int c = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int i = (r * xRes) + c;
 
-    int N = 0; // number of nearest neighbors
+	int N = 0; // number of nearest neighbors
 
-    glm::vec3 neighbor;
-    glm::vec3 center = pointCloud[i].pos;
-    glm::mat3 covariance = glm::mat3(0.0f);
-    glm::vec3 normal;
+	glm::vec3 neighbor;
+	glm::vec3 center = pointCloud[i].pos;
+	glm::mat3 covariance = glm::mat3(0.0f);
+	glm::vec3 normal;
 	int win_r, win_c, win_i;
 	for (win_r = r-RAD_WIN; win_r <= r+RAD_WIN; win_r++) {
 		for (win_c = c-RAD_WIN; win_c <= c+RAD_WIN; win_c++) {
 			// exclude center from neighbor search
 			if (win_r != r && win_c != c) {
-                // check if neighbor is in frame
-                if (win_r >= 0 && win_r < yRes && win_c >= 0 && win_c < xRes) {
-                    win_i = (win_r * xRes) + win_c;
-                    neighbor = pointCloud[win_i].pos;
-                    // check if neighbor has valid depth data
-                    if (glm::length(neighbor) > EPSILON) {
-                        // check if neighbor is close enough in world space
-                        if (glm::distance(neighbor, center) < RAD_NN) {
-                            N += 1; // valid neighbor found
-                            glm::vec3 difference = neighbor - center;
-                            // remember GLM is column major
-                            covariance[0] += (difference * difference[0]);
-                            covariance[1] += (difference * difference[1]);
-                            covariance[2] += (difference * difference[2]);
-                        }
-                    }
-                }
+				// check if neighbor is in frame
+				if (win_r >= 0 && win_r < yRes && win_c >= 0 && win_c < xRes) {
+					win_i = (win_r * xRes) + win_c;
+					neighbor = pointCloud[win_i].pos;
+					// check if neighbor has valid depth data
+					if (glm::length(neighbor) > EPSILON) {
+						// check if neighbor is close enough in world space
+						if (glm::distance(neighbor, center) < RAD_NN) {
+							N += 1; // valid neighbor found
+							glm::vec3 difference = neighbor - center;
+							// remember GLM is column major
+							covariance[0] += (difference * difference[0]);
+							covariance[1] += (difference * difference[1]);
+							covariance[2] += (difference * difference[2]);
+						}
+					}
+				}
 			}
 		}
 	}
-    // check if enough nearest neighbors were found
-    if (N >= MIN_NN) {
-        covariance = covariance/N; // average covariance
-        // compute and assign normal (0 if not "flat" enough)
-        normal = normalFrom3x3Covar(covariance);
-        // flip normal if facing away from camera
-        if (glm::dot(center, normal) > 0) {
-            normal = -normal;
-        }
-        pointCloud[i].normal = normal;
-    }
+	// check if enough nearest neighbors were found
+	if (N >= MIN_NN) {
+		covariance = covariance/N; // average covariance
+		// compute and assign normal (0 if not "flat" enough)
+		normal = normalFrom3x3Covar(covariance);
+		// flip normal if facing away from camera
+		if (glm::dot(center, normal) > 0) {
+			normal = -normal;
+		}
+		pointCloud[i].normal = normal;
+	}
 }
 
 // Kernel that writes the depth image to the OpenGL PBO directly.
@@ -234,13 +228,6 @@ __host__ void initCuda(int width, int height)
 	cuImageWidth = width;
 	cuImageHeight = height;
 
-    // Set up CUB DeviceSelectIf call for normals compaction
-    // see: http://nvlabs.github.io/cub/structcub_1_1_device_select.html
-    void* dev_compactionTempStorage = NULL;
-    dev_compactionTempStorageBytes = 0;
-    cudaMalloc(&dev_compactionNumValid, sizeof(int));
-    cub::DeviceSelect::If(dev_compactionTempStorage, dev_compactionTempStorageBytes, dev_pointCloudBuffer, dev_pointCloudBuffer, dev_compactionNumValid, width*height, selectOp); 
-    cudaMalloc(&dev_compactionTempStorage, dev_compactionTempStorageBytes);
 }
 
 // Free all allocated buffers and close out environment
@@ -251,8 +238,6 @@ __host__ void cleanupCuda()
 	cudaFree(dev_colorImageBuffer);
 	cudaFree(dev_depthImageBuffer);
 	cudaFree(dev_pointCloudBuffer);
-    cudaFree(dev_compactionTempStorage);
-    cudaFree(dev_compactionNumValid);
 	cuImageWidth = 0;
 	cuImageHeight = 0;
 
@@ -359,18 +344,40 @@ __host__ bool drawPCBToPBO(float4* dptrPosition, float4* dptrColor, float4* dptr
 
 	dim3 threadsPerBlock(tileSize, tileSize);
 	dim3 fullBlocksPerGrid( (int)ceil(float(texWidth)/float(tileSize)), 
-		                    (int)ceil(float(texHeight)/float(tileSize)) );
+		(int)ceil(float(texHeight)/float(tileSize)) );
 
 	sendPCBToPBOs<<<fullBlocksPerGrid, threadsPerBlock>>>(dptrPosition, dptrColor, dptrNormal, glm::vec2(texWidth, texHeight), dev_pointCloudBuffer);
 
 	return true;
 }
 
+
+PointCloud debugBuff1[100000];
+
+PointCloud debugBuff2[100000];
 // Takes a device pointer to the point cloud VBO and copies the contents of the PointCloud buffer to the VBO using stream compaction.
 // See: http://nvlabs.github.io/cub/structcub_1_1_device_select.html
 __host__ int compactPointCloudToVBO(PointCloud* vbo) {
-    int numValid[1];
-    cub::DeviceSelect::If(dev_compactionTempStorage, dev_compactionTempStorageBytes, dev_pointCloudBuffer, vbo, dev_compactionNumValid, cuImageWidth*cuImageHeight, selectOp);
-    cudaMemcpy(numValid, dev_compactionNumValid, sizeof(int), cudaMemcpyDeviceToHost);
-    return numValid[0];
+	int numValid[1];
+	numValid[0] = 1;
+
+	PointCloud* dptr;
+	cudaMalloc((void**)&dptr, cuImageWidth*cuImageHeight);
+	//cudaMemcpy(debugBuff1, dev_pointCloudBuffer, 100000*sizeof(PointCloud), cudaMemcpyDeviceToHost);
+
+	//cudaMemcpy(debugBuff2, vbo, 100000*sizeof(PointCloud), cudaMemcpyDeviceToHost);
+	//numValid[0] = streamCompaction(dev_pointCloudBuffer, vbo, cuImageWidth*cuImageHeight, ValidPoint());
+
+	thrust::device_ptr<PointCloud> dp_buffer(dev_pointCloudBuffer);
+	thrust::device_ptr<PointCloud> dp_vbo(dptr);
+	thrust::device_ptr<PointCloud> last = thrust::copy_if(dp_buffer, dp_buffer+(cuImageWidth*cuImageHeight), dp_vbo, IsValidPoint());
+
+	numValid[0] = last - dp_vbo;
+
+	//cudaMemcpy(debugBuff1, dev_pointCloudBuffer, 100000*sizeof(PointCloud), cudaMemcpyDeviceToHost);
+	
+	//cudaMemcpy(debugBuff2, vbo, 100000*sizeof(PointCloud), cudaMemcpyDeviceToHost);
+	cudaFree(dptr);
+
+	return numValid[0];
 }

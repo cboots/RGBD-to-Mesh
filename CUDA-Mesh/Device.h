@@ -8,7 +8,9 @@
 #include "device_structs.h"
 #include <glm/glm.hpp>
 #include <cuda_gl_interop.h>
-
+#include <thrust/copy.h>
+#include <thrust/execution_policy.h>
+#include <thrust/device_ptr.h>
 /*
 #define FOV_Y 43 # degrees
 #define FOV_X 57
@@ -74,11 +76,12 @@ bool drawColorImageBufferToPBO(float4* pbo, int texWidth, int texHeight);
 //Returns false if width or height does not match, true otherwise
 bool drawPCBToPBO(float4* dptrPosition, float4* dptrColor, float4* dptrNormal, int mXRes, int mYRes);
 
-struct IsValidNormal
+struct IsValidPoint
 {
     template <typename T>
     __host__ __device__ __forceinline__
-    bool operator() (const T &a) const {
-        return (glm::length(a.normal) > EPSILON);
+    bool operator() (const T a) const {
+		return true;
+        //return (glm::length(a.normal) > EPSILON);
     }
 };

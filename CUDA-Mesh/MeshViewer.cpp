@@ -355,7 +355,7 @@ void MeshViewer::initFBO()
 		printf("GL_FRAMEBUFFER_COMPLETE failed, CANNOT use FBO[0]\n");
 		checkFramebufferStatus(FBOstatus);
 	}
-	
+
 	// switch back to window-system-provided framebuffer
 	glClear(GL_DEPTH_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -452,6 +452,14 @@ void MeshViewer::initPointCloudVBO()
 
 	glBindBuffer(GL_ARRAY_BUFFER, pointCloudVBO);
 	glBufferData(GL_ARRAY_BUFFER, size_buf_data, NULL, GL_DYNAMIC_DRAW);
+	//Setup interleaved buffer
+	glVertexAttribPointer(PCVBOPositionLocation, 3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_PositionOffset*sizeof(GLfloat))); 
+	glVertexAttribPointer(PCVBOColorLocation,    3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_ColorOffset*sizeof(GLfloat))); 
+	glVertexAttribPointer(PCVBONormalLocation,   3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_NormalOffset*sizeof(GLfloat))); 
+
+	glEnableVertexAttribArray(PCVBOPositionLocation);
+	glEnableVertexAttribArray(PCVBOColorLocation);
+	glEnableVertexAttribArray(PCVBONormalLocation);
 
 	cudaGLRegisterBufferObject( pointCloudVBO);
 }
@@ -665,22 +673,10 @@ void MeshViewer::drawPointCloudVBOtoFBO(int numPoints)
 	glEnable(GL_DEPTH_TEST);
 
 	//Setup VBO
-	
+
 	glUseProgram(pcvbo_prog);
 
-	const GLuint PCVBOStride = 9;//3*vec3
-	const GLuint PCVBO_PositionOffset = 0;
-	const GLuint PCVBO_ColorOffset = 3;
-	const GLuint PCVBO_NormalOffset = 6;
-	glEnableVertexAttribArray(PCVBOPositionLocation);
-	glEnableVertexAttribArray(PCVBOColorLocation);
-	glEnableVertexAttribArray(PCVBONormalLocation);
-
 	glBindBuffer(GL_ARRAY_BUFFER, pointCloudVBO);
-	//Setup interleaved buffer
-	glVertexAttribPointer(PCVBOPositionLocation, 3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_PositionOffset*sizeof(GLfloat))); 
-	glVertexAttribPointer(PCVBOColorLocation,    3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_ColorOffset*sizeof(GLfloat))); 
-	glVertexAttribPointer(PCVBONormalLocation,   3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_NormalOffset*sizeof(GLfloat))); 
 
 	//Setup uniforms
 	mat4 persp = mat4(1.0f);//Identity
@@ -692,10 +688,14 @@ void MeshViewer::drawPointCloudVBOtoFBO(int numPoints)
 	glUniformMatrix4fv(glGetUniformLocation(pcvbo_prog, "u_viewMatrix"),1, GL_FALSE, &viewmat[0][0] );
 	glUniformMatrix4fv(glGetUniformLocation(pcvbo_prog, "u_viewInvTrans"),1, GL_FALSE, &viewInvTrans[0][0] );
 
-
-	glPointSize(5.0f); 
-	glDrawArrays(GL_POINTS, 0, numPoints);
-	glPointSize(1.0f); 
+	cout << "Num Points: " << numPoints << endl;
+	if(numPoints > 0){
+		glPointSize(5.0f); 
+		glDrawArrays(GL_POINTS, 0, numPoints);
+		glPointSize(1.0f); 
+	}
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
 int MeshViewer::fillPointCloudVBO()
