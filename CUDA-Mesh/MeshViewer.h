@@ -129,6 +129,8 @@ protected:
 	//Returns the number of valid elements
 	int fillPointCloudVBO();
 
+	void drawPointCloudVBOtoTexture(GLuint prog, GLuint outputTexture);
+
 	static void glutIdle();
 	static void glutDisplay();
 	static void glutKeyboard(unsigned char key, int x, int y);

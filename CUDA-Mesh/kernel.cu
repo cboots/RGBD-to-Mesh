@@ -340,12 +340,6 @@ bool drawColorImageBufferToPBO(float4* dev_PBOpos, int texWidth, int texHeight)
 	return true;
 }
 
-// Renders the point cloud as stored in the VBO to the texture
-__host__ void drawPointCloudVBOToTexture(GLuint texture, int texWidth, int texHeight /*TODO: More vizualization parameters here*/)
-{
-	// TODO: Implement
-
-}
 
 // Renders various debug information about the 2D point cloud buffer to the texture.
 // Texture width and height must match the resolution of the point cloud buffer.

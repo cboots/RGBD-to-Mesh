@@ -69,9 +69,6 @@ bool drawDepthImageBufferToPBO(float4* pbo, int texWidth, int texHeight);
 //Returns false if width or height does not match, true otherwise
 bool drawColorImageBufferToPBO(float4* pbo, int texWidth, int texHeight);
 
-//Renders the point cloud as stored in the VBO to the texture
-void drawPointCloudVBOToTexture(GLuint texture, int texWidth, int texHeight /*TODO: More vizualization parameters here*/);
-
 //Renders various debug information about the 2D point cloud buffer to the texture.
 //Texture width and height must match the resolution of the point cloud buffer.
 //Returns false if width or height does not match, true otherwise
