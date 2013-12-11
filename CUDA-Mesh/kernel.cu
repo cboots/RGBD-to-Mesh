@@ -100,6 +100,7 @@ __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) 
     glm::vec3 neighbor;
     glm::vec3 center = pointCloud[i].pos;
     glm::mat3 covariance = glm::mat3(0.0f);
+    glm::vec3 normal;
 	int win_r, win_c, win_i;
 	for (win_r = r-RAD_WIN; win_r <= r+RAD_WIN; win_r++) {
 		for (win_c = c-RAD_WIN; win_c <= c+RAD_WIN; win_c++) {
@@ -129,7 +130,12 @@ __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) 
     if (N >= MIN_NN) {
         covariance = covariance/N; // average covariance
         // compute and assign normal (0 if not "flat" enough)
-        pointCloud[i].normal = normalFrom3x3Covar(covariance);
+        normal = normalFrom3x3Covar(covariance);
+        // flip normal if facing away from camera
+        if (glm::dot(center, normal) > 0) {
+            normal = -normal;
+        }
+        pointCloud[i].normal = normal;
     }
 }
 
