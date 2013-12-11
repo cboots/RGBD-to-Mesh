@@ -11,10 +11,10 @@
 #define SCALE_Y 0.393910475614942392
 #define SCALE_X 0.542955699638436879
 #define PI      3.141592653589793238
-#define MIN_EIG_RATIO 1.5
+#define MIN_EIG_RATIO 1.0
 
 #define RAD_WIN 4 // search window for nearest neighbors
-#define RAD_NN 0.05 // nearest neighbor radius in world space (mm)
+#define RAD_NN 0.05 // nearest neighbor radius in world space (meters)
 #define MIN_NN 10 // minimum number of nearest neighbors for valid normal
 
 #define EPSILON 0.000000001
@@ -48,7 +48,7 @@ __global__ void makePointCloud(ColorPixel* colorPixels, DPixel* dPixels, int xRe
 		if (dPixels[i].depth != 0) {
 			float u = (c - (xRes-1)/2.0f + 1) / (xRes-1); // image plane u coordinate
 			float v = ((yRes-1)/2.0f - r) / (yRes-1); // image plane v coordinate
-			float Z = dPixels[i].depth/1000.0f; // depth in mm
+			float Z = dPixels[i].depth/1000.0f; // depth converted to meters
 			pointCloud[i].pos = glm::vec3(u*Z*SCALE_X, v*Z*SCALE_Y, -Z); // convert uv to XYZ
 			pointCloud[i].color = glm::vec3(colorPixels[i].r/255.0f, colorPixels[i].g/255.0f, colorPixels[i].b/255.0f); // copy over texture
 		} else {
@@ -100,7 +100,7 @@ __device__ glm::vec3 normalFrom3x3Covar(glm::mat3 A) {
 	if (eigs[1]/eigs[0] >= MIN_EIG_RATIO) {
 		normal = glm::cross(A[0] - glm::vec3(eigs[0], 0.0f, 0.0f), A[1] - glm::vec3(0.0f, eigs[0], 0.0f));
 	}
-	return normal;
+	return glm::normalize(normal);
 }
 
 __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) {
@@ -302,8 +302,13 @@ __host__ void convertToPointCloud()
 //Computes normals for point cloud in buffer and writes back to the point cloud buffer.
 __host__ void computePointCloudNormals()
 {
-	//TODO: Implement
+	int tileSize = 8;
 
+	dim3 threadsPerBlock(tileSize, tileSize);
+	dim3 fullBlocksPerGrid((int)ceil(float(cuImageWidth)/float(tileSize)), 
+		(int)ceil(float(cuImageHeight)/float(tileSize)));
+
+	computePointNormals<<<fullBlocksPerGrid, threadsPerBlock>>>(dev_pointCloudBuffer, cuImageWidth, cuImageHeight);
 }
 
 
