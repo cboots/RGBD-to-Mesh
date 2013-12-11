@@ -152,6 +152,7 @@ DeviceStatus MeshViewer::initOpenGL(int argc, char **argv)
 	initQuad();
 	initPBO();
 	initFullScreenPBO();
+	initPointCloudVBO();
 	initFBO();
 
 	return DEVICESTATUS_OK;
