@@ -33,8 +33,8 @@ __global__ void makePointCloud(ColorPixel* colorPixels, DPixel* dPixels, int xRe
 	if(r < yRes && c < xRes) {
 		// In range
 		if (dPixels[i].depth != 0) {
-			float u = (c - (xRes-1)/2.0f + 1) / (xRes-1); // image plane u coordinate
-			float v = ((yRes-1)/2.0f - r) / (yRes-1); // image plane v coordinate
+			float u = (c - (xRes-1.0f)/2.0f + 1.0f) / (xRes-1.0f); // image plane u coordinate
+			float v = ((yRes-1.0f)/2.0f - r) / (yRes-1.0f); // image plane v coordinate
 			float Z = dPixels[i].depth/1000.0f; // depth converted to meters
 			pointCloud[i].pos = glm::vec3(u*Z*SCALE_X, v*Z*SCALE_Y, -Z); // convert uv to XYZ
 			pointCloud[i].color = glm::vec3(colorPixels[i].r/255.0f, colorPixels[i].g/255.0f, colorPixels[i].b/255.0f); // copy over texture
@@ -71,8 +71,8 @@ __device__ glm::vec3 normalFrom3x3Covar(glm::mat3 A) {
 			phi = glm::acos(r)/3;
 		}
 		eigs[0] = q + 2*p*glm::cos(phi);
-		eigs[1] = q + 2*p*glm::cos(phi + 2*PI/3);
-		eigs[2] = 3*q - eigs.x - eigs.z;
+		eigs[2] = q + 2*p*glm::cos(phi + 2*PI/3);
+		eigs[1] = 3*q - eigs[0] - eigs[2];
 		float tmp;
 		int i, eig_i;
 		// sorting: swap first pair if necessary, then second pair, then first pair again
@@ -85,11 +85,12 @@ __device__ glm::vec3 normalFrom3x3Covar(glm::mat3 A) {
 	}
 	// check if point cloud region is "flat" enough
 	if (eigs[1]/eigs[0] >= MIN_EIG_RATIO) {
-		normal = glm::cross(A[0] - glm::vec3(eigs[0], 0.0f, 0.0f), A[1] - glm::vec3(0.0f, eigs[0], 0.0f));
+		normal = glm::normalize(glm::cross(A[0] - glm::vec3(eigs[0], 0.0f, 0.0f), A[1] - glm::vec3(0.0f, eigs[0], 0.0f)));
 	}
-	return glm::normalize(normal);
+	return normal;
 }
 
+/*
 __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) {
 	int r = (blockIdx.y * blockDim.y) + threadIdx.y;
     int c = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -99,15 +100,15 @@ __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) 
 
     glm::vec3 neighbor;
     glm::vec3 center = pointCloud[i].pos;
-    glm::mat3 covariance = glm::mat3(0.0f);
+    glm::mat3 covariance;
     glm::vec3 normal;
 	int win_r, win_c, win_i;
 	for (win_r = r-RAD_WIN; win_r <= r+RAD_WIN; win_r++) {
 		for (win_c = c-RAD_WIN; win_c <= c+RAD_WIN; win_c++) {
-			// exclude center from neighbor search
-			if (win_r != r && win_c != c) {
-                // check if neighbor is in frame
-                if (win_r >= 0 && win_r < yRes && win_c >= 0 && win_c < xRes) {
+            // check if neighbor is in frame
+            if (win_r >= 0 && win_r < yRes && win_c >= 0 && win_c < xRes) {
+			    // exclude center from neighbor search
+			    if (!(win_r == r && win_c == c)) {
                     win_i = (win_r * xRes) + win_c;
                     neighbor = pointCloud[win_i].pos;
                     // check if neighbor has valid depth data
@@ -136,6 +137,31 @@ __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) 
             normal = -normal;
         }
         pointCloud[i].normal = normal;
+    }
+}
+*/
+
+__global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) {
+	int r = (blockIdx.y * blockDim.y) + threadIdx.y;
+    int c = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int i = (r * xRes) + c;
+
+    glm::vec3 center = pointCloud[i].pos;
+    glm::vec3 left;
+    glm::vec3 up;
+    glm::vec3 normal = glm::vec3(0.0f);
+
+    if (r > 0 && c > 0) {
+        left = pointCloud[i-1].pos;
+        up = pointCloud[i-xRes].pos;
+        if (glm::length(left) > EPSILON && glm::length(up) > EPSILON) {
+            normal = glm::cross(left-center, up-center);
+            normal = glm::normalize(normal);
+            if(glm::dot(center, normal) > 0) {
+                normal = -normal;
+            }
+            pointCloud[i].normal = normal;
+        }
     }
 }
 
