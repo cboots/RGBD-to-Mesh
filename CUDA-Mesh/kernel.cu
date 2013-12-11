@@ -132,7 +132,6 @@ __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) 
 		}
 		pointCloud[i].normal = normal;
 	}
-	*/
 }
 */
 
@@ -143,19 +142,45 @@ __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) 
 
     glm::vec3 center = pointCloud[i].pos;
     glm::vec3 left;
+    glm::vec3 right;
     glm::vec3 up;
+    glm::vec3 down;
+    glm::vec3 avg_normal = glm::vec3(0.0f);
     glm::vec3 normal = glm::vec3(0.0f);
 
-    if (r > 0 && c > 0) {
+    if (r > 0 && c > 0 && r < yRes-1 && c < xRes-1) {
         left = pointCloud[i-1].pos;
+        right = pointCloud[i+1].pos;
         up = pointCloud[i-xRes].pos;
-        if (glm::length(left) > EPSILON && glm::length(up) > EPSILON) {
-            normal = glm::cross(left-center, up-center);
-            normal = glm::normalize(normal);
-            if(glm::dot(center, normal) > 0) {
-                normal = -normal;
+        down = pointCloud[i+xRes].pos;
+        float n = 0.0f;
+        if (glm::length(left) > EPSILON && glm::length(right) > EPSILON && glm::length(up) > EPSILON && glm::length(down) > EPSILON) {
+            if (glm::distance(center, left) < RAD_NN) {
+                if (glm::distance(center, up) < RAD_NN) {
+                    normal = glm::normalize(glm::cross(left-center, up-center));
+                    avg_normal += (glm::dot(center, normal) > 0 ? -normal : normal);
+                    ++n;
+                }
+                if (glm::distance(center, down) < RAD_NN) {
+                    normal = glm::normalize(glm::cross(left-center, down-center));
+                    avg_normal += (glm::dot(center, normal) > 0 ? -normal : normal);
+                    ++n;
+                }
             }
-            pointCloud[i].normal = normal;
+            if (glm::distance(center, right) < RAD_NN) {
+                if (glm::distance(center, up) < RAD_NN) {
+                    normal = glm::normalize(glm::cross(right-center, up-center));
+                    avg_normal += (glm::dot(center, normal) > 0 ? -normal : normal);
+                    ++n;
+                }
+                if (glm::distance(center, down) < RAD_NN) {
+                    normal = glm::normalize(glm::cross(right-center, down-center));
+                    avg_normal += (glm::dot(center, normal) > 0 ? -normal : normal);
+                    ++n;
+                }
+            }
+            avg_normal /= n;
+            pointCloud[i].normal = avg_normal;
         }
     }
 }
