@@ -56,6 +56,8 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	mWidth = screenwidth;
 	mHeight = screenheight;
 	mViewState = DISPLAY_MODE_OVERLAY;
+
+	resetCamera();
 }
 
 
@@ -707,8 +709,8 @@ void MeshViewer::drawPointCloudVBOtoFBO(int numPoints)
 	
 
 	//Setup uniforms
-	mat4 persp = glm::perspective(45.0f, float(mWidth)/float(mHeight), 0.1f, 100.0f);
-	mat4 viewmat = glm::lookAt(vec3(1.0, 1.0, 1.0), vec3(0.0f, 0.0f, 0.0f), vec3(0.0f, -1.0f, 0.0f));
+	mat4 persp = glm::perspective(mCamera.fovy, float(mWidth)/float(mHeight), mCamera.zNear, mCamera.zFar);
+	mat4 viewmat = glm::lookAt(mCamera.eye, mCamera.eye+mCamera.view, mCamera.up);
 	mat4 viewInvTrans = inverse(transpose(viewmat));
 	
 
@@ -925,4 +927,16 @@ void MeshViewer::reshape(int w, int h)
 	initTextures();
 	initFullScreenPBO();//Refresh fullscreen PBO for new resolution
 	initFBO();
+}
+
+
+
+void MeshViewer::resetCamera()
+{
+	mCamera.eye = vec3(0.0f);
+	mCamera.view = vec3(0.0f, 0.0f, -1.0f);
+	mCamera.up = vec3(0.0f, -1.0f, 0.0f);
+	mCamera.fovy = 45.0f;
+	mCamera.zFar = 100.0f;
+	mCamera.zNear = 0.01;
 }
