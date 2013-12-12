@@ -8,6 +8,7 @@ PointCloud* dev_pointCloudBuffer;
 PointCloud* dev_pointCloudVBO;
 
 triangleIndecies* dev_triangulationIBO;
+triangleIndecies* dev_triangulationIBOCompact;
 
 
 int	cuImageWidth = 0;
@@ -321,6 +322,7 @@ __host__ void initCuda(int width, int height)
 	cudaMalloc((void**) &dev_pointCloudBuffer, sizeof(PointCloud)*width*height);
 	cudaMalloc((void**) &dev_pointCloudVBO, sizeof(PointCloud)*width*height);
 	cudaMalloc((void**) &dev_triangulationIBO, sizeof(triangleIndecies)*width*height*2);
+	cudaMalloc((void**) &dev_triangulationIBOCompact, sizeof(triangleIndecies)*width*height*2);
 
 	cuImageWidth = width;
 	cuImageHeight = height;
@@ -337,6 +339,7 @@ __host__ void cleanupCuda()
 	cudaFree(dev_pointCloudBuffer);
 	cudaFree(dev_pointCloudVBO);
 	cudaFree(dev_triangulationIBO);
+	cudaFree(dev_triangulationIBOCompact);
 	cuImageWidth = 0;
 	cuImageHeight = 0;
 
@@ -483,12 +486,12 @@ int triangulatePCB(triangleIndecies* ibo, float maxTriangleEdgeLength)
 
 
 	thrust::device_ptr<triangleIndecies> dp_buffer(dev_triangulationIBO);
-	thrust::device_ptr<triangleIndecies> dp_ibo(ibo);
+	thrust::device_ptr<triangleIndecies> dp_ibo(dev_triangulationIBOCompact);
 	thrust::device_ptr<triangleIndecies> last = thrust::copy_if(dp_buffer, dp_buffer+(2*cuImageWidth*cuImageHeight), dp_ibo, IsValidTriangle());
 
 	int numValid = last - dp_ibo;
 
-	cudaMemcpy(ibo, dev_triangulationIBO, numValid*sizeof(triangleIndecies), cudaMemcpyDeviceToDevice);
+	cudaMemcpy(ibo, dev_triangulationIBOCompact, numValid*sizeof(triangleIndecies), cudaMemcpyDeviceToDevice);
 	return numValid;
 
 }

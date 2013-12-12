@@ -464,6 +464,9 @@ void MeshViewer::initPointCloudVBO()
 	if(pointCloudVBO){
 		glDeleteBuffers(1, &pointCloudVBO);
 	}
+	if(triangleIBO){
+		glDeleteBuffers(1, &triangleIBO);
+	}
 
 	//Max num elements
 	int max_elements = mWidth*mHeight;
@@ -471,6 +474,7 @@ void MeshViewer::initPointCloudVBO()
 
 	//Fill with data
 	GLfloat *bodies    = new GLfloat[size_buf_data];
+	GLuint *indices   = new GLuint[max_elements*3*2];//3 indecies per triangle, 2 tris per pixel(overshoot, but makes initialization simpler)
 	for(int i = 0; i < max_elements; i++)
 	{
 		//Position
@@ -487,16 +491,34 @@ void MeshViewer::initPointCloudVBO()
 		bodies[i*PCVBOStride+6] = 0.0;
 		bodies[i*PCVBOStride+7] = 0.0;
 		bodies[i*PCVBOStride+8] = 0.0;
+
+		indices[i*6+0] = 0;
+		indices[i*6+1] = 0;
+		indices[i*6+2] = 0;
+		indices[i*6+3] = 0;
+		indices[i*6+4] = 0;
+		indices[i*6+5] = 0;
 	}
 
 	glGenBuffers(1,&pointCloudVBO);
+	glGenBuffers(1,&triangleIBO);
 
 	glBindBuffer(GL_ARRAY_BUFFER, pointCloudVBO);
 	glBufferData(GL_ARRAY_BUFFER, size_buf_data, bodies, GL_DYNAMIC_DRAW);//Initialize
 
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, triangleIBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2*3*max_elements*sizeof(GLuint), indices, GL_DYNAMIC_DRAW);
+
+	//Unbind buffers
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	cudaGLRegisterBufferObject( pointCloudVBO);
+	cudaGLRegisterBufferObject( triangleIBO);
+
+	delete[] indices;
+	delete[] bodies;
 }
 
 
@@ -759,6 +781,19 @@ int MeshViewer::fillPointCloudVBO()
 }
 
 
+int MeshViewer::computePCBTriangulation(float maxEdgeLength)
+{
+	triangleIndecies* dptr;
+
+	cudaGLMapBufferObject((void**)&dptr, triangleIBO);
+	//Do CUDA stuff
+	int numTriangles = triangulatePCB(dptr, maxEdgeLength);
+	cudaGLUnmapBufferObject(triangleIBO); 
+
+	return numTriangles;
+}
+
+
 ////All the important runtime stuff happens here:
 void MeshViewer::display()
 {
@@ -778,10 +813,14 @@ void MeshViewer::display()
 	//Compute normals
 	computePointCloudNormals();
 
-	//Stream compaction, prep for rendering
+	//Stream compaction optional, prep for rendering
 	int numCompactedPoints = fillPointCloudVBO();
 
+	int numTriangles = computePCBTriangulation(0.1);
+	cout << "Num Triangles: "<<numTriangles<<endl;
 	cudaDeviceSynchronize();
+
+
 	//=====RENDERING======
 
 	GLuint pcbTextures[] = { positionTexture, colorTexture, normalTexture};

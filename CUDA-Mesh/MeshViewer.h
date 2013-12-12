@@ -87,6 +87,7 @@ protected:
 	void initFBO();
 	void cleanupFBO();
 
+
 	virtual DeviceStatus initOpenGL(int argc, char **argv);
 	virtual void initTextures();
 	virtual void cleanupTextures();
@@ -112,6 +113,8 @@ protected:
 	int fillPointCloudVBO();
 
 	void drawPointCloudVBOtoFBO(int numPoints);
+
+	int computePCBTriangulation(float maxEdgeLength);
 
 	static void glutIdle();
 	static void glutDisplay();
@@ -155,6 +158,7 @@ private:
 
 	//PC VBO
 	GLuint pointCloudVBO; 
+	GLuint triangleIBO;
 	//VBO attribs
 
 	static const GLuint PCVBOPositionLocation;//vec3
