@@ -70,6 +70,8 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	mViewState = DISPLAY_MODE_OVERLAY;
 	hairyPoints = false;
 	mMeshWireframeMode = false;
+	mFastNormals = false;
+	mComputeNormals = false;
 	mMaxTriangleEdgeLength = 0.1;
 
 	seconds = time (NULL);
@@ -897,8 +899,13 @@ void MeshViewer::display()
 	convertToPointCloud();
 
 	//Compute normals
-	computePointCloudNormals();
-
+	if(mComputeNormals){
+		if(mFastNormals){
+			computePointCloudNormalsFast();
+		}else{
+			computePointCloudNormals();
+		}
+	}
 	//Stream compaction optional, prep for rendering
 	int numCompactedPoints = fillPointCloudVBO();
 
@@ -1194,6 +1201,14 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	case 'v':
 		mMeshWireframeMode = !mMeshWireframeMode;
 		cout << "Toggle wireframe mode" << endl;
+		break;
+	case 'b':
+		mFastNormals = !mFastNormals;
+		cout << "Fast normals " << (mFastNormals?"On":"Off") << endl;
+		break;
+	case 'B':
+		mComputeNormals = !mComputeNormals;
+		cout << "Normal Computation " << (mComputeNormals?"On":"Off") << endl;
 		break;
 	}
 

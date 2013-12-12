@@ -396,6 +396,16 @@ __host__ void computePointCloudNormals()
 	computePointNormals<<<fullBlocksPerGrid, threadsPerBlock>>>(dev_pointCloudBuffer, cuImageWidth, cuImageHeight);
 }
 
+__host__ void computePointCloudNormalsFast()
+{
+	int tileSize = 8;
+
+	dim3 threadsPerBlock(tileSize, tileSize);
+	dim3 fullBlocksPerGrid((int)ceil(float(cuImageWidth)/float(tileSize)), 
+		(int)ceil(float(cuImageHeight)/float(tileSize)));
+
+	//computePointNormals<<<fullBlocksPerGrid, threadsPerBlock>>>(dev_pointCloudBuffer, cuImageWidth, cuImageHeight);
+}
 
 // Draws depth image buffer to the texture.
 // Texture width and height must match the resolution of the depth image.

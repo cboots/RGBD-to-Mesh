@@ -81,6 +81,8 @@ protected:
 
 	float mMaxTriangleEdgeLength;
 	bool mMeshWireframeMode;
+	bool mFastNormals;
+	bool mComputeNormals;
 
 	DisplayModes mViewState;
 
