@@ -71,7 +71,7 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	hairyPoints = false;
 	mMeshWireframeMode = false;
 	mFastNormals = false;
-	mComputeNormals = false;
+	mComputeNormals = true;
 	mMaxTriangleEdgeLength = 0.1;
 
 	seconds = time (NULL);

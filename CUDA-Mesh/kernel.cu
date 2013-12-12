@@ -175,6 +175,76 @@ __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) 
 	}
 }
 
+__global__ void computePointNormalsFast(PointCloud* pointCloud, int xRes, int yRes) {
+
+	extern __shared__ glm::vec3 s_positions[];
+
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int i = (y * xRes) + x;
+
+	//First pull everything into shared memory.
+	int linIndexInBlock = (blockDim.x*threadIdx.y)+threadIdx.x;
+	int sharedWidth = RAD_WIN*2+blockDim.x;
+	int sharedHeight = RAD_WIN*2+blockDim.y;
+	int numThreads = blockDim.x*blockDim.y;
+	
+	//Load shared memory in chunks
+	for(int offset = 0; offset < sharedWidth*sharedHeight; offset+=numThreads)
+	{
+		int sharedIndex = offset+linIndexInBlock;
+		if(sharedIndex < sharedWidth*sharedHeight)
+		{
+			//Tile's upper left x  - RAD_WIN + sharedX
+			int pullX = (blockIdx.x * blockDim.x) - RAD_WIN + sharedIndex % sharedWidth;
+			int pullY = (blockIdx.y * blockDim.y) - RAD_WIN + sharedIndex / sharedWidth;
+			if(pullX >= 0 && pullY >= 0 && pullX < xRes && pullY < yRes)
+			{
+				s_positions[sharedIndex] = pointCloud[pullX+pullY*xRes].pos;
+			}
+		}
+	}
+	__syncthreads();
+	
+	//Formula to go from (x,y) to shared memory index:
+	//(xInTile+RAD_WIN)+(yInTile+RAD_WIN)*sharedWidth
+
+	glm::vec3 center = s_positions[(threadIdx.x + RAD_WIN) + (threadIdx.y + RAD_WIN)*(2*RAD_WIN+blockDim.x)];
+	glm::vec3 neighbor;
+	glm::vec3 neighbor_ortho;
+	glm::vec3 normal_sum = glm::vec3(0.0f);
+	glm::vec3 normal;
+	float N = 0.0f;
+
+	
+	int win_y, win_x;
+	for (win_y = -RAD_WIN; win_y <= RAD_WIN; win_y++) {
+		for (win_x = -RAD_WIN; win_x <= RAD_WIN; win_x++) {
+			if (y+win_y >= 0 && x+win_x >= 0 && y+win_y < yRes && x+win_x < xRes) {
+				if (!(win_y == 0 & win_x == 0)) {
+
+					//Pull from shared memory instead of global
+
+					//Neighbor 
+					neighbor = pointCloud[i+win_x+win_y*xRes].pos;
+					neighbor_ortho = pointCloud[i-win_y+win_x*xRes].pos;
+					if (glm::length(neighbor) > EPSILON && glm::length(neighbor_ortho) > EPSILON) {
+						if (glm::distance(center, neighbor) < RAD_NN && glm::distance(center, neighbor_ortho) < RAD_NN) {
+							normal = glm::normalize(glm::cross(neighbor-center, neighbor_ortho-center));
+							normal_sum += (glm::dot(center, normal) > 0 ? -normal : normal);
+							++N;
+						}
+					}
+				}
+			}
+		}
+	}
+	if (N > MIN_NN) {
+		pointCloud[i].normal = normal_sum / N;
+	}
+}
+
+
 // Kernel that writes the depth image to the OpenGL PBO directly.
 __global__ void sendDepthImageBufferToPBO(float4* PBOpos, glm::vec2 resolution, DPixel* depthBuffer){
 
@@ -403,8 +473,9 @@ __host__ void computePointCloudNormalsFast()
 	dim3 threadsPerBlock(tileSize, tileSize);
 	dim3 fullBlocksPerGrid((int)ceil(float(cuImageWidth)/float(tileSize)), 
 		(int)ceil(float(cuImageHeight)/float(tileSize)));
+	int sharedMemorySize = (RAD_WIN*2+tileSize)*(RAD_WIN*2+tileSize)*sizeof(glm::vec3);//Tile's entire search window.
 
-	//computePointNormals<<<fullBlocksPerGrid, threadsPerBlock>>>(dev_pointCloudBuffer, cuImageWidth, cuImageHeight);
+	computePointNormalsFast<<<fullBlocksPerGrid, threadsPerBlock, sharedMemorySize>>>(dev_pointCloudBuffer, cuImageWidth, cuImageHeight);
 }
 
 // Draws depth image buffer to the texture.
