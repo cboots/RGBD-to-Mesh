@@ -132,7 +132,6 @@ __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) 
 		}
 		pointCloud[i].normal = normal;
 	}
-	
 }
 */
 
@@ -142,21 +141,32 @@ __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) 
 	int i = (r * xRes) + c;
 
     glm::vec3 center = pointCloud[i].pos;
-    glm::vec3 left;
-    glm::vec3 up;
-    glm::vec3 normal = glm::vec3(0.0f);
+    glm::vec3 neighbor;
+    glm::vec3 neighbor_ortho;
+    glm::vec3 normal_sum = glm::vec3(0.0f);
+    glm::vec3 normal;
+    float N = 0.0f;
 
-    if (r > 0 && c > 0) {
-        left = pointCloud[i-1].pos;
-        up = pointCloud[i-xRes].pos;
-        if (glm::length(left) > EPSILON && glm::length(up) > EPSILON) {
-            normal = glm::cross(left-center, up-center);
-            normal = glm::normalize(normal);
-            if(glm::dot(center, normal) > 0) {
-                normal = -normal;
+	int win_r, win_c, win_i;
+	for (win_r = -RAD_WIN; win_r <= RAD_WIN; win_r++) {
+		for (win_c = -RAD_WIN; win_c <= RAD_WIN; win_c++) {
+            if (r+win_r >= 0 && c+win_c >= 0 && r+win_r < yRes && c+win_c < xRes) {
+                if (!(win_r == 0 & win_c == 0)) {
+                    neighbor = pointCloud[i+win_c+win_r*xRes].pos;
+                    neighbor_ortho = pointCloud[i-win_r+win_c*xRes].pos;
+                    if (glm::length(neighbor) > EPSILON && glm::length(neighbor_ortho) > EPSILON) {\
+                        if (glm::distance(center, neighbor) < RAD_NN && glm::distance(center, neighbor_ortho) < RAD_NN) {
+                            normal = glm::normalize(glm::cross(neighbor-center, neighbor_ortho-center));
+                            normal_sum += (glm::dot(center, normal) > 0 ? -normal : normal);
+                            ++N;
+                        }
+                    }
+                }
             }
-            pointCloud[i].normal = normal;
         }
+    }
+    if (N > MIN_NN) {
+        pointCloud[i].normal = normal_sum / N;
     }
 }
 
