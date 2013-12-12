@@ -2,6 +2,21 @@
 #include "device_launch_parameters.h"
 #include "math_functions.h"
 
+/*
+#define FOV_Y 43 # degrees
+#define FOV_X 57
+
+#define SCALE_Y tan((FOV_Y/2)*pi/180)
+#define SCALE_X tan((FOV_X/2)*pi/180)
+*/
+#define SCALE_Y 0.393910475614942392
+#define SCALE_X 0.542955699638436879
+#define MIN_EIG_RATIO 1.0
+
+#define RAD_WIN 2 // search window for nearest neighbors
+#define RAD_NN 0.05 // nearest neighbor radius in world space (meters)
+#define MIN_NN 3 // minimum number of nearest neighbors for valid normal
+
 ColorPixel* dev_colorImageBuffer;
 DPixel* dev_depthImageBuffer;
 PointCloud* dev_pointCloudBuffer;
@@ -188,7 +203,7 @@ __global__ void computePointNormalsFast(PointCloud* pointCloud, int xRes, int yR
 	int sharedWidth = RAD_WIN*2+blockDim.x;
 	int sharedHeight = RAD_WIN*2+blockDim.y;
 	int numThreads = blockDim.x*blockDim.y;
-	
+
 	//Load shared memory in chunks
 	for(int offset = 0; offset < sharedWidth*sharedHeight; offset+=numThreads)
 	{
@@ -205,29 +220,31 @@ __global__ void computePointNormalsFast(PointCloud* pointCloud, int xRes, int yR
 		}
 	}
 	__syncthreads();
-	
+
 	//Formula to go from (x,y) to shared memory index:
 	//(xInTile+RAD_WIN)+(yInTile+RAD_WIN)*sharedWidth
-
-	glm::vec3 center = s_positions[(threadIdx.x + RAD_WIN) + (threadIdx.y + RAD_WIN)*(2*RAD_WIN+blockDim.x)];
+	int centerI = (threadIdx.x + RAD_WIN) + (threadIdx.y + RAD_WIN)*sharedWidth;
+	glm::vec3 center = s_positions[centerI];
+	
 	glm::vec3 neighbor;
 	glm::vec3 neighbor_ortho;
 	glm::vec3 normal_sum = glm::vec3(0.0f);
 	glm::vec3 normal;
 	float N = 0.0f;
 
-	
+
 	int win_y, win_x;
 	for (win_y = -RAD_WIN; win_y <= RAD_WIN; win_y++) {
 		for (win_x = -RAD_WIN; win_x <= RAD_WIN; win_x++) {
-			if (y+win_y >= 0 && x+win_x >= 0 && y+win_y < yRes && x+win_x < xRes) {
-				if (!(win_y == 0 & win_x == 0)) {
-
-					//Pull from shared memory instead of global
+			if (!(win_y == 0 & win_x == 0)) {
+				if (y+win_y >= 0 && x+win_x >= 0 && y+win_y < yRes && x+win_x < xRes) {
 
 					//Neighbor 
-					neighbor = pointCloud[i+win_x+win_y*xRes].pos;
-					neighbor_ortho = pointCloud[i-win_y+win_x*xRes].pos;
+					//Pull from shared memory instead of global
+					neighbor = s_positions[centerI + win_x+win_y*sharedWidth];
+					neighbor_ortho = s_positions[centerI-win_y+win_x*sharedWidth];
+					//neighbor = pointCloud[i+win_x+win_y*xRes].pos;
+					//neighbor_ortho = pointCloud[i-win_y+win_x*xRes].pos;
 					if (glm::length(neighbor) > EPSILON && glm::length(neighbor_ortho) > EPSILON) {
 						if (glm::distance(center, neighbor) < RAD_NN && glm::distance(center, neighbor_ortho) < RAD_NN) {
 							normal = glm::normalize(glm::cross(neighbor-center, neighbor_ortho-center));
@@ -326,7 +343,7 @@ __global__ void triangulationKernel(PointCloud* pointCloudBuffer, triangleIndeci
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 	int triangleIndex = (threadIdx.z * resolution.x * resolution.y) + (y * resolution.x) + x;
-	
+
 	unsigned int i0, i1, i2;
 	//Get pixel locations in image space
 	if(triangleIndex < resolution.x*resolution.y*2){

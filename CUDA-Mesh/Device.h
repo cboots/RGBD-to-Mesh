@@ -13,22 +13,9 @@
 #include <thrust/device_ptr.h>
 #include <thrust/iterator/counting_iterator.h>
 #include <iostream>
-/*
-#define FOV_Y 43 # degrees
-#define FOV_X 57
 
-#define SCALE_Y tan((FOV_Y/2)*pi/180)
-#define SCALE_X tan((FOV_X/2)*pi/180)
-*/
-#define SCALE_Y 0.393910475614942392
-#define SCALE_X 0.542955699638436879
+
 #define PI      3.141592653589793238
-#define MIN_EIG_RATIO 1.0
-
-#define RAD_WIN 2 // search window for nearest neighbors
-#define RAD_NN 0.05 // nearest neighbor radius in world space (meters)
-#define MIN_NN 3 // minimum number of nearest neighbors for valid normal
-
 #define EPSILON 0.000000001
 
 
