@@ -921,7 +921,7 @@ void MeshViewer::display()
 	case DISPLAY_MODE_4WAY_PCB:
 		drawPCBtoTextures(positionTexture, colorTexture, normalTexture);
 		drawQuad(color_prog, -0.5,  0.5, 0.5, 0.5, &colorTexture, 1);//Upper Left
-		drawQuad(color_prog, -0.5, -0.5, 0.5, 0.5, &positionTexture, 1);//Lower Left
+		drawQuad(abs_prog, -0.5, -0.5, 0.5, 0.5, &positionTexture, 1);//Lower Left
 		drawQuad(abs_prog,  0.5,  0.5, 0.5, 0.5, &normalTexture, 1);//Upper Right
 
 		drawQuad(pcbdebug_prog, 0.5, -0.5, 0.5, 0.5, &pcbTextures[0], 3);//Lower right
