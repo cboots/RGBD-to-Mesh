@@ -97,6 +97,6 @@ struct IsValidTriangle
     template <typename T>
     __host__ __device__ __forceinline__
     bool operator() (const T a) const {
-		return (a.v0 != 0 || a.v1 != 0 || a.v2 != 0);//if any index is non-zero, valid triangle.
+		return !(a.v0 == 0 && a.v1 == 0 && a.v2 == 0);//if any index is non-zero, valid triangle.
     }
 };

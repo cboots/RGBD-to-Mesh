@@ -249,8 +249,6 @@ __global__ void sendPCBToPBOs(float4* dptrPosition, float4* dptrColor, float4* d
 
 __global__ void triangulationKernel(PointCloud* pointCloudBuffer, triangleIndecies* triangulationIBO, glm::vec2 resolution, float maxTriangleEdgeLength)
 {
-	extern __shared__ glm::vec3 s_position[];
-
 	//Parallel by proposed triangle. (x,y) indicates the upper left corner of triangle, z indicates which triangle this thread creates
 	//  (x,y)__
 	//		|\0|
@@ -259,45 +257,46 @@ __global__ void triangulationKernel(PointCloud* pointCloudBuffer, triangleIndeci
 	int y = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int triangleIndex = (threadIdx.z * resolution.x * resolution.y) + (y * resolution.x) + x;
 
-
+	unsigned int i0, i1, i2;
 	//Get pixel locations in image space
-	if(x < resolution.x-1 && y < resolution.y - 1){
-		//int v0x = x;
-		//int v0y = y;
-		int i0 = x+resolution.x*y;
+	if(triangleIndex < resolution.x*resolution.y*2){
+		if(x < resolution.x-1 && y < resolution.y-1){
+			//int v0x = x;
+			//int v0y = y;
+			i0 = x+resolution.x*y;
 
-		int v1x = x + (1 - threadIdx.z);//z == 0?x + 1: x //next row if upper triangle
-		int v1y = y + 1;//Always on next row
-		int i1 = v1x+resolution.x*v1y;
+			int v1x = x + (1 - threadIdx.z);//z == 0?x + 1: x //next row if upper triangle
+			int v1y = y + 1;//Always on next row
+			i1 = v1x+resolution.x*v1y;
 
-		int v2x = x + 1; //Always on next column
-		int v2y = y + threadIdx.z;//z == 0 ? y : y + 1, next column if lower triangle
-		int i2 = v2x+resolution.x*v2y;
+			int v2x = x + 1; //Always on next column
+			int v2y = y + threadIdx.z;//z == 0 ? y : y + 1, next column if lower triangle
+			i2 = v2x+resolution.x*v2y;
 
-		//Pull all pixels to local memory
-		glm::vec3 p0 = pointCloudBuffer[i0].pos;
-		glm::vec3 p1 = pointCloudBuffer[i1].pos;
-		glm::vec3 p2 = pointCloudBuffer[i2].pos;
+			//Pull all pixels to local memory
+			glm::vec3 p0 = pointCloudBuffer[i0].pos;
+			glm::vec3 p1 = pointCloudBuffer[i1].pos;
+			glm::vec3 p2 = pointCloudBuffer[i2].pos;
 
-		//
-		if(glm::length(p1-p0) < maxTriangleEdgeLength 
-			&& glm::length(p2-p0) < maxTriangleEdgeLength
-			&& glm::length(p2-p1) < maxTriangleEdgeLength)
-		{
-			triangulationIBO[triangleIndex].v0 = i0;
-			triangulationIBO[triangleIndex].v1 = i1;
-			triangulationIBO[triangleIndex].v2 = i2;
-		}else{
-			triangulationIBO[triangleIndex].v0 = 0;
-			triangulationIBO[triangleIndex].v1 = 0;
-			triangulationIBO[triangleIndex].v2 = 0;
+			//If all points are non-zero and lengths within bounds
+			if(	   glm::length(p0) < 0.001 
+				|| glm::length(p1) < 0.001  
+				|| glm::length(p2) < 0.001
+				|| glm::length(p1-p0) > maxTriangleEdgeLength 
+				|| glm::length(p2-p0) > maxTriangleEdgeLength
+				|| glm::length(p2-p1) > maxTriangleEdgeLength)
+			{
+				i0 = 0;
+				i1 = 0;
+				i2 = 0;
+			}
 		}
-	}else{
-		triangulationIBO[triangleIndex].v0 = 0;
-		triangulationIBO[triangleIndex].v1 = 0;
-		triangulationIBO[triangleIndex].v2 = 0;
-	}
 
+		triangulationIBO[triangleIndex].v0 = i0;
+		triangulationIBO[triangleIndex].v1 = i1;
+		triangulationIBO[triangleIndex].v2 = i2;
+
+	}
 }
 
 __host__ void deletePBO(GLuint *pbo)
@@ -317,12 +316,12 @@ __host__ void deletePBO(GLuint *pbo)
 __host__ void initCuda(int width, int height)
 {
 	// Allocate buffers
-	cudaMalloc((void**) &dev_colorImageBuffer, sizeof(ColorPixel)*width*height);
-	cudaMalloc((void**) &dev_depthImageBuffer, sizeof(DPixel)*width*height);
-	cudaMalloc((void**) &dev_pointCloudBuffer, sizeof(PointCloud)*width*height);
-	cudaMalloc((void**) &dev_pointCloudVBO, sizeof(PointCloud)*width*height);
-	cudaMalloc((void**) &dev_triangulationIBO, sizeof(triangleIndecies)*width*height*2);
-	cudaMalloc((void**) &dev_triangulationIBOCompact, sizeof(triangleIndecies)*width*height*2);
+	cudaMalloc((void**) &dev_colorImageBuffer,			sizeof(ColorPixel)*width*height);
+	cudaMalloc((void**) &dev_depthImageBuffer,			sizeof(DPixel)*width*height);
+	cudaMalloc((void**) &dev_pointCloudBuffer,			sizeof(PointCloud)*width*height);
+	cudaMalloc((void**) &dev_pointCloudVBO,				sizeof(PointCloud)*width*height);
+	cudaMalloc((void**) &dev_triangulationIBO,			sizeof(triangleIndecies)*width*height*2);
+	cudaMalloc((void**) &dev_triangulationIBOCompact,	sizeof(triangleIndecies)*width*height*2);
 
 	cuImageWidth = width;
 	cuImageHeight = height;
@@ -479,20 +478,19 @@ int triangulatePCB(triangleIndecies* ibo, float maxTriangleEdgeLength)
 	dim3 fullBlocksPerGrid( (int)ceil(float(cuImageWidth)/float(tileSize)), 
 		(int)ceil(float(cuImageHeight)/float(tileSize)) );
 
-	float sharedMemSize = (tileSize+1)*sizeof(glm::vec3);
-
-	triangulationKernel<<<fullBlocksPerGrid, threadsPerBlock, sharedMemSize>>>(dev_pointCloudBuffer, dev_triangulationIBO, 
+	triangulationKernel<<<fullBlocksPerGrid, threadsPerBlock>>>(dev_pointCloudBuffer, dev_triangulationIBO, 
 		glm::vec2(cuImageWidth, cuImageHeight), maxTriangleEdgeLength);
 
 
 	thrust::device_ptr<triangleIndecies> dp_buffer(dev_triangulationIBO);
 	thrust::device_ptr<triangleIndecies> dp_ibo(dev_triangulationIBOCompact);
-	thrust::device_ptr<triangleIndecies> last = thrust::copy_if(dp_buffer, dp_buffer+(2*cuImageWidth*cuImageHeight), dp_ibo, IsValidTriangle());
+	//thrust::device_ptr<triangleIndecies> last = thrust::copy_if(dp_buffer, dp_buffer+(2*cuImageWidth*cuImageHeight), dp_ibo, IsValidTriangle());
 
-	int numValid = last - dp_ibo;
+	//int numValid = last - dp_ibo;
 
-	cudaMemcpy(ibo, dev_triangulationIBOCompact, numValid*sizeof(triangleIndecies), cudaMemcpyDeviceToDevice);
-	return numValid;
+	cudaMemcpy(ibo, dev_triangulationIBO, 2*cuImageHeight*cuImageWidth*sizeof(triangleIndecies), cudaMemcpyDeviceToDevice);
+	//return numValid;
+	return 2*cuImageHeight*cuImageWidth;
 
 }
 
