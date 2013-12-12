@@ -931,6 +931,19 @@ void MeshViewer::display()
 		drawMeshVBOtoFBO(numTriangles);
 		drawQuad(color_prog, 0, 0, 1, 1, &FBOColorTexture, 1);
 		break;
+	case DISPLAY_MODE_COLOR_MESH_COMPARE:
+		drawColorImageBufferToTexture(colorTexture);
+		drawMeshVBOtoFBO(numTriangles);
+		drawQuad(color_prog, -0.5,  0.0, -0.5, 1.0, &colorTexture, 1);//Left side, mirror x
+		drawQuad(color_prog, 0.5, 0.0, 0.5, 1, &FBOColorTexture, 1);//Right side
+		break;
+	case DISPLAY_MODE_POINTCLOUD_MESH_COMPARE:
+		
+		drawMeshVBOtoFBO(numTriangles);
+		drawQuad(color_prog, -0.5, 0.0, 0.5, 1, &FBOColorTexture, 1);//Left side
+		drawPointCloudVBOtoFBO(numCompactedPoints);
+		drawQuad(color_prog, 0.5, 0.0, 0.5, 1, &FBOColorTexture, 1);//Right side
+		break;
 	}
 
 	glutSwapBuffers();
@@ -998,6 +1011,12 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		break;
 	case '7':
 		mViewState = DISPLAY_MODE_TRIANGLE;
+		break;
+	case '8':
+		mViewState = DISPLAY_MODE_COLOR_MESH_COMPARE;
+		break;
+	case '9':
+		mViewState = DISPLAY_MODE_POINTCLOUD_MESH_COMPARE;
 		break;
 	case('r'):
 		cout << "Reloading Shaders" <<endl;
