@@ -69,6 +69,7 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	mHeight = screenheight;
 	mViewState = DISPLAY_MODE_OVERLAY;
 	hairyPoints = false;
+	mMeshWireframeMode = false;
 	mMaxTriangleEdgeLength = 0.1;
 
 	seconds = time (NULL);
@@ -784,12 +785,18 @@ void MeshViewer::drawPointCloudVBOtoFBO(int numPoints)
 
 void MeshViewer::drawMeshVBOtoFBO(int numTriangles)
 {
-		//Bind FBO
+	//Bind FBO
 	glDisable(GL_TEXTURE_2D);
 	glBindTexture(GL_TEXTURE_2D,0); //Bad mojo to unbind the framebuffer using the texture
 	glBindFramebuffer(GL_FRAMEBUFFER, fullscreenFBO);
 	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 	glEnable(GL_DEPTH_TEST);
+
+	if(mMeshWireframeMode){
+		glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+	}else{
+		glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+	}
 
 	//Setup VBO
 	GLuint prog = triangle_prog;
@@ -822,12 +829,13 @@ void MeshViewer::drawMeshVBOtoFBO(int numTriangles)
 
 	if(numTriangles > 0){
 		glDrawElements(GL_TRIANGLES, numTriangles*3, GL_UNSIGNED_INT, NULL);
-		
+
 	}
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
 }
 
 int MeshViewer::fillPointCloudVBO()
@@ -962,14 +970,14 @@ void MeshViewer::display()
 		drawQuad(color_prog, 0.5, 0.0, 0.5, 1, &FBOColorTexture, 1);//Right side
 		break;
 	case DISPLAY_MODE_POINTCLOUD_MESH_COMPARE:
-		
+
 		drawMeshVBOtoFBO(numTriangles);
 		drawQuad(color_prog, -0.5, 0.0, 0.5, 1, &FBOColorTexture, 1);//Left side
 		drawPointCloudVBOtoFBO(numCompactedPoints);
 		drawQuad(color_prog, 0.5, 0.0, 0.5, 1, &FBOColorTexture, 1);//Right side
 		break;
 	case DISPLAY_MODE_4WAY_COMPARE:
-		
+
 		drawDepthImageBufferToTexture(depthTexture);
 		drawColorImageBufferToTexture(colorTexture);
 
@@ -1183,6 +1191,9 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		}
 		cout << "Triangle Max Edge Length (mm): " << mMaxTriangleEdgeLength << endl;
 		break;
+	case 'v':
+		mMeshWireframeMode = !mMeshWireframeMode;
+		cout << "Toggle wireframe mode" << endl;
 	}
 
 }

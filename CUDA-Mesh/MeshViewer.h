@@ -80,6 +80,7 @@ protected:
 	int mWidth, mHeight;
 
 	float mMaxTriangleEdgeLength;
+	bool mMeshWireframeMode;
 
 	DisplayModes mViewState;
 
