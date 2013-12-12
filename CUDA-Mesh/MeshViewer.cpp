@@ -811,7 +811,8 @@ void MeshViewer::drawMeshVBOtoFBO(int numTriangles)
 
 
 	if(numTriangles > 0){
-		glDrawElements(GL_TRIANGLES, numTriangles, GL_UNSIGNED_INT, NULL);
+		glDrawElements(GL_TRIANGLES, numTriangles*3, GL_UNSIGNED_INT, NULL);
+		
 	}
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);

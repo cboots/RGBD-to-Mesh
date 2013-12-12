@@ -253,10 +253,10 @@ __global__ void triangulationKernel(PointCloud* pointCloudBuffer, triangleIndeci
 	//  (x,y)__
 	//		|\0|
 	//		|1\|
-	int x = (blockIdx.y * blockDim.y) + threadIdx.y;
-	int y = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
 	int triangleIndex = (threadIdx.z * resolution.x * resolution.y) + (y * resolution.x) + x;
-
+	
 	unsigned int i0, i1, i2;
 	//Get pixel locations in image space
 	if(triangleIndex < resolution.x*resolution.y*2){
