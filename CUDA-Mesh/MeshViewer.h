@@ -71,6 +71,8 @@ protected:
 	int mXRes, mYRes;
 	int mWidth, mHeight;
 
+	float mMaxTriangleEdgeLength;
+
 	DisplayModes mViewState;
 
 	RGBDFramePtr mLatestFrame;

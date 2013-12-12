@@ -69,6 +69,7 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	mHeight = screenheight;
 	mViewState = DISPLAY_MODE_OVERLAY;
 	hairyPoints = false;
+	mMaxTriangleEdgeLength = 0.1;
 	resetCamera();
 }
 
@@ -869,8 +870,8 @@ void MeshViewer::display()
 	//Stream compaction optional, prep for rendering
 	int numCompactedPoints = fillPointCloudVBO();
 
-	int numTriangles = computePCBTriangulation(0.1);
-	cout << "Num Triangles: "<<numTriangles<<endl;
+	int numTriangles = computePCBTriangulation(mMaxTriangleEdgeLength);
+	//cout << "Num Triangles: "<<numTriangles<<endl;
 	cudaDeviceSynchronize();
 
 
@@ -963,6 +964,7 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 
 	float cameraHighSpeed = 0.1f;
 	float cameraLowSpeed = 0.025f;
+	float edgeLengthStep = 0.001f;
 	switch (key)
 	{
 	case 27://ESC
@@ -1097,6 +1099,29 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		hairyPoints = !hairyPoints;
 		cout << "Toggle normal hairs" << endl;
 		break;
+	case 'M':
+		mMaxTriangleEdgeLength += 10*edgeLengthStep;
+		cout << "Triangle Max Edge Length (mm): " << mMaxTriangleEdgeLength << endl;
+		break;
+	case 'm':
+		mMaxTriangleEdgeLength += edgeLengthStep;
+		cout << "Triangle Max Edge Length (mm): " << mMaxTriangleEdgeLength << endl;
+		break;
+
+	case 'N':
+		if(mMaxTriangleEdgeLength > 10*edgeLengthStep)
+		{
+			mMaxTriangleEdgeLength -= 10*edgeLengthStep;
+		}
+		cout << "Triangle Max Edge Length (mm): " << mMaxTriangleEdgeLength << endl;
+		break;
+	case 'n':
+		if(mMaxTriangleEdgeLength > edgeLengthStep)
+		{
+			mMaxTriangleEdgeLength -= edgeLengthStep;
+		}
+		cout << "Triangle Max Edge Length (mm): " << mMaxTriangleEdgeLength << endl;
+		break;
 	}
 
 }
@@ -1166,7 +1191,7 @@ void MeshViewer::mouse_move(int x, int y) {
 
 		if(rightclick)
 		{
-
+			mCamera.view = vec3(glm::rotate(glm::rotate(mat4(1.0f), rotSpeed*delY, Right), rotSpeed*delX, Up)*vec4(mCamera.view, 0.0f));
 		}else{
 			//Simple rotation
 			mCamera.view = vec3(glm::rotate(glm::rotate(mat4(1.0f), rotSpeed*delY, Right), rotSpeed*delX, Up)*vec4(mCamera.view, 0.0f));
