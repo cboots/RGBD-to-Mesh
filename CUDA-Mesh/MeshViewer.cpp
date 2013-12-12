@@ -751,10 +751,11 @@ int MeshViewer::fillPointCloudVBO()
 
 	cudaGLMapBufferObject((void**)&dptr, pointCloudVBO);
 	//Do CUDA stuff
-	int numElements = compactPointCloudToVBO(dptr);
+	//int numElements = compactPointCloudToVBO(dptr);
+	copyPointCloudToVBO(dptr);
 	cudaGLUnmapBufferObject(pointCloudVBO);
 
-	return numElements;
+	return mXRes*mYRes;
 }
 
 

@@ -1,16 +1,11 @@
 #pragma once
 #include <stdint.h>
 #include <cuda.h>
+
 #define GLM_FORCE_RADIANS
 #include "glm/glm.hpp"
 #include "glm/gtc/constants.hpp"
 
-typedef struct
-{
-	GLuint v0;
-	GLuint v1;
-	GLuint v2;
-} triangleIndecies;
 
 typedef struct
 {
@@ -21,6 +16,14 @@ typedef struct
 	// Normalized point normal vector
 	glm::vec3 normal;
 } PointCloud;
+
+
+typedef struct
+{
+	unsigned int v0;
+	unsigned int v1;
+	unsigned int v2;
+} triangleIndecies;
 
 typedef struct {
 	unsigned int vertex_array;

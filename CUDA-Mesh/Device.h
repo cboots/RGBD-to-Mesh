@@ -60,6 +60,8 @@ void computePointCloudNormals();
 //Stream compacts only valid point cloud pixels into a VBO for efficient 3D rendering and the next pipeline stage.
 //Returns number of elements in buffer when done
 int compactPointCloudToVBO(PointCloud* vbo);
+//Same behavior as compactPointCloudToVBO except with no stream compaction
+void copyPointCloudToVBO(PointCloud* vbo);
 
 //Draws depth image buffer to the texture.
 //Texture width and height must match the resolution of the depth image.

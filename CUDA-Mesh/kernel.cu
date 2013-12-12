@@ -492,3 +492,9 @@ int triangulatePCB(triangleIndecies* ibo, float maxTriangleEdgeLength)
 	return numValid;
 
 }
+
+// Takes a device pointer to the point cloud VBO and copies the contents of the PointCloud buffer to the VBO using stream compaction.
+// See: http://nvlabs.github.io/cub/structcub_1_1_device_select.html
+__host__ void copyPointCloudToVBO(PointCloud* vbo) {
+	cudaMemcpy(vbo, dev_pointCloudBuffer, cuImageWidth*cuImageHeight*sizeof(PointCloud), cudaMemcpyDeviceToDevice);
+}
