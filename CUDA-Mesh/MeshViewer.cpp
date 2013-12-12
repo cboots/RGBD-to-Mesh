@@ -1194,6 +1194,7 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	case 'v':
 		mMeshWireframeMode = !mMeshWireframeMode;
 		cout << "Toggle wireframe mode" << endl;
+		break;
 	}
 
 }
