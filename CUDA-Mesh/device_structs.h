@@ -15,12 +15,6 @@ typedef struct
 	glm::vec3 normal;
 } PointCloud;
 
-typedef struct
-{
-    glm::vec3 eigenVals;
-    glm::mat3 eigenVecs;
-} EigenResult;
-
 typedef struct {
 	unsigned int vertex_array;
 	unsigned int vbo_indices;

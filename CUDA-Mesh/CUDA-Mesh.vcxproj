@@ -167,6 +167,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
   <ItemGroup>
     <ClCompile Include="FileUtils.cpp" />
     <ClCompile Include="FrameLogger.cpp" />
+    <ClCompile Include="glslUtility.cpp" />
     <ClCompile Include="LogDevice.cpp" />
     <ClCompile Include="lz4\lz4.c" />
     <ClCompile Include="main.cpp" />
@@ -175,7 +176,6 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <ClCompile Include="RGBDDevice.cpp" />
     <ClCompile Include="RGBDFrame.cpp" />
     <ClCompile Include="RGBDFrameFactory.cpp" />
-    <ClCompile Include="Utility.cpp" />
     <ClCompile Include="Viewer.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -183,6 +183,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <ClInclude Include="device_structs.h" />
     <ClInclude Include="FileUtils.h" />
     <ClInclude Include="FrameLogger.h" />
+    <ClInclude Include="glslUtility.h" />
     <ClInclude Include="LogDevice.h" />
     <ClInclude Include="lz4\lz4.h" />
     <ClInclude Include="main.h" />
@@ -192,7 +193,6 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <ClInclude Include="RGBDDevice.h" />
     <ClInclude Include="RGBDFrame.h" />
     <ClInclude Include="RGBDFrameFactory.h" />
-    <ClInclude Include="Utility.h" />
     <ClInclude Include="Viewer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

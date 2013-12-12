@@ -59,10 +59,15 @@
 
 /Recorder-Viewer/x64/Release
 
-/CUDA-Mesh/logs/siglab
+/CUDA-Mesh/logs
 
 /CUDA-Mesh/x64/Debug
 
 /Recorder-Viewer/x64/Debug
 
 /CUDA-Mesh/*.pdb
+
+/Recorder-Viewer/logs/flat-angled
+/Recorder-Viewer/logs/flat-square
+
+/Recorder-Viewer/logs/flat-wall-synced

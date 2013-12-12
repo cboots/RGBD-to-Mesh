@@ -8,10 +8,10 @@ in vec3 fs_eyeNormal;
 in vec3 fs_color;
 
 
-out vec4 FragColor;
+out vec4 out_Color;
 
 void main()
 {
 	//Just pass through for now
-	FragColor = vec4(fs_color, 1.0);
+	out_Color = vec4(fs_color, 1.0);
 }

@@ -3,7 +3,7 @@
 uniform mat4 u_projMatrix;
 uniform mat4 u_viewMatrix;
 
-uniform sampler2D u_ColorTex;
+uniform sampler2D u_Texture0;
 
 in vec3 vs_position;
 in vec2 vs_texCoord;

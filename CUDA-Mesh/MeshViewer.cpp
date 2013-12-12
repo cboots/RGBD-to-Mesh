@@ -26,8 +26,37 @@ void MeshViewer::glutReshape(int w, int h)
 }
 
 
+void MeshViewer::glutMouse(int button, int state, int x, int y)
+{
+	MeshViewer::msSelf->mouse_click(button, state, x, y);
+}
+
+
+
+void MeshViewer::glutMotion(int x, int y)
+{
+	MeshViewer::msSelf->mouse_move(x, y);
+}
+
 //End platform specific code
 
+const GLuint MeshViewer::quadPositionLocation = 0;
+const GLuint MeshViewer::quadTexcoordsLocation = 1;
+const char * MeshViewer::quadAttributeLocations[] = { "Position", "Texcoords" };
+
+const GLuint MeshViewer::vbopositionLocation = 0;
+const GLuint MeshViewer::vbocolorLocation = 1;
+const GLuint MeshViewer::vbonormalLocation = 2;
+const char * MeshViewer::vboAttributeLocations[] = { "Position", "Color", "Normal" };
+
+const GLuint MeshViewer::PCVBOPositionLocation = 0;//vec3
+const GLuint MeshViewer::PCVBOColorLocation = 1;//vec3
+const GLuint MeshViewer::PCVBONormalLocation = 2;//vec3
+
+const GLuint MeshViewer::PCVBOStride = 9;//3*vec3
+const GLuint MeshViewer::PCVBO_PositionOffset = 0;
+const GLuint MeshViewer::PCVBO_ColorOffset = 3;
+const GLuint MeshViewer::PCVBO_NormalOffset = 6;
 
 MeshViewer* MeshViewer::msSelf = NULL;
 
@@ -39,12 +68,20 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	mWidth = screenwidth;
 	mHeight = screenheight;
 	mViewState = DISPLAY_MODE_OVERLAY;
+	hairyPoints = false;
+	resetCamera();
 }
 
 
 MeshViewer::~MeshViewer(void)
 {
 	msSelf = NULL;
+}
+
+//Does not return;
+void MeshViewer::run()
+{
+	glutMainLoop();
 }
 
 DeviceStatus MeshViewer::init(int argc, char **argv)
@@ -128,6 +165,9 @@ DeviceStatus MeshViewer::initOpenGL(int argc, char **argv)
 	initShader();
 	initQuad();
 	initPBO();
+	initFullScreenPBO();
+	initPointCloudVBO();
+	initFBO();
 
 	return DEVICESTATUS_OK;
 }
@@ -140,45 +180,49 @@ void MeshViewer::initOpenGLHooks()
 	glutDisplayFunc(glutDisplay);
 	glutIdleFunc(glutIdle);
 	glutReshapeFunc(glutReshape);	
+	glutMouseFunc(glutMouse);
+	glutMotionFunc(glutMotion);
 }
 
 
 void MeshViewer::initShader()
 {
-	//Passthrough shaders that sample textures
-	const char * color_vert = "shaders/colorVS.glsl";
+
+	const char * pass_vert  = "shaders/passVS.glsl";
 	const char * color_frag = "shaders/colorFS.glsl";
-	const char * depth_vert = "shaders/depthVS.glsl";
 	const char * depth_frag = "shaders/depthFS.glsl";
+	const char * pcbdebug_frag = "shaders/pointCloudBufferDebugFS.glsl";
+	const char * pcvbo_vert = "shaders/pointCloudVBO_VS.glsl";
+	const char * pcvbo_geom = "shaders/pointCloudVBO_GS.glsl";
+	const char * pcvbo_geom_hairy = "shaders/pointCloudVBOHairy_GS.glsl";
+	const char * pcvbo_frag = "shaders/pointCloudVBO_FS.glsl";
 
 	//Color image shader
-	Utility::shaders_t shaders = Utility::loadShaders(color_vert, color_frag);
-
-	color_prog = glCreateProgram();
-
-	glBindAttribLocation(color_prog, quad_attributes::POSITION, "vs_position");
-	glBindAttribLocation(color_prog, quad_attributes::TEXCOORD, "vs_texCoord");
-
-	Utility::attachAndLinkProgram(color_prog,shaders);
-	
+	color_prog = glslUtility::createProgram(pass_vert, NULL, color_frag, quadAttributeLocations, 2);
 
 	//DEPTH image shader
-	shaders = Utility::loadShaders(depth_vert, depth_frag);
+	depth_prog = glslUtility::createProgram(pass_vert, NULL, depth_frag, quadAttributeLocations, 2);
 
-	depth_prog = glCreateProgram();
+	//Point Cloud Buffer Debug Shader
+	pcbdebug_prog = glslUtility::createProgram(pass_vert, NULL, pcbdebug_frag, quadAttributeLocations, 2);
 
-	glBindAttribLocation(depth_prog, quad_attributes::POSITION, "vs_position");
-	glBindAttribLocation(depth_prog, quad_attributes::TEXCOORD, "vs_texCoord");
-
-	Utility::attachAndLinkProgram(depth_prog,shaders);
+	//Point cloud VBO renderer
+	pcvbo_prog = glslUtility::createProgram(pcvbo_vert, pcvbo_geom, pcvbo_frag, vboAttributeLocations, 3);
+	pcvbohairy_prog = glslUtility::createProgram(pcvbo_vert, pcvbo_geom_hairy, pcvbo_frag, vboAttributeLocations, 3);
 }
 
 
 void MeshViewer::initTextures()
 {
+	//Clear textures
+	if (depthTexture != 0 || colorTexture != 0 ||  positionTexture != 0 || normalTexture != 0) {
+		cleanupTextures();
+	}
+
 	glGenTextures(1, &depthTexture);
 	glGenTextures(1, &colorTexture);
-	glGenTextures(1, &pointCloudTexture);
+	glGenTextures(1, &normalTexture);
+	glGenTextures(1, &positionTexture);
 
 	//Setup depth texture
 	glBindTexture(GL_TEXTURE_2D, depthTexture);
@@ -203,8 +247,103 @@ void MeshViewer::initTextures()
 
 	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F , mXRes, mYRes, 0, GL_RGBA, GL_FLOAT,0);
 
+	//Setup position texture
+	glBindTexture(GL_TEXTURE_2D, positionTexture);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+
+	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F , mXRes, mYRes, 0, GL_RGBA, GL_FLOAT,0);
+
+	//Setup normals texture
+	glBindTexture(GL_TEXTURE_2D, normalTexture);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+
+	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F , mXRes, mYRes, 0, GL_RGBA, GL_FLOAT,0);
+
+
+
+}
+
+
+void MeshViewer::cleanupTextures()
+{
+	//Image space textures
+	glDeleteTextures(1, &colorTexture);
+	glDeleteTextures(1, &depthTexture);
+	glDeleteTextures(1, &positionTexture);
+	glDeleteTextures(1, &normalTexture);
+
+}
+
+
+void checkFramebufferStatus(GLenum framebufferStatus) {
+	switch (framebufferStatus) {
+	case GL_FRAMEBUFFER_COMPLETE_EXT: break;
+	case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_EXT:
+		printf("Attachment Point Unconnected\n");
+		break;
+	case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT:
+		printf("Missing Attachment\n");
+		break;
+	case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT:
+		printf("Dimensions do not match\n");
+		break;
+	case GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT:
+		printf("Formats\n");
+		break;
+	case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER_EXT:
+		printf("Draw Buffer\n");
+		break;
+	case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT:
+		printf("Read Buffer\n");
+		break;
+	case GL_FRAMEBUFFER_UNSUPPORTED_EXT:
+		printf("Unsupported Framebuffer Configuration\n");
+		break;
+	default:
+		printf("Unkown Framebuffer Object Failure\n");
+		break;
+	}
+}
+
+
+
+void MeshViewer::initFBO()
+{
+	GLenum FBOstatus;
+	if(fullscreenFBO != 0)
+		cleanupFBO();
+
+	glActiveTexture(GL_TEXTURE9);
+
+
+	glGenTextures(1, &FBOColorTexture);
+	glGenTextures(1, &FBODepthTexture);
+
+	//Set up depth FBO
+	glBindTexture(GL_TEXTURE_2D, FBODepthTexture);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_INTENSITY);
+
+	glTexImage2D( GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, mWidth, mHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, 0);
+
+
 	//Setup point cloud texture
-	glBindTexture(GL_TEXTURE_2D, pointCloudTexture);
+	glBindTexture(GL_TEXTURE_2D, FBOColorTexture);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -214,36 +353,153 @@ void MeshViewer::initTextures()
 
 	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F , mWidth, mHeight, 0, GL_RGBA, GL_FLOAT,0);
 
+	glGenFramebuffers(1, &fullscreenFBO);
+	glBindFramebuffer(GL_FRAMEBUFFER, fullscreenFBO);
+	glViewport(0,0,(GLsizei)mWidth, (GLsizei)mHeight);
+
+	//Bind FBO
+	glReadBuffer(GL_NONE);
+	GLint color_loc = glGetFragDataLocation(pcvbo_prog,"out_Color");
+	GLenum draws [1];
+	draws[color_loc] = GL_COLOR_ATTACHMENT0;
+	glDrawBuffers(1, draws);
+
+
+	glBindTexture(GL_TEXTURE_2D, FBODepthTexture);
+	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, FBODepthTexture, 0);
+	glBindTexture(GL_TEXTURE_2D, FBOColorTexture);    
+	glFramebufferTexture(GL_FRAMEBUFFER, draws[color_loc], FBOColorTexture, 0);
+
+	FBOstatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if(FBOstatus != GL_FRAMEBUFFER_COMPLETE) {
+		printf("GL_FRAMEBUFFER_COMPLETE failed, CANNOT use FBO[0]\n");
+		checkFramebufferStatus(FBOstatus);
+	}
+
+	// switch back to window-system-provided framebuffer
+	glClear(GL_DEPTH_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-
-void MeshViewer::cleanupTextures()
+void MeshViewer::cleanupFBO()
 {
-	glDeleteTextures(1, &colorTexture);
-	glDeleteTextures(1, &depthTexture);
-	glDeleteTextures(1, &pointCloudTexture);
+
+	glDeleteTextures(1,&FBODepthTexture);
+	glDeleteTextures(1,&FBOColorTexture);
+	glDeleteFramebuffers(1,&fullscreenFBO);
 }
 
 
 void MeshViewer::initPBO()
 {
-	// set up vertex data parameter
-
 	// Generate a buffer ID called a PBO (Pixel Buffer Object)
+	if(imagePBO0){
+		glDeleteBuffers(1, &imagePBO0);
+	}
+
+	if(imagePBO1){
+		glDeleteBuffers(1, &imagePBO1);
+	}
+
+	if(imagePBO2){
+		glDeleteBuffers(1, &imagePBO2);
+	}
 
 	int num_texels = mXRes*mYRes;
 	int num_values = num_texels * 4;
 	int size_tex_data = sizeof(GLfloat) * num_values;
-	glGenBuffers(1,&imagePBO);
+	glGenBuffers(1,&imagePBO0);
+	glGenBuffers(1,&imagePBO1);
+	glGenBuffers(1,&imagePBO2);
 
 	// Make this the current UNPACK buffer (OpenGL is state-based)
-	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, imagePBO);
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, imagePBO0);
 
 	// Allocate data for the buffer. 4-channel float image
 	glBufferData(GL_PIXEL_UNPACK_BUFFER, size_tex_data, NULL, GL_DYNAMIC_COPY);
-	cudaGLRegisterBufferObject( imagePBO);
+	cudaGLRegisterBufferObject( imagePBO0);
 
+
+	// Make this the current UNPACK buffer (OpenGL is state-based)
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, imagePBO1);
+
+	// Allocate data for the buffer. 4-channel float image
+	glBufferData(GL_PIXEL_UNPACK_BUFFER, size_tex_data, NULL, GL_DYNAMIC_COPY);
+	cudaGLRegisterBufferObject( imagePBO1);
+
+
+	// Make this the current UNPACK buffer (OpenGL is state-based)
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, imagePBO2);
+
+	// Allocate data for the buffer. 4-channel float image
+	glBufferData(GL_PIXEL_UNPACK_BUFFER, size_tex_data, NULL, GL_DYNAMIC_COPY);
+	cudaGLRegisterBufferObject( imagePBO2);
 }
+
+
+void MeshViewer::initFullScreenPBO()
+{
+	// Generate a buffer ID called a PBO (Pixel Buffer Object)
+	if(fullscreenPBO){
+		glDeleteBuffers(1, &fullscreenPBO);
+	}
+
+	int num_texels = mWidth*mHeight;
+	int num_values = num_texels * 4;
+	int size_tex_data = sizeof(GLfloat) * num_values;
+	glGenBuffers(1,&fullscreenPBO);
+
+	// Make this the current UNPACK buffer (OpenGL is state-based)
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER, fullscreenPBO);
+
+	// Allocate data for the buffer. 4-channel float image
+	glBufferData(GL_PIXEL_UNPACK_BUFFER, size_tex_data, NULL, GL_DYNAMIC_COPY);
+	cudaGLRegisterBufferObject( fullscreenPBO);
+}
+
+void MeshViewer::initPointCloudVBO()
+{
+	// Generate a buffer ID called a PBO (Pixel Buffer Object)
+	if(pointCloudVBO){
+		glDeleteBuffers(1, &pointCloudVBO);
+	}
+
+	//Max num elements
+	int max_elements = mWidth*mHeight;
+	int size_buf_data = sizeof(PointCloud) * max_elements;
+
+	//Fill with data
+	GLfloat *bodies    = new GLfloat[size_buf_data];
+	for(int i = 0; i < max_elements; i++)
+	{
+		//Position
+		bodies[i*PCVBOStride+0] = 0.0;
+		bodies[i*PCVBOStride+1] = 0.0;
+		bodies[i*PCVBOStride+2] = -10.0;
+
+		//Color
+		bodies[i*PCVBOStride+3] = 1.0;
+		bodies[i*PCVBOStride+4] = 1.0;
+		bodies[i*PCVBOStride+5] = 0.0;
+
+		//Normal
+		bodies[i*PCVBOStride+6] = 0.0;
+		bodies[i*PCVBOStride+7] = 0.0;
+		bodies[i*PCVBOStride+8] = 0.0;
+	}
+
+	glGenBuffers(1,&pointCloudVBO);
+
+	glBindBuffer(GL_ARRAY_BUFFER, pointCloudVBO);
+	glBufferData(GL_ARRAY_BUFFER, size_buf_data, bodies, GL_DYNAMIC_DRAW);//Initialize
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	cudaGLRegisterBufferObject( pointCloudVBO);
+}
+
+
 
 void MeshViewer::initQuad() {
 	vertex2_t verts [] = { {vec3(-1,1,0),vec2(0,0)},
@@ -268,10 +524,10 @@ void MeshViewer::initQuad() {
 	glBindBuffer(GL_ARRAY_BUFFER, device_quad.vbo_data);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
 	//Use of strided data, Array of Structures instead of Structures of Arrays
-	glVertexAttribPointer(quad_attributes::POSITION, 3, GL_FLOAT, GL_FALSE,sizeof(vertex2_t),0);
-	glVertexAttribPointer(quad_attributes::TEXCOORD, 2, GL_FLOAT, GL_FALSE,sizeof(vertex2_t),(void*)sizeof(vec3));
-	glEnableVertexAttribArray(quad_attributes::POSITION);
-	glEnableVertexAttribArray(quad_attributes::TEXCOORD);
+	glVertexAttribPointer(quadPositionLocation, 3, GL_FLOAT, GL_FALSE,sizeof(vertex2_t),0);
+	glVertexAttribPointer(quadTexcoordsLocation, 2, GL_FLOAT, GL_FALSE,sizeof(vertex2_t),(void*)sizeof(vec3));
+	glEnableVertexAttribArray(quadPositionLocation);
+	glEnableVertexAttribArray(quadTexcoordsLocation);
 
 	//indices
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, device_quad.vbo_indices);
@@ -283,7 +539,7 @@ void MeshViewer::initQuad() {
 
 
 //Normalized device coordinates (-1 : 1, -1 : 1) center of viewport, and scale being 
-void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale, float heightScale, GLuint texture)
+void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale, float heightScale, GLuint* textures, int numTextures)
 {
 	//Setup program and uniforms
 	glUseProgram(prog);
@@ -300,10 +556,51 @@ void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale,
 	glUniformMatrix4fv(glGetUniformLocation(prog, "u_projMatrix"),1, GL_FALSE, &persp[0][0] );
 	glUniformMatrix4fv(glGetUniformLocation(prog, "u_viewMatrix"),1, GL_FALSE, &viewmat[0][0] );
 
-	//Bind texture
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	glUniform1i(glGetUniformLocation(prog, "u_ColorTex"),0);
+	//Setup textures
+	int location = -1;
+	switch(numTextures){
+	case 5:
+		if ((location = glGetUniformLocation(prog, "u_Texture4")) != -1)
+		{
+			//has texture
+			glActiveTexture(GL_TEXTURE4);
+			glBindTexture(GL_TEXTURE_2D, textures[4]);
+			glUniform1i(location,4);
+		}
+	case 4:
+		if ((location = glGetUniformLocation(prog, "u_Texture3")) != -1)
+		{
+			//has texture
+			glActiveTexture(GL_TEXTURE3);
+			glBindTexture(GL_TEXTURE_2D, textures[3]);
+			glUniform1i(location,3);
+		}
+	case 3:
+		if ((location = glGetUniformLocation(prog, "u_Texture2")) != -1)
+		{
+			//has texture
+			glActiveTexture(GL_TEXTURE2);
+			glBindTexture(GL_TEXTURE_2D, textures[2]);
+			glUniform1i(location,2);
+		}
+	case 2:
+		if ((location = glGetUniformLocation(prog, "u_Texture1")) != -1)
+		{
+			//has texture
+			glActiveTexture(GL_TEXTURE1);
+			glBindTexture(GL_TEXTURE_2D, textures[1]);
+			glUniform1i(location,1);
+		}
+	case 1:
+		if ((location = glGetUniformLocation(prog, "u_Texture0")) != -1)
+		{
+			//has texture
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, textures[0]);
+			glUniform1i(location,0);
+		}
+	}
+
 
 	//Draw quad
 	glBindVertexArray(device_quad.vertex_array);
@@ -314,27 +611,24 @@ void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale,
 	glBindVertexArray(0);
 }
 
-//Does not return;
-void MeshViewer::run()
-{
-	glutMainLoop();
-}
+
 
 
 bool MeshViewer::drawColorImageBufferToTexture(GLuint texture)
 {
 	float4* dptr;
-	cudaGLMapBufferObject((void**)&dptr, imagePBO);
+	cudaGLMapBufferObject((void**)&dptr, imagePBO0);
 	bool result = drawColorImageBufferToPBO(dptr, mXRes, mYRes);
-	cudaGLUnmapBufferObject(imagePBO);
+	cudaGLUnmapBufferObject(imagePBO0);
 	if(result){
 		//Draw to texture
-		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO);
+		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
 		glBindTexture(GL_TEXTURE_2D, texture);
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
 			GL_RGBA, GL_FLOAT, NULL);
 
 		glBindTexture(GL_TEXTURE_2D, 0);
+		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
 	}
 
 	return result;
@@ -343,21 +637,126 @@ bool MeshViewer::drawColorImageBufferToTexture(GLuint texture)
 bool MeshViewer::drawDepthImageBufferToTexture(GLuint texture)
 {	
 	float4* dptr;
-	cudaGLMapBufferObject((void**)&dptr, imagePBO);
+	cudaGLMapBufferObject((void**)&dptr, imagePBO0);
 	bool result = drawDepthImageBufferToPBO(dptr, mXRes, mYRes);
-	cudaGLUnmapBufferObject(imagePBO);
+	cudaGLUnmapBufferObject(imagePBO0);
 	if(result){
 		//Draw to texture
-		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO);
+		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
 		glBindTexture(GL_TEXTURE_2D, texture);
 		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
 			GL_RGBA, GL_FLOAT, NULL);
 
 		glBindTexture(GL_TEXTURE_2D, 0);
+		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
 	}
 
 	return result;
 }
+
+void MeshViewer::drawPCBtoTextures(GLuint posTexture, GLuint colTexture, GLuint normTexture)
+{
+	float4* dptrPosition;
+	float4* dptrColor;
+	float4* dptrNormal;
+	cudaGLMapBufferObject((void**)&dptrPosition, imagePBO0);
+	cudaGLMapBufferObject((void**)&dptrColor, imagePBO1);
+	cudaGLMapBufferObject((void**)&dptrNormal, imagePBO2);
+
+	bool result = drawPCBToPBO(dptrPosition, dptrColor, dptrNormal, mXRes, mYRes);
+
+	cudaGLUnmapBufferObject(imagePBO0);
+	cudaGLUnmapBufferObject(imagePBO1);
+	cudaGLUnmapBufferObject(imagePBO2);
+	if(result){
+		//Unpack to textures
+
+		glActiveTexture(GL_TEXTURE12);
+		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO2);
+		glBindTexture(GL_TEXTURE_2D, normalTexture);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+			GL_RGBA, GL_FLOAT, NULL);
+
+
+		glActiveTexture(GL_TEXTURE11);
+		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO1);
+		glBindTexture(GL_TEXTURE_2D, colorTexture);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+			GL_RGBA, GL_FLOAT, NULL);
+
+		glActiveTexture(GL_TEXTURE10);
+		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
+		glBindTexture(GL_TEXTURE_2D, positionTexture);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+			GL_RGBA, GL_FLOAT, NULL);
+
+
+		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glActiveTexture(GL_TEXTURE0);
+	}
+}
+
+
+void MeshViewer::drawPointCloudVBOtoFBO(int numPoints)
+{
+	//Bind FBO
+	glDisable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D,0); //Bad mojo to unbind the framebuffer using the texture
+	glBindFramebuffer(GL_FRAMEBUFFER, fullscreenFBO);
+	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_DEPTH_TEST);
+
+	//Setup VBO
+	GLuint prog = hairyPoints? pcvbohairy_prog:pcvbo_prog;
+	glUseProgram(prog);
+
+	glEnableVertexAttribArray(PCVBOPositionLocation);
+	glEnableVertexAttribArray(PCVBOColorLocation);
+	glEnableVertexAttribArray(PCVBONormalLocation);
+
+
+	glBindBuffer(GL_ARRAY_BUFFER, pointCloudVBO);
+
+	//Setup interleaved buffer
+	glVertexAttribPointer(PCVBOPositionLocation, 3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_PositionOffset*sizeof(GLfloat))); 
+	glVertexAttribPointer(PCVBOColorLocation,    3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_ColorOffset*sizeof(GLfloat))); 
+	glVertexAttribPointer(PCVBONormalLocation,   3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_NormalOffset*sizeof(GLfloat))); 
+
+
+	//Setup uniforms
+	mat4 persp = glm::perspective(radians(mCamera.fovy), float(mWidth)/float(mHeight), mCamera.zNear, mCamera.zFar);
+	mat4 viewmat = glm::lookAt(mCamera.eye, mCamera.eye+mCamera.view, -mCamera.up);
+	mat4 viewInvTrans = inverse(transpose(viewmat));
+
+
+	glUniformMatrix4fv(glGetUniformLocation(prog, "u_projMatrix"),1, GL_FALSE, &persp[0][0] );
+	glUniformMatrix4fv(glGetUniformLocation(prog, "u_viewMatrix"),1, GL_FALSE, &viewmat[0][0] );
+	glUniformMatrix4fv(glGetUniformLocation(prog, "u_viewInvTrans"),1, GL_FALSE, &viewInvTrans[0][0] );
+
+
+	if(numPoints > 0){
+		glPointSize(2.0f); 
+		glDrawArrays(GL_POINTS, 0, numPoints);
+		glPointSize(1.0f); 
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+int MeshViewer::fillPointCloudVBO()
+{
+	PointCloud* dptr;
+
+	cudaGLMapBufferObject((void**)&dptr, pointCloudVBO);
+	//Do CUDA stuff
+	int numElements = compactPointCloudToVBO(dptr);
+	cudaGLUnmapBufferObject(pointCloudVBO);
+
+	return numElements;
+}
+
 
 ////All the important runtime stuff happens here:
 void MeshViewer::display()
@@ -378,44 +777,61 @@ void MeshViewer::display()
 	//Compute normals
 	computePointCloudNormals();
 
+	//Stream compaction, prep for rendering
+	int numCompactedPoints = fillPointCloudVBO();
+
 	cudaDeviceSynchronize();
 	//=====RENDERING======
+
+	GLuint pcbTextures[] = { positionTexture, colorTexture, normalTexture};
 	switch(mViewState)
 	{
 	case DISPLAY_MODE_DEPTH:
 		drawDepthImageBufferToTexture(depthTexture);
-		
-		drawQuad(depth_prog, 0, 0, 1, 1, depthTexture);
+
+		drawQuad(depth_prog, 0, 0, 1, 1, &depthTexture, 1);
 		break;
 	case DISPLAY_MODE_IMAGE:
 		drawColorImageBufferToTexture(colorTexture);
-		
-		drawQuad(color_prog, 0, 0, 1, 1, colorTexture);
+
+		drawQuad(color_prog, 0, 0, 1, 1, &colorTexture, 1);
 		break;
 	case DISPLAY_MODE_OVERLAY:
 		drawDepthImageBufferToTexture(depthTexture);
 		drawColorImageBufferToTexture(colorTexture);
-		
-		
-		drawQuad(color_prog, 0, 0, 1, 1, colorTexture);
+
+
+		drawQuad(color_prog, 0, 0, 1, 1, &colorTexture, 1);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);//Alpha blending
-		drawQuad(depth_prog, 0, 0, 1, 1, depthTexture);
+		drawQuad(depth_prog, 0, 0, 1, 1, &depthTexture, 1);
 		glDisable(GL_BLEND);
 		break;
 	case DISPLAY_MODE_3WAY_DEPTH_IMAGE_OVERLAY:
 		drawDepthImageBufferToTexture(depthTexture);
 		drawColorImageBufferToTexture(colorTexture);
-		
-		drawQuad(color_prog, -0.5,  0.5, 0.5, 0.5, colorTexture);
-		drawQuad(depth_prog, -0.5, -0.5, 0.5, 0.5, depthTexture);
-		
-		drawQuad(color_prog, 0.5, 0, 0.5, 1, colorTexture);
+
+		drawQuad(color_prog, -0.5, -0.5, 0.5, 0.5, &colorTexture, 1);
+		drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, &depthTexture, 1);
+
+		drawQuad(color_prog, 0.5, 0, 0.5, 1, &colorTexture, 1);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);//Alpha blending
-		drawQuad(depth_prog, 0.5, 0, 0.5, 1, depthTexture);
+		drawQuad(depth_prog, 0.5, 0, 0.5, 1, &depthTexture, 1);
 		glDisable(GL_BLEND);
 		break;
+	case DISPLAY_MODE_4WAY_PCB:
+		drawPCBtoTextures(positionTexture, colorTexture, normalTexture);
+		drawQuad(color_prog, -0.5,  0.5, 0.5, 0.5, &colorTexture, 1);//Upper Left
+		drawQuad(color_prog, -0.5, -0.5, 0.5, 0.5, &positionTexture, 1);//Lower Left
+		drawQuad(color_prog,  0.5,  0.5, 0.5, 0.5, &normalTexture, 1);//Upper Right
+
+		drawQuad(pcbdebug_prog, 0.5, -0.5, 0.5, 0.5, &pcbTextures[0], 3);//Lower right
+
+		break;
+	case DISPLAY_MODE_POINT_CLOUD:
+		drawPointCloudVBOtoFBO(numCompactedPoints);
+		drawQuad(color_prog, 0, 0, 1, 1, &FBOColorTexture, 1);
 		break;
 	}
 
@@ -444,7 +860,12 @@ void MeshViewer::onNewRGBDFrame(RGBDFramePtr frame)
 
 void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 {
+	LogDevice* device = NULL;
 	float newPlayback = 1.0;
+	vec3 right = vec3(0.0f);
+
+	float cameraHighSpeed = 0.1f;
+	float cameraLowSpeed = 0.025f;
 	switch (key)
 	{
 	case 27://ESC
@@ -456,7 +877,7 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 
 		cleanupCuda();
 		cleanupTextures();
-		exit (1);
+		exit (0);
 		break;
 	case '1':
 		mViewState = DISPLAY_MODE_OVERLAY;
@@ -470,23 +891,111 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	case '4':
 		mViewState = DISPLAY_MODE_3WAY_DEPTH_IMAGE_OVERLAY;
 		break;
+	case '5':
+		mViewState = DISPLAY_MODE_4WAY_PCB;
+		break;
+	case '6':
+		mViewState = DISPLAY_MODE_POINT_CLOUD;
+		break;
 	case('r'):
 		cout << "Reloading Shaders" <<endl;
 		initShader();
 		break;
 	case('p'):
 		cout << "Restarting Playback" << endl;
-		((LogDevice*) mDevice)->restartPlayback();
+		device = dynamic_cast<LogDevice*>(mDevice);
+		if(device != 0) {
+			// old was safely casted to LogDevice
+			device->restartPlayback();
+		}
+
 		break;
 	case '=':
-		newPlayback = ((LogDevice*) mDevice)->getPlaybackSpeed()+0.1;
-		cout <<"Playback speed: " << newPlayback << endl;
-		((LogDevice*) mDevice)->setPlaybackSpeed(newPlayback);
+		device = dynamic_cast<LogDevice*>(mDevice);
+		if(device != 0) {
+			// old was safely casted to LogDevice
+			newPlayback = device->getPlaybackSpeed()+0.1;
+			cout <<"Playback speed: " << newPlayback << endl;
+			device->setPlaybackSpeed(newPlayback);		
+		}
 		break;
 	case '-':
-		newPlayback = ((LogDevice*) mDevice)->getPlaybackSpeed()-0.1;
-		cout <<"Playback speed: " << newPlayback << endl;
-		((LogDevice*) mDevice)->setPlaybackSpeed(newPlayback);
+		device = dynamic_cast<LogDevice*>(mDevice);
+		if(device != 0) {
+			// old was safely casted to LogDevice
+			newPlayback = device->getPlaybackSpeed()-0.1;
+			cout <<"Playback speed: " << newPlayback << endl;
+			device->setPlaybackSpeed(newPlayback);		
+		}
+		break;
+	case 'F':
+		mCamera.fovy += 0.5;
+		cout << "FOVY :" << mCamera.fovy << endl;
+		break;
+	case 'f':
+		mCamera.fovy -= 0.5;
+		cout << "FOVY :" << mCamera.fovy << endl;
+		break;
+	case 'Q':
+		mCamera.eye += cameraLowSpeed*mCamera.up;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+	case 'Z':
+		mCamera.eye -= cameraLowSpeed*mCamera.up;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+	case 'W':
+		mCamera.eye += cameraLowSpeed*mCamera.view;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+	case 'S':
+		mCamera.eye -= cameraLowSpeed*mCamera.view;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+	case 'D':
+		right = normalize(cross(mCamera.view, -mCamera.up));
+		mCamera.eye += cameraLowSpeed*right;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+	case 'A':
+		right = normalize(cross(mCamera.view, -mCamera.up));
+		mCamera.eye -= cameraLowSpeed*right;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+
+	case 'q':
+		mCamera.eye += cameraHighSpeed*mCamera.up;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+	case 'z':
+		mCamera.eye -= cameraHighSpeed*mCamera.up;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+	case 'w':
+		mCamera.eye += cameraHighSpeed*mCamera.view;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+	case 's':
+		mCamera.eye -= cameraHighSpeed*mCamera.view;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+	case 'd':
+		right = normalize(cross(mCamera.view, -mCamera.up));
+		mCamera.eye += cameraHighSpeed*right;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+	case 'a':
+		right = normalize(cross(mCamera.view, -mCamera.up));
+		mCamera.eye -= cameraHighSpeed*right;
+		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
+		break;
+	case 'x':
+		resetCamera();
+		cout << "Reset Camera" << endl;
+		break;
+	case 'h':
+		hairyPoints = !hairyPoints;
+		cout << "Toggle normal hairs" << endl;
 		break;
 	}
 
@@ -497,10 +1006,72 @@ void MeshViewer::reshape(int w, int h)
 {
 	mWidth = w;
 	mHeight = h;
+
+
 	glBindFramebuffer(GL_FRAMEBUFFER,0);
 	glViewport(0,0,(GLsizei)w,(GLsizei)h);
-	if (depthTexture != 0 || colorTexture != 0 || pointCloudTexture != 0) {
-		cleanupTextures();
-	}
+
+
+
 	initTextures();
+	initFullScreenPBO();//Refresh fullscreen PBO for new resolution
+	initFBO();
+}
+
+
+
+void MeshViewer::resetCamera()
+{
+	mCamera.eye = vec3(0.0f);
+	mCamera.view = vec3(0.0f, 0.0f, -1.0f);
+	mCamera.up = vec3(0.0f, 1.0f, 0.0f);
+	mCamera.fovy = 23.5f;
+	mCamera.zFar = 100.0f;
+	mCamera.zNear = 0.01;
+}
+
+
+
+//MOUSE STUFF
+void MeshViewer::mouse_click(int button, int state, int x, int y) {
+	if(button == GLUT_LEFT_BUTTON) {
+		if(state == GLUT_DOWN) {
+			dragging = true;
+			drag_x_last = x;
+			drag_y_last = y;
+		}
+		else{
+			dragging = false;
+		}
+	}
+	if(button == GLUT_RIGHT_BUTTON) {
+		if(state == GLUT_DOWN)
+		{
+			rightclick = true;
+		}else{
+			rightclick = false;
+		}
+	}
+}
+
+void MeshViewer::mouse_move(int x, int y) {
+	if(dragging) {
+		float delX = x-drag_x_last;
+		float delY = y-drag_y_last;
+
+		float rotSpeed = 0.1f*PI/180.0f;
+
+		vec3 Up = mCamera.up;
+		vec3 Right = normalize(cross(mCamera.view, -mCamera.up));
+
+		if(rightclick)
+		{
+
+		}else{
+			//Simple rotation
+			mCamera.view = vec3(glm::rotate(glm::rotate(mat4(1.0f), rotSpeed*delY, Right), rotSpeed*delX, Up)*vec4(mCamera.view, 0.0f));
+		}
+		drag_x_last = x;
+		drag_y_last = y;
+	}
 }
