@@ -11,6 +11,8 @@
 #include <thrust/copy.h>
 #include <thrust/execution_policy.h>
 #include <thrust/device_ptr.h>
+#include <thrust/iterator/counting_iterator.h>
+#include <iostream>
 /*
 #define FOV_Y 43 # degrees
 #define FOV_X 57

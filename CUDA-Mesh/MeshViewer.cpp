@@ -196,6 +196,8 @@ void MeshViewer::initShader()
 	const char * pcvbo_geom = "shaders/pointCloudVBO_GS.glsl";
 	const char * pcvbo_geom_hairy = "shaders/pointCloudVBOHairy_GS.glsl";
 	const char * pcvbo_frag = "shaders/pointCloudVBO_FS.glsl";
+	const char * triangle_vert = "shaders/triangle_VS.glsl";
+	const char * triangle_frag = "shaders/triangle_FS.glsl";
 
 	//Color image shader
 	color_prog = glslUtility::createProgram(pass_vert, NULL, color_frag, quadAttributeLocations, 2);
@@ -209,6 +211,8 @@ void MeshViewer::initShader()
 	//Point cloud VBO renderer
 	pcvbo_prog = glslUtility::createProgram(pcvbo_vert, pcvbo_geom, pcvbo_frag, vboAttributeLocations, 3);
 	pcvbohairy_prog = glslUtility::createProgram(pcvbo_vert, pcvbo_geom_hairy, pcvbo_frag, vboAttributeLocations, 3);
+
+	triangle_prog = glslUtility::createProgram(triangle_vert, NULL, triangle_frag, vboAttributeLocations, 3);
 }
 
 
@@ -767,6 +771,54 @@ void MeshViewer::drawPointCloudVBOtoFBO(int numPoints)
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
+
+void MeshViewer::drawMeshVBOtoFBO(int numTriangles)
+{
+		//Bind FBO
+	glDisable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D,0); //Bad mojo to unbind the framebuffer using the texture
+	glBindFramebuffer(GL_FRAMEBUFFER, fullscreenFBO);
+	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_DEPTH_TEST);
+
+	//Setup VBO
+	GLuint prog = triangle_prog;
+	glUseProgram(prog);
+
+	glEnableVertexAttribArray(PCVBOPositionLocation);
+	glEnableVertexAttribArray(PCVBOColorLocation);
+	glEnableVertexAttribArray(PCVBONormalLocation);
+
+
+	glBindBuffer(GL_ARRAY_BUFFER, pointCloudVBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, triangleIBO);
+
+	//Setup interleaved buffer
+	glVertexAttribPointer(PCVBOPositionLocation, 3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_PositionOffset*sizeof(GLfloat))); 
+	glVertexAttribPointer(PCVBOColorLocation,    3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_ColorOffset*sizeof(GLfloat))); 
+	glVertexAttribPointer(PCVBONormalLocation,   3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_NormalOffset*sizeof(GLfloat))); 
+
+
+	//Setup uniforms
+	mat4 persp = glm::perspective(radians(mCamera.fovy), float(mWidth)/float(mHeight), mCamera.zNear, mCamera.zFar);
+	mat4 viewmat = glm::lookAt(mCamera.eye, mCamera.eye+mCamera.view, -mCamera.up);
+	mat4 viewInvTrans = inverse(transpose(viewmat));
+
+
+	glUniformMatrix4fv(glGetUniformLocation(prog, "u_projMatrix"),1, GL_FALSE, &persp[0][0] );
+	glUniformMatrix4fv(glGetUniformLocation(prog, "u_viewMatrix"),1, GL_FALSE, &viewmat[0][0] );
+	glUniformMatrix4fv(glGetUniformLocation(prog, "u_viewInvTrans"),1, GL_FALSE, &viewInvTrans[0][0] );
+
+
+	if(numTriangles > 0){
+		glDrawElements(GL_TRIANGLES, numTriangles, GL_UNSIGNED_INT, NULL);
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 int MeshViewer::fillPointCloudVBO()
 {
 	PointCloud* dptr;
@@ -873,6 +925,10 @@ void MeshViewer::display()
 		drawPointCloudVBOtoFBO(numCompactedPoints);
 		drawQuad(color_prog, 0, 0, 1, 1, &FBOColorTexture, 1);
 		break;
+	case DISPLAY_MODE_TRIANGLE:
+		drawMeshVBOtoFBO(numTriangles);
+		drawQuad(color_prog, 0, 0, 1, 1, &FBOColorTexture, 1);
+		break;
 	}
 
 	glutSwapBuffers();
@@ -936,6 +992,9 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		break;
 	case '6':
 		mViewState = DISPLAY_MODE_POINT_CLOUD;
+		break;
+	case '7':
+		mViewState = DISPLAY_MODE_TRIANGLE;
 		break;
 	case('r'):
 		cout << "Reloading Shaders" <<endl;

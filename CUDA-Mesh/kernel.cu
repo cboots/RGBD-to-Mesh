@@ -265,12 +265,12 @@ __global__ void triangulationKernel(PointCloud* pointCloudBuffer, triangleIndeci
 			//int v0y = y;
 			i0 = x+resolution.x*y;
 
-			int v1x = x + (1 - threadIdx.z);//z == 0?x + 1: x //next row if upper triangle
+			int v1x = x + (1 - threadIdx.z);//z == 0?x + 1: x //next column if upper triangle
 			int v1y = y + 1;//Always on next row
 			i1 = v1x+resolution.x*v1y;
 
 			int v2x = x + 1; //Always on next column
-			int v2y = y + threadIdx.z;//z == 0 ? y : y + 1, next column if lower triangle
+			int v2y = y + threadIdx.z;//z == 0 ? y : y + 1, next row if lower triangle
 			i2 = v2x+resolution.x*v2y;
 
 			//Pull all pixels to local memory
@@ -290,6 +290,10 @@ __global__ void triangulationKernel(PointCloud* pointCloudBuffer, triangleIndeci
 				i1 = 0;
 				i2 = 0;
 			}
+		}else{
+			i0 = 0;
+			i1 = 0;
+			i2 = 0;
 		}
 
 		triangulationIBO[triangleIndex].v0 = i0;
@@ -469,7 +473,6 @@ __host__ int compactPointCloudToVBO(PointCloud* vbo) {
 }
 
 
-
 int triangulatePCB(triangleIndecies* ibo, float maxTriangleEdgeLength)
 {	
 	int tileSize = 8;
@@ -484,11 +487,26 @@ int triangulatePCB(triangleIndecies* ibo, float maxTriangleEdgeLength)
 
 	thrust::device_ptr<triangleIndecies> dp_buffer(dev_triangulationIBO);
 	thrust::device_ptr<triangleIndecies> dp_ibo(dev_triangulationIBOCompact);
-	//thrust::device_ptr<triangleIndecies> last = thrust::copy_if(dp_buffer, dp_buffer+(2*cuImageWidth*cuImageHeight), dp_ibo, IsValidTriangle());
 
+	//TODO: Stream compaction
+	/*
+	try{
+	thrust::copy_if(dp_buffer,
+	dp_buffer+(2*cuImageWidth*cuImageHeight), 
+	dp_ibo, IsValidTriangle());
+
+	}catch(thrust::system::detail::bad_alloc ex)
+	{
+	std::cout << ex.what() << std::endl;
+	}catch(thrust::system::system_error ex)
+	{
+	std::cout << ex.what() << std::endl;
+	}
+	*/
 	//int numValid = last - dp_ibo;
 
 	cudaMemcpy(ibo, dev_triangulationIBO, 2*cuImageHeight*cuImageWidth*sizeof(triangleIndecies), cudaMemcpyDeviceToDevice);
+
 	//return numValid;
 	return 2*cuImageHeight*cuImageWidth;
 

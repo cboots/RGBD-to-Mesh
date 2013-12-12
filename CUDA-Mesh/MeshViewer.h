@@ -31,7 +31,8 @@ enum DisplayModes
 	DISPLAY_MODE_IMAGE,
 	DISPLAY_MODE_POINT_CLOUD,
 	DISPLAY_MODE_3WAY_DEPTH_IMAGE_OVERLAY,
-	DISPLAY_MODE_4WAY_PCB
+	DISPLAY_MODE_4WAY_PCB,
+	DISPLAY_MODE_TRIANGLE
 };
 
 
@@ -113,6 +114,7 @@ protected:
 	int fillPointCloudVBO();
 
 	void drawPointCloudVBOtoFBO(int numPoints);
+	void drawMeshVBOtoFBO(int numTriangles);
 
 	int computePCBTriangulation(float maxEdgeLength);
 
@@ -148,6 +150,7 @@ private:
 	GLuint pcbdebug_prog;
 	GLuint pcvbo_prog;
 	GLuint pcvbohairy_prog;
+	GLuint triangle_prog;
 
 	//PBOs
 	GLuint imagePBO0;
