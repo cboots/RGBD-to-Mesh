@@ -191,6 +191,7 @@ void MeshViewer::initShader()
 
 	const char * pass_vert  = "shaders/passVS.glsl";
 	const char * color_frag = "shaders/colorFS.glsl";
+	const char * abs_frag = "shaders/absFS.glsl";
 	const char * depth_frag = "shaders/depthFS.glsl";
 	const char * pcbdebug_frag = "shaders/pointCloudBufferDebugFS.glsl";
 	const char * pcvbo_vert = "shaders/pointCloudVBO_VS.glsl";
@@ -202,6 +203,9 @@ void MeshViewer::initShader()
 
 	//Color image shader
 	color_prog = glslUtility::createProgram(pass_vert, NULL, color_frag, quadAttributeLocations, 2);
+
+	//Absolute value shader
+	abs_prog = glslUtility::createProgram(pass_vert, NULL, abs_frag, quadAttributeLocations, 2);
 
 	//DEPTH image shader
 	depth_prog = glslUtility::createProgram(pass_vert, NULL, depth_frag, quadAttributeLocations, 2);
@@ -918,7 +922,7 @@ void MeshViewer::display()
 		drawPCBtoTextures(positionTexture, colorTexture, normalTexture);
 		drawQuad(color_prog, -0.5,  0.5, 0.5, 0.5, &colorTexture, 1);//Upper Left
 		drawQuad(color_prog, -0.5, -0.5, 0.5, 0.5, &positionTexture, 1);//Lower Left
-		drawQuad(color_prog,  0.5,  0.5, 0.5, 0.5, &normalTexture, 1);//Upper Right
+		drawQuad(abs_prog,  0.5,  0.5, 0.5, 0.5, &normalTexture, 1);//Upper Right
 
 		drawQuad(pcbdebug_prog, 0.5, -0.5, 0.5, 0.5, &pcbTextures[0], 3);//Lower right
 
@@ -955,7 +959,7 @@ void MeshViewer::display()
 
 		//Outputs on bottom
 		drawPointCloudVBOtoFBO(numCompactedPoints);
-		drawQuad(color_prog, -0.5, -0.5, 0.5, 0.5, &FBOColorTexture, 1);//Left side
+		drawQuad(abs_prog, -0.5, -0.5, 0.5, 0.5, &FBOColorTexture, 1);//Left side
 		drawMeshVBOtoFBO(numTriangles);
 		drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, &FBOColorTexture, 1);//Right side
 		break;

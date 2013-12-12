@@ -152,6 +152,7 @@ private:
 	//Shader programs
 	GLuint depth_prog;
 	GLuint color_prog;
+	GLuint abs_prog;
 	GLuint pcbdebug_prog;
 	GLuint pcvbo_prog;
 	GLuint pcvbohairy_prog;
