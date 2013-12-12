@@ -29,6 +29,7 @@
 
 #define EPSILON 0.000000001
 
+
 // THIS IS FOR ALL THE DEVICE KERNEL WRAPPER FUNCTIONS
 
 //Check for error
@@ -75,6 +76,9 @@ bool drawColorImageBufferToPBO(float4* pbo, int texWidth, int texHeight);
 //Returns false if width or height does not match, true otherwise
 bool drawPCBToPBO(float4* dptrPosition, float4* dptrColor, float4* dptrNormal, int mXRes, int mYRes);
 
+//Writes triangle index buffers
+int triangulatePCB(triangleIndecies* ibo, float maxTriangleEdgeLength);
+
 struct IsValidPoint
 {
     template <typename T>
@@ -82,5 +86,15 @@ struct IsValidPoint
     bool operator() (const T a) const {
 		return true;
         //return (glm::length(a.normal) > EPSILON);
+    }
+};
+
+
+struct IsValidTriangle
+{
+    template <typename T>
+    __host__ __device__ __forceinline__
+    bool operator() (const T a) const {
+		return (a.v0 != 0 || a.v1 != 0 || a.v2 != 0);//if any index is non-zero, valid triangle.
     }
 };

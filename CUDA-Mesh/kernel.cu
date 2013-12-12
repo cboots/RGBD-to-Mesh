@@ -7,10 +7,14 @@ DPixel* dev_depthImageBuffer;
 PointCloud* dev_pointCloudBuffer;
 PointCloud* dev_pointCloudVBO;
 
+triangleIndecies* dev_triangulationIBO;
+
+
 int	cuImageWidth = 0;
 int	cuImageHeight = 0;
 
 GLuint imagePBO = (GLuint)NULL;
+
 
 __host__ void checkCUDAError(const char *msg) {
 	cudaError_t err = cudaGetLastError();
@@ -87,87 +91,87 @@ __device__ glm::vec3 normalFrom3x3Covar(glm::mat3 A) {
 
 /*
 __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) {
+int r = (blockIdx.y * blockDim.y) + threadIdx.y;
+int c = (blockIdx.x * blockDim.x) + threadIdx.x;
+int i = (r * xRes) + c;
+
+int N = 0; // number of nearest neighbors
+glm::vec3 neighbor;
+glm::vec3 center = pointCloud[i].pos;
+glm::mat3 covariance = glm::mat3(0.0f);
+glm::vec3 normal;
+int win_r, win_c, win_i;
+for (win_r = r-RAD_WIN; win_r <= r+RAD_WIN; win_r++) {
+for (win_c = c-RAD_WIN; win_c <= c+RAD_WIN; win_c++) {
+// exclude center from neighbor search
+if (win_r != r && win_c != c) {
+// check if neighbor is in frame
+if (win_r >= 0 && win_r < yRes && win_c >= 0 && win_c < xRes) {
+win_i = (win_r * xRes) + win_c;
+neighbor = pointCloud[win_i].pos;
+// check if neighbor has valid depth data
+if (glm::length(neighbor) > EPSILON) {
+// check if neighbor is close enough in world space
+if (glm::distance(neighbor, center) < RAD_NN) {
+N += 1; // valid neighbor found
+glm::vec3 difference = neighbor - center;
+// remember GLM is column major
+covariance[0] += (difference * difference[0]);
+covariance[1] += (difference * difference[1]);
+covariance[2] += (difference * difference[2]);
+}
+}
+}
+}
+}
+}
+// check if enough nearest neighbors were found
+if (N >= MIN_NN) {
+covariance = covariance/N; // average covariance
+// compute and assign normal (0 if not "flat" enough)
+normal = normalFrom3x3Covar(covariance);
+// flip normal if facing away from camera
+if (glm::dot(center, normal) > 0) {
+normal = -normal;
+}
+pointCloud[i].normal = normal;
+}
+}
+*/
+
+__global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) {
 	int r = (blockIdx.y * blockDim.y) + threadIdx.y;
 	int c = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int i = (r * xRes) + c;
 
-	int N = 0; // number of nearest neighbors
-	glm::vec3 neighbor;
 	glm::vec3 center = pointCloud[i].pos;
-	glm::mat3 covariance = glm::mat3(0.0f);
+	glm::vec3 neighbor;
+	glm::vec3 neighbor_ortho;
+	glm::vec3 normal_sum = glm::vec3(0.0f);
 	glm::vec3 normal;
+	float N = 0.0f;
+
 	int win_r, win_c, win_i;
-	for (win_r = r-RAD_WIN; win_r <= r+RAD_WIN; win_r++) {
-		for (win_c = c-RAD_WIN; win_c <= c+RAD_WIN; win_c++) {
-			// exclude center from neighbor search
-			if (win_r != r && win_c != c) {
-				// check if neighbor is in frame
-				if (win_r >= 0 && win_r < yRes && win_c >= 0 && win_c < xRes) {
-					win_i = (win_r * xRes) + win_c;
-					neighbor = pointCloud[win_i].pos;
-					// check if neighbor has valid depth data
-					if (glm::length(neighbor) > EPSILON) {
-						// check if neighbor is close enough in world space
-						if (glm::distance(neighbor, center) < RAD_NN) {
-							N += 1; // valid neighbor found
-							glm::vec3 difference = neighbor - center;
-							// remember GLM is column major
-							covariance[0] += (difference * difference[0]);
-							covariance[1] += (difference * difference[1]);
-							covariance[2] += (difference * difference[2]);
+	for (win_r = -RAD_WIN; win_r <= RAD_WIN; win_r++) {
+		for (win_c = -RAD_WIN; win_c <= RAD_WIN; win_c++) {
+			if (r+win_r >= 0 && c+win_c >= 0 && r+win_r < yRes && c+win_c < xRes) {
+				if (!(win_r == 0 & win_c == 0)) {
+					neighbor = pointCloud[i+win_c+win_r*xRes].pos;
+					neighbor_ortho = pointCloud[i-win_r+win_c*xRes].pos;
+					if (glm::length(neighbor) > EPSILON && glm::length(neighbor_ortho) > EPSILON) {
+						if (glm::distance(center, neighbor) < RAD_NN && glm::distance(center, neighbor_ortho) < RAD_NN) {
+							normal = glm::normalize(glm::cross(neighbor-center, neighbor_ortho-center));
+							normal_sum += (glm::dot(center, normal) > 0 ? -normal : normal);
+							++N;
 						}
 					}
 				}
 			}
 		}
 	}
-	// check if enough nearest neighbors were found
-	if (N >= MIN_NN) {
-		covariance = covariance/N; // average covariance
-		// compute and assign normal (0 if not "flat" enough)
-		normal = normalFrom3x3Covar(covariance);
-		// flip normal if facing away from camera
-		if (glm::dot(center, normal) > 0) {
-			normal = -normal;
-		}
-		pointCloud[i].normal = normal;
+	if (N > MIN_NN) {
+		pointCloud[i].normal = normal_sum / N;
 	}
-}
-*/
-
-__global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) {
-	int r = (blockIdx.y * blockDim.y) + threadIdx.y;
-    int c = (blockIdx.x * blockDim.x) + threadIdx.x;
-	int i = (r * xRes) + c;
-
-    glm::vec3 center = pointCloud[i].pos;
-    glm::vec3 neighbor;
-    glm::vec3 neighbor_ortho;
-    glm::vec3 normal_sum = glm::vec3(0.0f);
-    glm::vec3 normal;
-    float N = 0.0f;
-
-	int win_r, win_c, win_i;
-	for (win_r = -RAD_WIN; win_r <= RAD_WIN; win_r++) {
-		for (win_c = -RAD_WIN; win_c <= RAD_WIN; win_c++) {
-            if (r+win_r >= 0 && c+win_c >= 0 && r+win_r < yRes && c+win_c < xRes) {
-                if (!(win_r == 0 & win_c == 0)) {
-                    neighbor = pointCloud[i+win_c+win_r*xRes].pos;
-                    neighbor_ortho = pointCloud[i-win_r+win_c*xRes].pos;
-                    if (glm::length(neighbor) > EPSILON && glm::length(neighbor_ortho) > EPSILON) {
-                        if (glm::distance(center, neighbor) < RAD_NN && glm::distance(center, neighbor_ortho) < RAD_NN) {
-                            normal = glm::normalize(glm::cross(neighbor-center, neighbor_ortho-center));
-                            normal_sum += (glm::dot(center, normal) > 0 ? -normal : normal);
-                            ++N;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    if (N > MIN_NN) {
-        pointCloud[i].normal = normal_sum / N;
-    }
 }
 
 // Kernel that writes the depth image to the OpenGL PBO directly.
@@ -242,6 +246,59 @@ __global__ void sendPCBToPBOs(float4* dptrPosition, float4* dptrColor, float4* d
 	}
 }
 
+__global__ void triangulationKernel(PointCloud* pointCloudBuffer, triangleIndecies* triangulationIBO, glm::vec2 resolution, float maxTriangleEdgeLength)
+{
+	extern __shared__ glm::vec3 s_position[];
+
+	//Parallel by proposed triangle. (x,y) indicates the upper left corner of triangle, z indicates which triangle this thread creates
+	//  (x,y)__
+	//		|\0|
+	//		|1\|
+	int x = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int y = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int triangleIndex = (threadIdx.z * resolution.x * resolution.y) + (y * resolution.x) + x;
+
+
+	//Get pixel locations in image space
+	if(x < resolution.x-1 && y < resolution.y - 1){
+		//int v0x = x;
+		//int v0y = y;
+		int i0 = x+resolution.x*y;
+
+		int v1x = x + (1 - threadIdx.z);//z == 0?x + 1: x //next row if upper triangle
+		int v1y = y + 1;//Always on next row
+		int i1 = v1x+resolution.x*v1y;
+
+		int v2x = x + 1; //Always on next column
+		int v2y = y + threadIdx.z;//z == 0 ? y : y + 1, next column if lower triangle
+		int i2 = v2x+resolution.x*v2y;
+
+		//Pull all pixels to local memory
+		glm::vec3 p0 = pointCloudBuffer[i0].pos;
+		glm::vec3 p1 = pointCloudBuffer[i1].pos;
+		glm::vec3 p2 = pointCloudBuffer[i2].pos;
+
+		//
+		if(glm::length(p1-p0) < maxTriangleEdgeLength 
+			&& glm::length(p2-p0) < maxTriangleEdgeLength
+			&& glm::length(p2-p1) < maxTriangleEdgeLength)
+		{
+			triangulationIBO[triangleIndex].v0 = i0;
+			triangulationIBO[triangleIndex].v1 = i1;
+			triangulationIBO[triangleIndex].v2 = i2;
+		}else{
+			triangulationIBO[triangleIndex].v0 = 0;
+			triangulationIBO[triangleIndex].v1 = 0;
+			triangulationIBO[triangleIndex].v2 = 0;
+		}
+	}else{
+		triangulationIBO[triangleIndex].v0 = 0;
+		triangulationIBO[triangleIndex].v1 = 0;
+		triangulationIBO[triangleIndex].v2 = 0;
+	}
+
+}
+
 __host__ void deletePBO(GLuint *pbo)
 {
 	if (pbo) {
@@ -263,6 +320,8 @@ __host__ void initCuda(int width, int height)
 	cudaMalloc((void**) &dev_depthImageBuffer, sizeof(DPixel)*width*height);
 	cudaMalloc((void**) &dev_pointCloudBuffer, sizeof(PointCloud)*width*height);
 	cudaMalloc((void**) &dev_pointCloudVBO, sizeof(PointCloud)*width*height);
+	cudaMalloc((void**) &dev_triangulationIBO, sizeof(triangleIndecies)*width*height*2);
+
 	cuImageWidth = width;
 	cuImageHeight = height;
 
@@ -277,6 +336,7 @@ __host__ void cleanupCuda()
 	cudaFree(dev_depthImageBuffer);
 	cudaFree(dev_pointCloudBuffer);
 	cudaFree(dev_pointCloudVBO);
+	cudaFree(dev_triangulationIBO);
 	cuImageWidth = 0;
 	cuImageHeight = 0;
 
@@ -401,7 +461,34 @@ __host__ int compactPointCloudToVBO(PointCloud* vbo) {
 	thrust::device_ptr<PointCloud> last = thrust::copy_if(dp_buffer, dp_buffer+(cuImageWidth*cuImageHeight), dp_vbo, IsValidPoint());
 
 	numValid = last - dp_vbo;
-	
+
 	cudaMemcpy(vbo, dev_pointCloudVBO, numValid*sizeof(PointCloud), cudaMemcpyDeviceToDevice);
 	return numValid;
+}
+
+
+
+int triangulatePCB(triangleIndecies* ibo, float maxTriangleEdgeLength)
+{	
+	int tileSize = 8;
+
+	dim3 threadsPerBlock(tileSize, tileSize, 2);//(x, y) are position of upper left vertex of triangle. (z) is 0 for upper right hand triangle, 1 for lower left hand
+	dim3 fullBlocksPerGrid( (int)ceil(float(cuImageWidth)/float(tileSize)), 
+		(int)ceil(float(cuImageHeight)/float(tileSize)) );
+
+	float sharedMemSize = (tileSize+1)*sizeof(glm::vec3);
+
+	triangulationKernel<<<fullBlocksPerGrid, threadsPerBlock, sharedMemSize>>>(dev_pointCloudBuffer, dev_triangulationIBO, 
+		glm::vec2(cuImageWidth, cuImageHeight), maxTriangleEdgeLength);
+
+
+	thrust::device_ptr<triangleIndecies> dp_buffer(dev_triangulationIBO);
+	thrust::device_ptr<triangleIndecies> dp_ibo(ibo);
+	thrust::device_ptr<triangleIndecies> last = thrust::copy_if(dp_buffer, dp_buffer+(2*cuImageWidth*cuImageHeight), dp_ibo, IsValidTriangle());
+
+	int numValid = last - dp_ibo;
+
+	cudaMemcpy(ibo, dev_triangulationIBO, numValid*sizeof(triangleIndecies), cudaMemcpyDeviceToDevice);
+	return numValid;
+
 }

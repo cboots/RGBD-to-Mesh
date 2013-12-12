@@ -7,6 +7,13 @@
 
 typedef struct
 {
+	GLuint v0;
+	GLuint v1;
+	GLuint v2;
+} triangleIndecies;
+
+typedef struct
+{
 	// Point location
 	glm::vec3 pos;
 	// RGB point color
