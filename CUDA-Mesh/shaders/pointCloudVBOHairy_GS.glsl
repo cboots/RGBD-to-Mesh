@@ -27,7 +27,7 @@ void main()
 	
 	fs_eyeNormal = vertexData[0].EyeNormal;
 	fs_color = vertexData[0].Color;
-	gl_Position = gl_in[0].gl_Position+vec4(fs_eyeNormal*0.05,0.0);
+	gl_Position = gl_in[0].gl_Position+vec4(fs_eyeNormal*0.025,0.0);
 	EmitVertex();
 	
     EndPrimitive();
