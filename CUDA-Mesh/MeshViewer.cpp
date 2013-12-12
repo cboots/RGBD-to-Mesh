@@ -68,7 +68,7 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	mWidth = screenwidth;
 	mHeight = screenheight;
 	mViewState = DISPLAY_MODE_OVERLAY;
-
+	hairyPoints = false;
 	resetCamera();
 }
 
@@ -194,6 +194,7 @@ void MeshViewer::initShader()
 	const char * pcbdebug_frag = "shaders/pointCloudBufferDebugFS.glsl";
 	const char * pcvbo_vert = "shaders/pointCloudVBO_VS.glsl";
 	const char * pcvbo_geom = "shaders/pointCloudVBO_GS.glsl";
+	const char * pcvbo_geom_hairy = "shaders/pointCloudVBOHairy_GS.glsl";
 	const char * pcvbo_frag = "shaders/pointCloudVBO_FS.glsl";
 
 	//Color image shader
@@ -207,6 +208,7 @@ void MeshViewer::initShader()
 
 	//Point cloud VBO renderer
 	pcvbo_prog = glslUtility::createProgram(pcvbo_vert, pcvbo_geom, pcvbo_frag, vboAttributeLocations, 3);
+	pcvbohairy_prog = glslUtility::createProgram(pcvbo_vert, pcvbo_geom_hairy, pcvbo_frag, vboAttributeLocations, 3);
 }
 
 
@@ -488,7 +490,7 @@ void MeshViewer::initPointCloudVBO()
 	}
 
 	glGenBuffers(1,&pointCloudVBO);
-	
+
 	glBindBuffer(GL_ARRAY_BUFFER, pointCloudVBO);
 	glBufferData(GL_ARRAY_BUFFER, size_buf_data, bodies, GL_DYNAMIC_DRAW);//Initialize
 
@@ -706,39 +708,39 @@ void MeshViewer::drawPointCloudVBOtoFBO(int numPoints)
 	glEnable(GL_DEPTH_TEST);
 
 	//Setup VBO
-
-	glUseProgram(pcvbo_prog);
+	GLuint prog = hairyPoints? pcvbohairy_prog:pcvbo_prog;
+	glUseProgram(prog);
 
 	glEnableVertexAttribArray(PCVBOPositionLocation);
 	glEnableVertexAttribArray(PCVBOColorLocation);
 	glEnableVertexAttribArray(PCVBONormalLocation);
 
-	
+
 	glBindBuffer(GL_ARRAY_BUFFER, pointCloudVBO);
 
 	//Setup interleaved buffer
 	glVertexAttribPointer(PCVBOPositionLocation, 3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_PositionOffset*sizeof(GLfloat))); 
 	glVertexAttribPointer(PCVBOColorLocation,    3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_ColorOffset*sizeof(GLfloat))); 
 	glVertexAttribPointer(PCVBONormalLocation,   3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_NormalOffset*sizeof(GLfloat))); 
-	
+
 
 	//Setup uniforms
 	mat4 persp = glm::perspective(radians(mCamera.fovy), float(mWidth)/float(mHeight), mCamera.zNear, mCamera.zFar);
 	mat4 viewmat = glm::lookAt(mCamera.eye, mCamera.eye+mCamera.view, -mCamera.up);
 	mat4 viewInvTrans = inverse(transpose(viewmat));
-	
 
-	glUniformMatrix4fv(glGetUniformLocation(pcvbo_prog, "u_projMatrix"),1, GL_FALSE, &persp[0][0] );
-	glUniformMatrix4fv(glGetUniformLocation(pcvbo_prog, "u_viewMatrix"),1, GL_FALSE, &viewmat[0][0] );
-	glUniformMatrix4fv(glGetUniformLocation(pcvbo_prog, "u_viewInvTrans"),1, GL_FALSE, &viewInvTrans[0][0] );
 
-	
+	glUniformMatrix4fv(glGetUniformLocation(prog, "u_projMatrix"),1, GL_FALSE, &persp[0][0] );
+	glUniformMatrix4fv(glGetUniformLocation(prog, "u_viewMatrix"),1, GL_FALSE, &viewmat[0][0] );
+	glUniformMatrix4fv(glGetUniformLocation(prog, "u_viewInvTrans"),1, GL_FALSE, &viewInvTrans[0][0] );
+
+
 	if(numPoints > 0){
 		glPointSize(2.0f); 
 		glDrawArrays(GL_POINTS, 0, numPoints);
 		glPointSize(1.0f); 
 	}
-	
+
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
@@ -777,7 +779,7 @@ void MeshViewer::display()
 
 	//Stream compaction, prep for rendering
 	int numCompactedPoints = fillPointCloudVBO();
-	
+
 	cudaDeviceSynchronize();
 	//=====RENDERING======
 
@@ -991,6 +993,10 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		resetCamera();
 		cout << "Reset Camera" << endl;
 		break;
+	case 'h':
+		hairyPoints = !hairyPoints;
+		cout << "Toggle normal hairs" << endl;
+		break;
 	}
 
 }
@@ -1000,7 +1006,7 @@ void MeshViewer::reshape(int w, int h)
 {
 	mWidth = w;
 	mHeight = h;
-	
+
 
 	glBindFramebuffer(GL_FRAMEBUFFER,0);
 	glViewport(0,0,(GLsizei)w,(GLsizei)h);
@@ -1060,7 +1066,7 @@ void MeshViewer::mouse_move(int x, int y) {
 
 		if(rightclick)
 		{
-		
+
 		}else{
 			//Simple rotation
 			mCamera.view = vec3(glm::rotate(glm::rotate(mat4(1.0f), rotSpeed*delY, Right), rotSpeed*delX, Up)*vec4(mCamera.view, 0.0f));

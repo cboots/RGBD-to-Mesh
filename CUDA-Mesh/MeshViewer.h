@@ -144,6 +144,7 @@ private:
 	GLuint color_prog;
 	GLuint pcbdebug_prog;
 	GLuint pcvbo_prog;
+	GLuint pcvbohairy_prog;
 
 	//PBOs
 	GLuint imagePBO0;
@@ -180,5 +181,7 @@ private:
 	GLuint FBOColorTexture;
 	GLuint FBODepthTexture;
 
+
+	bool hairyPoints;
 };
 

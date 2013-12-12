@@ -154,7 +154,7 @@ __global__ void computePointNormals(PointCloud* pointCloud, int xRes, int yRes) 
                 if (!(win_r == 0 & win_c == 0)) {
                     neighbor = pointCloud[i+win_c+win_r*xRes].pos;
                     neighbor_ortho = pointCloud[i-win_r+win_c*xRes].pos;
-                    if (glm::length(neighbor) > EPSILON && glm::length(neighbor_ortho) > EPSILON) {\
+                    if (glm::length(neighbor) > EPSILON && glm::length(neighbor_ortho) > EPSILON) {
                         if (glm::distance(center, neighbor) < RAD_NN && glm::distance(center, neighbor_ortho) < RAD_NN) {
                             normal = glm::normalize(glm::cross(neighbor-center, neighbor_ortho-center));
                             normal_sum += (glm::dot(center, normal) > 0 ? -normal : normal);

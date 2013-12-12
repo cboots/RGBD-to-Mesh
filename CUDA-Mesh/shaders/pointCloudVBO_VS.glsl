@@ -18,6 +18,7 @@ out VertexData{
 void main(void)
 {
 	gl_Position = u_projMatrix*u_viewMatrix*vec4(vs_position,1.0);
-	vertexData.EyeNormal = vec3(u_viewInvTrans*vec4(vs_normal,0.0));
+	vertexData.EyeNormal = normalize(vec3(u_viewInvTrans*vec4(vs_normal,0.0)));
+	
 	vertexData.Color = vs_color;
 }

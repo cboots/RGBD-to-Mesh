@@ -23,7 +23,7 @@
 #define PI      3.141592653589793238
 #define MIN_EIG_RATIO 1.0
 
-#define RAD_WIN 1 // search window for nearest neighbors
+#define RAD_WIN 2 // search window for nearest neighbors
 #define RAD_NN 0.05 // nearest neighbor radius in world space (meters)
 #define MIN_NN 3 // minimum number of nearest neighbors for valid normal
 
