@@ -485,7 +485,7 @@ __host__ void computePointCloudNormals()
 
 __host__ void computePointCloudNormalsFast()
 {
-	int tileSize = 8;
+	int tileSize = 12;
 
 	dim3 threadsPerBlock(tileSize, tileSize);
 	dim3 fullBlocksPerGrid((int)ceil(float(cuImageWidth)/float(tileSize)), 
