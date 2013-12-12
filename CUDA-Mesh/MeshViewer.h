@@ -68,6 +68,11 @@ protected:
 
 	void resetCamera();
 
+	
+	time_t seconds;
+	int fpstracker;
+	float fps;
+
 	device_mesh2_t device_quad;
 	static MeshViewer* msSelf;
 	RGBDDevice* mDevice;

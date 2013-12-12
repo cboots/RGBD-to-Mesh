@@ -70,6 +70,11 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	mViewState = DISPLAY_MODE_OVERLAY;
 	hairyPoints = false;
 	mMaxTriangleEdgeLength = 0.1;
+
+	seconds = time (NULL);
+	fpstracker = 0;
+	fps = 0.0;
+
 	resetCamera();
 }
 
@@ -855,8 +860,23 @@ int MeshViewer::computePCBTriangulation(float maxEdgeLength)
 ////All the important runtime stuff happens here:
 void MeshViewer::display()
 {
+	//Grab local copy of latest frames
 	ColorPixelArray localColorArray = mColorArray;
 	DPixelArray localDepthArray = mDepthArray;
+
+	//Update frame counter
+	time_t seconds2 = time (NULL);
+
+	fpstracker++;
+	if(seconds2-seconds >= 1){
+		fps = fpstracker/(seconds2-seconds);
+		fpstracker = 0;
+		seconds = seconds2;
+	}
+
+	stringstream title;
+	title << "RGBD to Mesh Visualization | " << (int)fps  << "FPS";
+	glutSetWindowTitle(title.str().c_str());
 
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
