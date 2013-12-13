@@ -205,5 +205,10 @@ All testing for this project was conducted on the following hardware:
 ACKNOWLEDGEMENTS
 -------------------------------------------------------------------------------
 
-REMEMBER TO ACKNOWLEDGE LIBRARIES
+This project makes use of the following 3rd party libraries
+Boost: http://www.boost.org/
+CUB: http://nvlabs.github.io/cub/
+Thrust: https://code.google.com/p/thrust/
+LZ4: https://code.google.com/p/lz4/
+RapidXML: http://rapidxml.sourceforge.net/
 
