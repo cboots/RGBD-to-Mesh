@@ -126,34 +126,36 @@ Features:
 SCREENSHOTS
 -------------------------------------------------------------------------------
 
-No special features enabled. Just Point lighting:
-![Baseline](/renders/FullHallBaseline.PNG "Baseline")
-
-Diffuse Texture:
-![Diffuse Map](/renders/FullHallDiffuseOnly.PNG "Diffuse Texture")
-
-Specular Texture:
-![Specular Map](/renders/FullHallSpecularOnly.PNG "Specular Texture")
-
-Bump Mapping:
-![Bump Map](/renders/FullHallBumpOnly.PNG "Bump Texture")
-![Bump Map](/renders/LionCloseNoBump.PNG "Without Bump")
-![Bump Map](/renders/LionClose.PNG "With Bump")
-
-Masking:
-![Mask](/renders/FullHallMaskOnly.PNG "Mask Texture")
-![No Mask](/renders/PlantsNoMask.PNG "No Mask")
-![With Mask](/renders/PlantsWithMask.PNG "With Mask")
-
-
-All Textures:
-![All Textures Map](/renders/FullHallAllTextures.PNG "Specular Texture")
-
-Scissor Test Specular Bug:
-![ScissorNo](/renders/SpecularNoScissorTest.PNG "No Scissor Test")
-![Scissor](/renders/SpecularWithScissorTest.PNG "With Scissor Test")
-
+3D Point Cloud Normals Above.PNG:
 ![3D Point Cloud Normals Above.PNG](/docs/screenshots/3D Point Cloud Normals Above.PNG "3D Point Cloud Normals Above.PNG")
+ColorfulOverlay.PNG:
+![ColorfulOverlay.PNG](/docs/screenshots/ColorfulOverlay.PNG "ColorfulOverlay.PNG")
+ImprovedNormals.PNG:
+![ImprovedNormals.PNG](/docs/screenshots/ImprovedNormals.PNG "ImprovedNormals.PNG")
+MeshNormals.PNG:
+![MeshNormals.PNG](/docs/screenshots/MeshNormals.PNG "MeshNormals.PNG")
+3D Point Cloud Normals.PNG:
+![3D Point Cloud Normals.PNG](/docs/screenshots/3D Point Cloud Normals.PNG "3D Point Cloud Normals.PNG")
+DepthDataGUI.PNG:
+![DepthDataGUI.PNG](/docs/screenshots/DepthDataGUI.PNG "DepthDataGUI.PNG")
+Mesh.PNG:
+![Mesh.PNG](/docs/screenshots/Mesh.PNG "Mesh.PNG")
+Window.PNG:
+![Window.PNG](/docs/screenshots/Window.PNG "Window.PNG")
+ChairPointCloudNormals.PNG:
+![ChairPointCloudNormals.PNG](/docs/screenshots/ChairPointCloudNormals.PNG "ChairPointCloudNormals.PNG")
+FaceFilled.PNG:
+![FaceFilled.PNG](/docs/screenshots/FaceFilled.PNG "FaceFilled.PNG")
+MeshFile.PNG:
+![MeshFile.PNG](/docs/screenshots/MeshFile.PNG "MeshFile.PNG")
+python-normals.png:
+![python-normals.png](/docs/screenshots/python-normals.png "python-normals.png")
+ColorHairs.PNG:
+![ColorHairs.PNG](/docs/screenshots/ColorHairs.PNG "ColorHairs.PNG")
+Hairs.PNG:
+![Hairs.PNG](/docs/screenshots/Hairs.PNG "Hairs.PNG")
+MeshHead.PNG:
+![MeshHead.PNG](/docs/screenshots/MeshHead.PNG "MeshHead.PNG")
 
 -------------------------------------------------------------------------------
 PERFORMANCE EVALUATION
