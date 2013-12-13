@@ -193,10 +193,15 @@ in given thread block are first loaded into shared memory, along with the
 points lying within the specified neighborhood radius of the edges of the
 thread block, and the distance and cross product calculations are then
 performed using shared memory access. The results of the shared memory
-optimization on kernel runtime are as follows, using a tile size of 8.
+optimization on kernel runtime are shown for a range of window radii using a
+thread block size of 8x8.
 
 ![KernelRuntime](/docs/performance/SharedVsGlobalRuntime.png "Kernel Runtime")
 ![FPS](/docs/performance/SharedVsGlobalFPS.png "FPS")
+
+As demonstrated, the shared memory optimization reduced the kernel runtime by
+approximately a factor of 2. The impact on the overall FPS was less dramatic,
+though still pronounced, due to the time spent in the rendering pipeline.
 
 All testing for this project was conducted on the following hardware:
 * CPU: Intel Core i5-2450M, 2.5GHz 6GB (Windows 8, 64-bit OS)
