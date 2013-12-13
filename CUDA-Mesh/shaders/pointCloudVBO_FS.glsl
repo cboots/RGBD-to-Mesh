@@ -13,5 +13,5 @@ out vec4 out_Color;
 void main()
 {
 	//Just pass through for now
-	out_Color = vec4(abs(fs_eyeNormal), 1.0);
+	out_Color = vec4(abs(fs_color), 1.0);
 }
