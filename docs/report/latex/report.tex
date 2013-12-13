@@ -7,8 +7,8 @@
 %\submitted{\today}
 
 % Once an article is accepted accepted, switch to the following line and comment the preceding one. The editor will supply the argument values.
-%\accepted{July 4, 2013}{July 4, 2013}{July 4, 2013}{Editor Name}{2}{1}{1}{1}{2013}
-%\seturl{http://jcgt.org/published/0002/02/01/}
+\accepted{July 4, 2013}{July 4, 2013}{July 4, 2013}{Editor Name}{2}{1}{1}{1}{2013}
+\seturl{http://jcgt.org/published/0002/02/01/}
 
 
 
@@ -27,7 +27,7 @@
 
 % Optional teaser image
 \teaser{
-  \includegraphics[width=3in]{../../../screenshots/ChairPointCloudNormals.PNG}
+  \includegraphics[width=3in]{../../screenshots/ChairPointCloudNormals.PNG}
   
   \label{fig:teaser}
   \caption{Depth data (placeholder)}
@@ -48,7 +48,7 @@ how to format affiliations.
 %-------------------------------------------------------------------------
 \section{Introduction}
 \label{sec:introduction}
-Previous work has demonstrated the diverse capabilities of RGBD cameras, from generating highly accurate 3D surface models to reliably estimating 3D pose. However, many algorithms attempt to store the generated environment as a RGB 3D point cloud, which is not easily adaptable to dynamic environments, requires very large quantities of memory to store large environments, and provides no intuition to higher perception processes about distinct objects beyond a volumetric approximation. Other approaches have been able to store and merge the surface data more efficiently, but still regard the environement as a unified whole rather than discrete objects. By extracting meaningful geometry from the RGB-D in the form of triangle meshes instead, a large number of advantages can be realized.
+Previous work has demonstrated the diverse capabilities of RGBD cameras, from generating highly accurate 3D surface models \cite{KinectFusion} to reliably estimating 3D pose \cite{Endres,Taguchi}. However, many algorithms attempt to store the generated environment as a RGB 3D point cloud, which is not easily adaptable to dynamic environments, requires very large quantities of memory to store large environments, and provides no intuition to higher perception processes about distinct objects beyond a volumetric approximation. Other approaches have been able to store and merge the surface data more efficiently, but still regard the environement as a unified whole rather than discrete objects. By extracting meaningful geometry from the RGB-D in the form of triangle meshes instead, a large number of advantages can be realized.
 
 \begin{enumerate}
 \item High storage efficiency
@@ -188,7 +188,7 @@ Authors may provide a brief acknowledgements section if desired.
 
 \small
 \bibliographystyle{acmsiggraph}
-\bibliography{paper}
+\bibliography{report}
 
 \section*{Index of Supplemental Materials}
 When supplemental materials such as video, data sets, and source code are provided with an article, briefly describe them by directory or filename here.
