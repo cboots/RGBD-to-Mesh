@@ -153,7 +153,7 @@ Scissor Test Specular Bug:
 ![ScissorNo](/renders/SpecularNoScissorTest.PNG "No Scissor Test")
 ![Scissor](/renders/SpecularWithScissorTest.PNG "With Scissor Test")
 
-![3D Point Cloud Normals Above.PNG](3D Point Cloud Normals Above.PNG "3D Point Cloud Normals Above.PNG")
+![3D Point Cloud Normals Above.PNG](3D\ Point\ Cloud\ Normals\ Above.PNG "3D Point Cloud Normals Above.PNG")
 
 -------------------------------------------------------------------------------
 PERFORMANCE EVALUATION
