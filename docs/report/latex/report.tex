@@ -7,8 +7,8 @@
 %\submitted{\today}
 
 % Once an article is accepted accepted, switch to the following line and comment the preceding one. The editor will supply the argument values.
-\accepted{July 4, 2013}{July 4, 2013}{July 4, 2013}{Editor Name}{2}{1}{1}{1}{2013}
-\seturl{http://jcgt.org/published/0002/02/01/}
+%\accepted{July 4, 2013}{July 4, 2013}{July 4, 2013}{Editor Name}{2}{1}{1}{1}{2013}
+%\seturl{http://jcgt.org/published/0002/02/01/}
 
 
 
@@ -35,20 +35,18 @@
 
 
 \maketitle
-\thispagestyle{firstpagestyle}
+%\thispagestyle{firstpagestyle}
 
 \begin{abstract}
 \small
-This document is the \textit{JCGT} formatting template \textit{and} a description of the guidelines
-for  \textit{JCGT} articles.  The author names on this document are fictional and chosen to show
-how to format affiliations.
+Mesh reconstruction from low-cost RGBD cameras, as opposed to simple point cloud storage, holds many possibilities, such as ease of object recognition and greatly reduced memory requirements. A modular framework was developed for extracting and synchronizing RGB and depth data from an RGBD camera, performing CUDA-based data processing on a GPU, and rendering the transformed data with OpenGL via CUDA-OpenGL interop on the GPU. In particular, data was gathered from the Microsoft Kinect using OpenNI, CUDA kernels were used to perform neighborhood-based estimation of point normals and dense surface mesh reconstruction in camera-space, and a variety of GLSL shaders were implemented to visualize the processed data. Further work will extend the framework to perform image registration of successive RBGD frames for reconstruction from camera movement, and will perform adaptive mesh resampling in order to further decrease memory usage.
 \end{abstract}
 
 
 %-------------------------------------------------------------------------
 \section{Introduction}
 \label{sec:introduction}
-Previous work has demonstrated the diverse capabilities of RGBD cameras, from generating highly accurate 3D surface models \cite{KinectFusion} to reliably estimating 3D pose \cite{Endres,Taguchi}. However, many algorithms attempt to store the generated environment as a RGB 3D point cloud, which is not easily adaptable to dynamic environments, requires very large quantities of memory to store large environments, and provides no intuition to higher perception processes about distinct objects beyond a volumetric approximation. Other approaches have been able to store and merge the surface data more efficiently, but still regard the environement as a unified whole rather than discrete objects. By extracting meaningful geometry from the RGB-D in the form of triangle meshes instead, a large number of advantages can be realized.
+Previous work has demonstrated the diverse capabilities of RGBD cameras, from generating highly accurate 3D surface models \cite{KinectFusion} to reliably estimating 3D pose \cite{Endres,Taguchi}. However, many algorithms attempt to store the generated environment as a RGB 3D point cloud, which is not easily adaptable to dynamic environments, requires enormous quantities of memory to store large environments, and provides no intuition to higher perception processes about distinct objects beyond a volumetric approximation. Other approaches have been able to store and merge the surface data more efficiently, but still regard the environment as a unified whole rather than discrete objects. By instead extracting meaningful geometry from the RGBD data in the form of triangle meshes, many advantages can be realized:
 
 \begin{enumerate}
 \item High storage efficiency
@@ -58,157 +56,83 @@ Previous work has demonstrated the diverse capabilities of RGBD cameras, from ge
 \item Straightforward tradeoff between simplicity and accuracy with mesh resolution
 \end{enumerate}
 
-\section{Sections}
-Divide the article into logical sections...
-
-\subsection{Sub-section}
-...and subsections.\pdfmarginpar{You can use pdfmarginpar to leave notes for your coauthors.  Please don't leave notes in the review copy.}
-
-\subsubsection{Sub-subsections}
-Use sub-subsections sparingly.
-
-\paragraph{Paragraph.} Consider ``paragraph'' formatting as an alternative to sub-subsections.
-
-
-\section{Abstract}
-Briefly describe the topic, value of the technique, and major limitations in the abstract. For example,
-
-``The CIE Lab color  space is useful for image editing operations and device-independent representation of
-color.  However, most modern display  input  and  cameras  output is in the sRGB color space, as are stored images on disk.  We describe a method for
-efficiently converting colors between the Lab and sRGB color spaces that requires no branches,  lookup tables, or floating-point operations.
-
-Our 32-bit fixed-point
-implementation is 30\% faster than the traditional (and floating point) method on
-iPad 3 and Core i7 processors and produces provably
-minimal error for 24-bit input color.  However,  unlike traditional color space
-conversions, it does not generalize for conversions to and from CIE XYZ or
-gamma 1.0 RGB space in the new method, and it is slower than direct floating-point
-conversion on devices that do not support native integer instructions (e.g., DX9 GPUs).
-
-The article includes C and GLSL source code adapted from the hardware accelerated path of the Colortech's commercial PaintMaster application for
-both desktop and mobile platforms. ''
-
-\section{Images}
-
-Capture raster images at high resolution in a lossless format, such as PNG.  Vector images
-can be directly incorporated in formats such as PDF; avoid rasterizing vector source diagrams
-and results.  Include figures with captions as shown in Figure~\ref{fig:teapot}.
-
-Figures should be near the text that refers to them whenever possible, and should not be
-reduced to grayscale.  Encode images in the sRGB space (the default for PNG).
+\section{Code Overview}
+\subsection{Image processing pipeline}
+The overall image processing pipeline is shown in Figure~\ref{fig:imgProcPipeline}. First, an RGB frame and a depth frame are pulled from the Kinect and shipped to the GPU for processing. A world-space point cloud is then generated from the RGBD data, and a neighborhood-based estimate of the point normals is then extracted for later processing. Finally, the point cloud is triangulated and the generated mesh is passed to OpenGL where a variety of rendering options are implemented.
 
 \begin{figure}[htb]
   \centering
-   \includegraphics[width=0.5\columnwidth]{teapot.png}
-   \caption{\label{fig:teapot}
-     This is a teapot rendered by OpenGL with environment mapping and a Blinn-Phong BSDF.}
+   \includegraphics[width=0.8\textwidth]{../../diagrams/ImageProcessingPipeline.png}
+   \caption{\label{fig:imgProcPipeline}
+        Image Processing Pipeline}
 \end{figure}
 
-\section{Source Code}
+The underlying architecture is very modular, and can be easily extended to handle input RGBD streams other than the Kinect (as demonstrated in the implementation of log streams). A generic RGBD frame format is used, allowing computation and visualization to be performed without regard to how the data was obtained.
 
-Format source code listings with syntax highlighting as shown in Listing~\ref{lst:hello}.  Inline
-code, such as \lstinline{lerp(a, b, t)}, should also be in a fixed-width font.
+A more detailed view of the program flow is shown in Figure~\ref{fig:progFlow}. Note that after the RGB and depth frames are synchronized and shipped to the GPU, all computation and rendering is performed on the GPU, enhancing performance and allowing the CPU to be free for other tasks. The ComputeNormalsFast kernel supplants an earlier iteration, ComputeNormals, which was written for estimation quality at the cost of a significant performance penalty.
 
-\begin{lstlisting}[caption={A simple C program.}, label={lst:hello}, float]
-#include <stdio.h>
+\begin{figure}[htb]
+  \centering
+   \includegraphics[width=0.8\textwidth]{../../diagrams/ProgramFlow.png}
+   \caption{\label{fig:imgProcPipeline}
+        Overall Program Flow}
+\end{figure}
 
-/* Entry point for the program */
-int main(const int argc, const char* argv[]) {
+Finally, Figure~\ref{fig:GLPipeline} shows a more detailed view of the OpenGL rendering pipeline. The rendering pipeline is also written in a very modular manner, allowing both for rapid code modification to experiment with different visualazation techniques, as well as hooks (note the black diamonds) for keypresses to completely change the render output on-the-fly.
 
-    /* Print some output */
-    printf("Hello world!\n");
+\begin{figure}[htb]
+  \centering
+   \includegraphics[width=0.8\textwidth]{../../diagrams/OpenGLPipeline.png}
+   \caption{\label{fig:GLPipeline}
+        OpenGL Pipeline}
+\end{figure}
 
-    return 0;
-}
-\end{lstlisting}
+\section{Performance Analysis}
 
-\section{Hyperlinks}
-Link section, figure, table, equation, etc. reference numbers and citations to their target (the JCGT \LaTeX class automatically generates these links).
+Our point normals kernel was implemented as follows. A window radius is first specified as an algorithm parameter. For each point, we loop through its neighboring points in screen space in the square window specified by the radius, and pair it with a screen-space orthogonal point at the same radius. If both points are within a specified radius from the center point in world space, we take the cross product to compute the normal, which is then flipped if pointing away from the camera. If sufficiently many valid normals are found, we average them to produce the final normal estimate, otherwise we discard the point.
 
-Favor standard citations over URLs whenever possible, since URLs may not stand the test of time.  When providing a URL, type the full URL text so that it is still useful in print, and create a hyperlink.  For example,
-the \textit{JCGT} website is at \href{http://jcgt.org}{http://jcgt.org}.
+To improve the runtime of the point normals kernel, we reimplemented the algorithm using shared memory. In the shared memory implementation, all points in given thread block are first loaded into shared memory, along with the points lying within the specified neighborhood radius of the edges of the thread block, and the distance and cross product calculations are then performed using shared memory access. The results of the shared memory optimization on kernel runtime are shown for a range of window radii using a thread block size of 8x8.
 
-\section{Citations and Bibliography}
-Do not use citations as nouns--the text should read correctly were they omitted. For example, the following are correct:
+\begin{figure}[htb]
+  \centering
+   \includegraphics[width=0.8\textwidth]{../../performance/SharedVsGlobalRuntime.png}
+   \caption{\label{fig:GLPipeline}
+    Global vs. shared memory access: kernel runtime}
+\end{figure}
 
-\begin{enumerate}
-\item ``The Rendering Equation \cite{Immel:1986:RMN:15886.15901,Kajiya:1986:RE:15922.15902} relates the incoming and outgoing light at a surface...''
-\item ``Immel et al.'s paper~\shortcite{Immel:1986:RMN:15886.15901} uses a directional parameterization...''
-\end{enumerate}
+\begin{figure}[htb]
+  \centering
+   \includegraphics[width=0.8\textwidth]{../../performance/SharedVsGlobalFPS.png}
+   \caption{\label{fig:GLPipeline}
+    Global vs. shared memory access: frame rate}
+\end{figure}
 
-\noindent The bibliography should use ACM SIGGRAPH format.
+As demonstrated, the shared memory optimization reduced the kernel runtime by approximately a factor of 2. The impact on the overall FPS was less dramatic, though still pronounced, due to the time spent in the rendering pipeline. All testing for this project was conducted on an Intel Core i5-2450M CPU, 2.5GHz 6GB (Windows 8, 64-bit OS) and an NVIDIA GeForce GT 525M GPU.
 
-\section{Units}
-Use SI units, e.g., meters, seconds, unless there is an application-specific reason to employ a non SI-unit such as `feet'.  Units should appear in normal Roman type when in an equation, e.g.,
+
+%\subsection*{Acknowledgements}
+%This project makes use of the following 3rd party libraries: \href{http://www.boost.org/}{Boost}, \href{http://nvlabs.github.io/cub/}{CUB}, \href{https://code.google.com/p/thrust/}{Thrust}, \href{https://code.google.com/p/lz4/}{LZ4}, \href{http://rapidxml.sourceforge.net/}{RapidXML}. The project was done for Patrick Cozzi's CIS 565 GPU Programming class at the University of Pennsylvania, Fall 2013.
 %
-\begin{equation}
-\frac{150\;\mathrm{m}}{20\;\mathrm{s}} = 75\;\mathrm{m}/\mathrm{s}
-\end{equation}
-%
-to distinguish them from variable names.
-
-Time performance should be measured in \textbf{time} units, e.g., ``the shader took 3.6\;s to execute on GeForce GTX 680.''  However, it is appropriate to also express values in frames per second when discussing the end-to-end performance of a complete system.  For example, the performance of a shadow algorithm implementation should be measured in milliseconds but the performance of a complete virtual reality system could be measured in frames per second instead of rendering time per frame.
-
-\section{Mathematics}
-Please use the guidelines in Table~\ref{tbl:math} for typesetting mathematics, although in some cases, domain-specific notation should overrule them.
-
-\begin{table}[htdp]
-\small
-\begin{center}
-\begin{tabular}{l|c}
-Scalar & $x$\\
-Mathematical vector & $\vec{v}$ \\
-Unit vector & $\hat{\omega}$ \\
-Matrix & $\mathbf{M}$ \\
-Transpose & $\mathbf{M}^\transpose$\\
-Inverse & $\mathbf{M}^{-1}$\\
-Geometric point & $X$ \\
-Set & $\mathbb{S}$ \\
-Subscript expression & $h_i$ \\
-Subscript name & $L_\mathrm{in}$ \\
-Function & $f(x)$ \\
-Named function & $\max(3, 4)$, $\operatorname{lerp}(a, b, t)$
-\end{tabular}
-\end{center}
-\caption{Math symbol formatting guidelines.}
-\label{tbl:math}
-\end{table}
-
-\noindent Equation~\ref{eqn:rendering} is an example of a numbered equation following these conventions.
-
-\begin{equation}
-L_\mathrm{o}(X, \hat{\omega}_\mathrm{o}) = L_\mathrm{e}(X, \hat{\omega}_\mathrm{o}) + \int_{\mathbf{S}^2} L_\mathrm{i}(X, \hat{\omega}_\mathrm{i}) \cdot f(\hat{\omega}_\mathrm{i}, \hat{\omega}_\mathrm{o}) \cdot |\hat{n} \cdot \hat{\omega}_\mathrm{i} |~ d\hat{\omega}_\mathrm{i}
-\label{eqn:rendering}
-\end{equation}
-
-Large equations, images, and tables may exceed the regular text margins but should stop within 1.5 cm of the physical page border.
-
-\subsection*{Acknowledgements}
-Authors may provide a brief acknowledgements section if desired.
-
 \small
 \bibliographystyle{acmsiggraph}
 \bibliography{report}
 
-\section*{Index of Supplemental Materials}
-When supplemental materials such as video, data sets, and source code are provided with an article, briefly describe them by directory or filename here.
-
-\section*{Author Contact Information}
-
-\hspace{-2mm}\begin{tabular}{p{0.5\textwidth}p{0.5\textwidth}}
-Collin Boots \newline
-University of Pennsylvania\newline
-\href{mailto:cboots@seas.upenn.edu}{cboots@seas.upenn.edu}
-&
-
-Dalton Banks \newline
-University of Pennsylvania\newline
-\href{mailto:dbanks@seas.upenn.edu}{dbanks@seas.upenn.edu} \newline
-\href{http://graphica.edu/~rtrace}{http://graphica.edu/\textasciitilde rtrace}
-
-\end{tabular}
+%\section*{Author Contact Information}
+%
+%\hspace{-2mm}\begin{tabular}{p{0.5\textwidth}p{0.5\textwidth}}
+%Collin Boots \newline
+%University of Pennsylvania\newline
+%\href{mailto:cboots@seas.upenn.edu}{cboots@seas.upenn.edu}
+%&
+%
+%Dalton Banks \newline
+%University of Pennsylvania\newline
+%\href{mailto:dbanks@seas.upenn.edu}{dbanks@seas.upenn.edu} \newline
+%\href{http://graphica.edu/~rtrace}{http://graphica.edu/\textasciitilde rtrace}
+%
+%\end{tabular}
 
 
-\afterdoc
+%\afterdoc
 
 \end{document}
