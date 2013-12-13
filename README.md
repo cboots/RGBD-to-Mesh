@@ -13,7 +13,7 @@ alt="Project Overview (YouTube)" width="640" height="480" border="10" />
 </a>
 
 </dl>
-<a href="/docs/report/latex/report.pdf">
+<a href="/docs/report/latex/report.pdf?raw=true">
 Full report can be found here.
 </a>
 </dl>
