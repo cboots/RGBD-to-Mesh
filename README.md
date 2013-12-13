@@ -157,8 +157,8 @@ PERFORMANCE EVALUATION
 -------------------------------------------------------------------------------
 Global vs shared memory for point normals computation:
 
-![KernelRuntime](/docs/performance/SharedVsGlobalRuntime.PNG "Kernel Runtime")
-![FPS](/docs/performance/SharedVsGlobalFPS.PNG "FPS")
+![KernelRuntime](/docs/performance/SharedVsGlobalRuntime.png "Kernel Runtime")
+![FPS](/docs/performance/SharedVsGlobalFPS.png "FPS")
 
 ---
 ACKNOWLEDGEMENTS
