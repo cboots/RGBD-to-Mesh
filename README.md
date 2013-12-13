@@ -49,7 +49,15 @@ The Project6 root directory contains the following subdirectories:
 * shared/ contains glew
 
 -------------------------------------------------------------------------------
-CODE TOUR/CONTROLS
+CODE TOUR
+-------------------------------------------------------------------------------
+
+![Framework Layout](/docs/FrameworkLayout.pdf "Framework Layout")
+![Image Processing Pipeline](/docs/ImageProcessingPipeline.pdf "Image Processing Pipeline")
+![Program Flow](/docs/ProgramFlow.pdf "Program Flow")
+
+-------------------------------------------------------------------------------
+CODE TOURCONTROLS
 -------------------------------------------------------------------------------
 
 Stage 1 samples model textures renders the scene geometry to the G-Buffer
@@ -121,6 +129,7 @@ Features:
 * Point light sources with specular
 
 ![Point Specular](/renders/PointLightSpeculars.PNG "Point Light Speculars")
+
 
 -------------------------------------------------------------------------------
 SCREENSHOTS
