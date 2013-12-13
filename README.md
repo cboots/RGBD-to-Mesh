@@ -130,41 +130,54 @@ B | Toggle normal computation on/off
 SCREENSHOTS
 -------------------------------------------------------------------------------
 
-3D Point Cloud Normals Above.PNG:
+View of 3D point cloud with normals visualized as color data.
 ![3DPointCloudNormalsAbove.PNG](/docs/screenshots/3DPointCloudNormalsAbove.PNG "3DPointCloudNormalsAbove.PNG")
-ColorfulOverlay.PNG:
+
+Colorfully shaded depth data overlaid on color data using GLSL shaders.
 ![ColorfulOverlay.PNG](/docs/screenshots/ColorfulOverlay.PNG "ColorfulOverlay.PNG")
-ImprovedNormals.PNG:
+
+Comparision of valid point cloud data, normals, world space position, and depth buffer.
 ![ImprovedNormals.PNG](/docs/screenshots/ImprovedNormals.PNG "ImprovedNormals.PNG")
-MeshNormals.PNG:
+
+First successful attempt to render a reconstructed mesh. Normals as color again.
 ![MeshNormals.PNG](/docs/screenshots/MeshNormals.PNG "MeshNormals.PNG")
-3D Point Cloud Normals.PNG:
+
+Point cloud normals.
 ![3DPointCloudNormals.PNG](/docs/screenshots/3DPointCloudNormals.PNG "3DPointCloudNormals.PNG")
-DepthDataGUI.PNG:
+
+Side by side depth, color and overlay.
 ![DepthDataGUI.PNG](/docs/screenshots/DepthDataGUI.PNG "DepthDataGUI.PNG")
-Mesh.PNG:
-![Mesh.PNG](/docs/screenshots/Mesh.PNG "Mesh.PNG")
-Window.PNG:
-![Window.PNG](/docs/screenshots/Window.PNG "Window.PNG")
-ChairPointCloudNormals.PNG:
-![ChairPointCloudNormals.PNG](/docs/screenshots/ChairPointCloudNormals.PNG "ChairPointCloudNormals.PNG")
-FaceFilled.PNG:
-![FaceFilled.PNG](/docs/screenshots/FaceFilled.PNG "FaceFilled.PNG")
-MeshFile.PNG:
-![MeshFile.PNG](/docs/screenshots/MeshFile.PNG "MeshFile.PNG")
-python-normals.png:
-![python-normals.png](/docs/screenshots/python-normals.png "python-normals.png")
-ColorHairs.PNG:
-![ColorHairs.PNG](/docs/screenshots/ColorHairs.PNG "ColorHairs.PNG")
-Hairs.PNG:
-![Hairs.PNG](/docs/screenshots/Hairs.PNG "Hairs.PNG")
-MeshHead.PNG:
+
+Mesh reconstruction, wireframe mode.
 ![MeshHead.PNG](/docs/screenshots/MeshHead.PNG "MeshHead.PNG")
-AllStages.PNG:
+![Mesh.PNG](/docs/screenshots/Mesh.PNG "Mesh.PNG")
+
+Same face, but full rendering of mesh.
+![FaceFilled.PNG](/docs/screenshots/FaceFilled.PNG "FaceFilled.PNG")
+![MeshFile.PNG](/docs/screenshots/MeshFile.PNG "MeshFile.PNG")
+
+Same visualization as above, just a different view.
+![Window.PNG](/docs/screenshots/Window.PNG "Window.PNG")
+
+Early attempt at computing normals. Was slow and far too picky.
+![ChairPointCloudNormals.PNG](/docs/screenshots/ChairPointCloudNormals.PNG "ChairPointCloudNormals.PNG")
+
+Python implementation of normal estimation algorithm. 
+![python-normals.png](/docs/screenshots/python-normals.png "python-normals.png")
+
+Normals visualized as lines.
+![ColorHairs.PNG](/docs/screenshots/ColorHairs.PNG "ColorHairs.PNG")
+
+Normals visualizes as colored lines
+![Hairs.PNG](/docs/screenshots/Hairs.PNG "Hairs.PNG")
+
+Multiple views of the same data.
 ![AllStages.PNG](/docs/screenshots/AllStages.PNG "AllStages.PNG")
-MeshFace.PNG:
+
+Another mesh rendering.
 ![MeshFace.PNG](/docs/screenshots/MeshFace.PNG "MeshFace.PNG")
-Points.PNG:
+
+Same view but as a point cloud.
 ![Points.PNG](/docs/screenshots/Points.PNG "Points.PNG")
 
 -------------------------------------------------------------------------------
