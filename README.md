@@ -52,86 +52,53 @@ The Project6 root directory contains the following subdirectories:
 CODE TOUR
 -------------------------------------------------------------------------------
 
-The overall image processing line is shown below. First, an RGB frame and a depth frame are pulled from the Kinect and shipped to the GPU for processing. A world-space point cloud is then generated from the RGBD data, and a neighborhood-based estimate of the point normals is then extracted for later processing. Finally, the point cloud is triangulated and the generated mesh is passed to OpenGL where a variety of rendering options are implemented.
+The overall image processing line is shown below. First, an RGB frame and a
+depth frame are pulled from the Kinect and shipped to the GPU for processing. A
+world-space point cloud is then generated from the RGBD data, and a
+neighborhood-based estimate of the point normals is then extracted for later
+processing. Finally, the point cloud is triangulated and the generated mesh is
+passed to OpenGL where a variety of rendering options are implemented.
 
 ![Image Processing Pipeline](/docs/diagrams/ImageProcessingPipeline.png "Image Processing Pipeline")
+
+The underlying architecture is very modular, and can be easily extended to
+handle input RGBD streams other than the Kinect (as demonstrated in the
+implementation of log streams). A generic RGBD frame format is used, allowing
+computation and visualization to be performed without regard to how the data
+was obtained.
+
 ![Framework Layout](/docs/diagrams/FrameworkLayout.png "Framework Layout")
+
+A more detailed view of the program flow is shown below. Note that after the
+RGB and depth frames are synchronized and shipped to the GPU, all computation
+and rendering is performed on the GPU, enhancing performance and allowing the
+CPU to be free for other tasks. The ComputeNormalsFast kernel supplants an
+earlier iteration, ComputeNormals, which was written for estimation quality at
+the cost of a significant performance penalty.
+
 ![Program Flow](/docs/diagrams/ProgramFlow.png "Program Flow")
+
+Finally, the following is a more detailed view of the OpenGL rendering
+pipeline. The rendering pipeline is also written in a very modular manner,
+allowing both for rapid code modification to experiment with different
+visualazation techniques, as well as hooks (note the black diamonds) for
+keypresses to completely change the render output on-the-fly.
+
 ![OpenGL Pipeline](/docs/diagrams/OpenGLPipeline.png "OpenGL Pipeline")
-
--------------------------------------------------------------------------------
-CONTROLS
--------------------------------------------------------------------------------
-
-Stage 1 samples model textures renders the scene geometry to the G-Buffer
-* pass.vert
-* pass.frag
-
-Stage 2 renders the lighting passes and accumulates to the P-Buffer
-* shade.vert
-* ambient.frag
-* point.frag
-* diagnostic.frag
-
-Stage 3 renders the post processing
-* post.vert
-* post.frag
-
-Keyboard controls
-[keyboard](https://github.com/cboots/Deferred-Shading/blob/master/base/src/main.cpp#L1178):
-This is a good reference for the key mappings in the program. 
-WASDQZ - Movement
-X - Toggle scissor test
-R - Reload shaders
-1 - View depth
-2 - View eye space normals
-3 - View Diffuse color
-4 - View eye space positions
-5 - View lighting debug mode
-6 - View Specular Mapping
-7 - View Only Bloomed Geometry
-0 - Standard view
-
-x - Toggle Scissor Test
-r - Reload Shaders
-p - Print camera position to console
-j - Toggle timing measurements to console (averaged since last reset)
-SPACE - Reset timing averages
-
-Shift-L - Toggle Bloom
-Shift-T - Toggle Toon Shading
-Shift-D - Toggle Diffuse Mapping
-Shift-S - Toggle Specular Mapping
-Shift-B - Toggle Bump Mapping
-Shift-M - Toggle Transparency Masking
-
-c - Reset  diffuse color to default
-t - Change diffuse color to texture coordinate visualization
-h - Overlay diffuse color with visualization of available textures
-b - Change diffuse color to bump map visualization if available
-m - Change diffuse color to white if mask texture is available
 
 -------------------------------------------------------------------------------
 Features:
 -------------------------------------------------------------------------------
 
-* Renders .obj files with support for .mtl files with
-  * Diffuse Textures
-  * Specular Textures
-  * Height Maps (Bump Mapping)
-  * Texture Masking
- 
 * Bloom (Not seperable, very inefficient)
 ![NoBloom](/renders/LampNoBloom.PNG "Without Bloom")
-![Bloom](/renders/LampWithBloom.PNG "With Bloom")
 
-* "Toon" Shading (with basic silhouetting and color quantization)
-![Toon](/renders/ToonShadingNoColor.PNG "Toon Shading B/W")
-![Toon](/renders/FullHallToon.PNG "Toon Shading")
+* Rich set of controls for experimenting with different program options and exploring an image stream
 
-* Point light sources with specular
+-------------------------------------------------------------------------------
+CONTROLS
+-------------------------------------------------------------------------------
 
-![Point Specular](/renders/PointLightSpeculars.PNG "Point Light Speculars")
 
 
 -------------------------------------------------------------------------------
