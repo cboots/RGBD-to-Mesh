@@ -4,7 +4,7 @@ Surface Mesh Reconstruction from RGBD Images
 Final Project for Patrick Cozzi's CIS 565, Fall 2013
 -------------------------------------------------------------------------------
 
-Video Overview (click to view)
+Click for video
 <dl>
 <a href="http://www.youtube.com/watch?feature=player_embedded&v=pg0YZ76ZZw4
 " target="_blank">
@@ -54,7 +54,7 @@ CODE TOUR
 -------------------------------------------------------------------------------
 
 The overall image processing line is shown below. First, an RGB frame and a
-depth frame are pulled from the Kinect and shipped to the GPU for processing. A
+depth frame are pulled from the Kinect and pushed to the GPU for processing. A
 world-space point cloud is then generated from the RGBD data, and a
 neighborhood-based estimate of the point normals is then extracted for later
 processing. Finally, the point cloud is triangulated and the generated mesh is
@@ -71,11 +71,12 @@ was obtained.
 ![Framework Layout](/docs/diagrams/FrameworkLayout.png "Framework Layout")
 
 A more detailed view of the program flow is shown below. Note that after the
-RGB and depth frames are synchronized and shipped to the GPU, all computation
+RGB and depth frames are synchronized and shipped to the GPU (the purple arrow), all computation
 and rendering is performed on the GPU, enhancing performance and allowing the
 CPU to be free for other tasks. The ComputeNormalsFast kernel supplants an
 earlier iteration, ComputeNormals, which was written for estimation quality at
-the cost of a significant performance penalty.
+the cost of a significant performance penalty. 
+The new implementation is much faster thanks to shared memory optimization (see performance section below).
 
 ![Program Flow](/docs/diagrams/ProgramFlow.png "Program Flow")
 
@@ -88,60 +89,42 @@ keypresses to completely change the render output on-the-fly.
 ![OpenGL Pipeline](/docs/diagrams/OpenGLPipeline.png "OpenGL Pipeline")
 
 -------------------------------------------------------------------------------
-Features:
--------------------------------------------------------------------------------
-
-* Bloom (Not seperable, very inefficient)
-![NoBloom](/renders/LampNoBloom.PNG "Without Bloom")
-
-* Rich set of controls for experimenting with different program options and exploring an image stream
-
--------------------------------------------------------------------------------
 CONTROLS
 -------------------------------------------------------------------------------
 
+Click and drag the mouse to look around in 3D views
 
+Keypress | Function
+--- | ---
+w a s d q z| Move Camera in 3D views Forward/Left/Back/Right/Up/Down
+W A S D Q Z| Move Camera slowly in 3D views
+x | Reset camera view
+r | Reload GLSL shaders
+p | Restart playback at beginning of log (only for LogDevice input)
+= | Increase playback speed (only for LogDevice input)
+- | Decrease playback speed (only for LogDevice input)
+F | Increase camera FOV
+f | Decrease camera FOV
+ESC | Exit
+h | Toggle normal hair display in 3D point cloud mode
+v | Toggle wireframe mode for 3D mesh
+M | Increase maximum triangle edge length by 1cm
+m | Increase maximum triangle edge length by 1mm
+N | Decrease maximum triangle edge length by 1cm
+n | Decrease maximum triangle edge length by 1mm
+b | Toggle fast/slow normal computation algorithm
+B | Toggle normal computation on/off
+1 | Display depth overlaid on color input image
+2 | Display depth only
+3 | Display color only
+4 | Display depth, color, and overlay on same screen
+5 | Display point cloud buffer debug views
+6 | Display 3D point cloud rendered from VBO
+7 | Display 3D mesh reconstruction
+8 | Display side by side comparison of color input image and 3D mesh reconstruction
+9 | Display side by side comparison of 3D point cloud and 3D mesh reconstruction
+0 | Display both input images, 3D point, and 3D mesh
 
--------------------------------------------------------------------------------
-SCREENSHOTS
--------------------------------------------------------------------------------
-
-3D Point Cloud Normals Above.PNG:
-![3DPointCloudNormalsAbove.PNG](/docs/screenshots/3DPointCloudNormalsAbove.PNG "3DPointCloudNormalsAbove.PNG")
-ColorfulOverlay.PNG:
-![ColorfulOverlay.PNG](/docs/screenshots/ColorfulOverlay.PNG "ColorfulOverlay.PNG")
-ImprovedNormals.PNG:
-![ImprovedNormals.PNG](/docs/screenshots/ImprovedNormals.PNG "ImprovedNormals.PNG")
-MeshNormals.PNG:
-![MeshNormals.PNG](/docs/screenshots/MeshNormals.PNG "MeshNormals.PNG")
-3D Point Cloud Normals.PNG:
-![3DPointCloudNormals.PNG](/docs/screenshots/3DPointCloudNormals.PNG "3DPointCloudNormals.PNG")
-DepthDataGUI.PNG:
-![DepthDataGUI.PNG](/docs/screenshots/DepthDataGUI.PNG "DepthDataGUI.PNG")
-Mesh.PNG:
-![Mesh.PNG](/docs/screenshots/Mesh.PNG "Mesh.PNG")
-Window.PNG:
-![Window.PNG](/docs/screenshots/Window.PNG "Window.PNG")
-ChairPointCloudNormals.PNG:
-![ChairPointCloudNormals.PNG](/docs/screenshots/ChairPointCloudNormals.PNG "ChairPointCloudNormals.PNG")
-FaceFilled.PNG:
-![FaceFilled.PNG](/docs/screenshots/FaceFilled.PNG "FaceFilled.PNG")
-MeshFile.PNG:
-![MeshFile.PNG](/docs/screenshots/MeshFile.PNG "MeshFile.PNG")
-python-normals.png:
-![python-normals.png](/docs/screenshots/python-normals.png "python-normals.png")
-ColorHairs.PNG:
-![ColorHairs.PNG](/docs/screenshots/ColorHairs.PNG "ColorHairs.PNG")
-Hairs.PNG:
-![Hairs.PNG](/docs/screenshots/Hairs.PNG "Hairs.PNG")
-MeshHead.PNG:
-![MeshHead.PNG](/docs/screenshots/MeshHead.PNG "MeshHead.PNG")
-AllStages.PNG:
-![AllStages.PNG](/docs/screenshots/AllStages.PNG "AllStages.PNG")
-MeshFace.PNG:
-![MeshFace.PNG](/docs/screenshots/MeshFace.PNG "MeshFace.PNG")
-Points.PNG:
-![Points.PNG](/docs/screenshots/Points.PNG "Points.PNG")
 
 -------------------------------------------------------------------------------
 PERFORMANCE EVALUATION
@@ -175,11 +158,71 @@ though still pronounced, due to the time spent in the rendering pipeline.
 
 All testing for this project was conducted on the following hardware:
 * CPU: Intel Core i5-2450M, 2.5GHz 6GB (Windows 8, 64-bit OS)
-* GPU: NVIDIA GeForce GT 525M with 2 SM's:
+* GPU: NVIDIA GeForce GT 525M
+
+-------------------------------------------------------------------------------
+SCREENSHOTS
+-------------------------------------------------------------------------------
+
+View of 3D point cloud with normals visualized as color data.
+![3DPointCloudNormalsAbove.PNG](/docs/screenshots/3DPointCloudNormalsAbove.PNG "3DPointCloudNormalsAbove.PNG")
+
+Colorfully shaded depth data overlaid on color data using GLSL shaders.
+![ColorfulOverlay.PNG](/docs/screenshots/ColorfulOverlay.PNG "ColorfulOverlay.PNG")
+
+Comparision of valid point cloud data, normals, world space position, and depth buffer.
+![ImprovedNormals.PNG](/docs/screenshots/ImprovedNormals.PNG "ImprovedNormals.PNG")
+
+First successful attempt to render a reconstructed mesh. Normals as color again.
+![MeshNormals.PNG](/docs/screenshots/MeshNormals.PNG "MeshNormals.PNG")
+
+Point cloud normals.
+![3DPointCloudNormals.PNG](/docs/screenshots/3DPointCloudNormals.PNG "3DPointCloudNormals.PNG")
+
+Side by side depth, color and overlay.
+![DepthDataGUI.PNG](/docs/screenshots/DepthDataGUI.PNG "DepthDataGUI.PNG")
+
+Mesh reconstruction, wireframe mode.
+![MeshHead.PNG](/docs/screenshots/MeshHead.PNG "MeshHead.PNG")
+![Mesh.PNG](/docs/screenshots/Mesh.PNG "Mesh.PNG")
+
+Same face, but full rendering of mesh.
+![FaceFilled.PNG](/docs/screenshots/FaceFilled.PNG "FaceFilled.PNG")
+![MeshFile.PNG](/docs/screenshots/MeshFile.PNG "MeshFile.PNG")
+
+Same visualization as above, just a different view.
+![Window.PNG](/docs/screenshots/Window.PNG "Window.PNG")
+
+Early attempt at computing normals. Was slow and far too picky.
+![ChairPointCloudNormals.PNG](/docs/screenshots/ChairPointCloudNormals.PNG "ChairPointCloudNormals.PNG")
+
+Python implementation of normal estimation algorithm. 
+![python-normals.png](/docs/screenshots/python-normals.png "python-normals.png")
+
+Normals visualized as lines.
+![ColorHairs.PNG](/docs/screenshots/ColorHairs.PNG "ColorHairs.PNG")
+
+Normals visualizes as colored lines
+![Hairs.PNG](/docs/screenshots/Hairs.PNG "Hairs.PNG")
+
+Multiple views of the same data.
+![AllStages.PNG](/docs/screenshots/AllStages.PNG "AllStages.PNG")
+
+Another mesh rendering.
+![MeshFace.PNG](/docs/screenshots/MeshFace.PNG "MeshFace.PNG")
+
+Same view but as a point cloud.
+![Points.PNG](/docs/screenshots/Points.PNG "Points.PNG")
+
 
 -------------------------------------------------------------------------------
 ACKNOWLEDGEMENTS
 -------------------------------------------------------------------------------
 
-REMEMBER TO ACKNOWLEDGE LIBRARIES
+This project makes use of the following 3rd party libraries
+* Boost: http://www.boost.org/
+* CUB: http://nvlabs.github.io/cub/
+* Thrust: https://code.google.com/p/thrust/
+* LZ4: https://code.google.com/p/lz4/
+* RapidXML: http://rapidxml.sourceforge.net/
 
