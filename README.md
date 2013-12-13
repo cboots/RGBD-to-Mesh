@@ -1,15 +1,16 @@
 -------------------------------------------------------------------------------
 Surface Mesh Reconstruction from RGBD Images
 -------------------------------------------------------------------------------
-Final Project Fall 2013
+Created as Final Project for Patrick Cozzi's CIS 565, Fall 2013
 -------------------------------------------------------------------------------
-![AllStages](/docs/screenshots/AllStages.PNG)
 
-Youtube Video of Rendering:
+Click for video
 <dl>
 <a href="http://www.youtube.com/watch?feature=player_embedded&v=pg0YZ76ZZw4
-" target="_blank"><img src="http://img.youtube.com/vi/pg0YZ76ZZw4/0.jpg" 
-alt="Project Overview (YouTube)" width="480" height="360" border="10" /></a>
+" target="_blank">
+<img src="/docs/screenshots/AllStages.PNG" 
+alt="Project Overview (YouTube)" width="640" height="480" border="10" />
+</a>
 </dl>
 
 NOTE:
