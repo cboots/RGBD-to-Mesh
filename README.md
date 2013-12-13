@@ -11,6 +11,11 @@ Click for video
 <img src="/docs/screenshots/AllStages.PNG" 
 alt="Project Overview (YouTube)" width="640" height="480" border="10" />
 </a>
+
+</dl>
+<a href="/docs/report/latex/report.pdf">
+Full report can be found here.
+</a>
 </dl>
 
 NOTE:
