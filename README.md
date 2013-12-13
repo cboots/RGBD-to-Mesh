@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
-GPU-Accelerated Conversion of RGBD Images to Textured Triangle Meshes
+Conversion of RGBD Images to Triangle Meshes
 -------------------------------------------------------------------------------
 Final Project Fall 2013
 -------------------------------------------------------------------------------
