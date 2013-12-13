@@ -11,23 +11,13 @@
 #include <thrust/copy.h>
 #include <thrust/execution_policy.h>
 #include <thrust/device_ptr.h>
-/*
-#define FOV_Y 43 # degrees
-#define FOV_X 57
+#include <thrust/iterator/counting_iterator.h>
+#include <iostream>
 
-#define SCALE_Y tan((FOV_Y/2)*pi/180)
-#define SCALE_X tan((FOV_X/2)*pi/180)
-*/
-#define SCALE_Y 0.393910475614942392
-#define SCALE_X 0.542955699638436879
+
 #define PI      3.141592653589793238
-#define MIN_EIG_RATIO 1.0
-
-#define RAD_WIN 2 // search window for nearest neighbors
-#define RAD_NN 0.05 // nearest neighbor radius in world space (meters)
-#define MIN_NN 3 // minimum number of nearest neighbors for valid normal
-
 #define EPSILON 0.000000001
+
 
 // THIS IS FOR ALL THE DEVICE KERNEL WRAPPER FUNCTIONS
 
@@ -55,10 +45,13 @@ void convertToPointCloud();
 
 //Computes normals for point cloud in buffer and writes back to the point cloud buffer.
 void computePointCloudNormals();
+void computePointCloudNormalsFast();
 
 //Stream compacts only valid point cloud pixels into a VBO for efficient 3D rendering and the next pipeline stage.
 //Returns number of elements in buffer when done
 int compactPointCloudToVBO(PointCloud* vbo);
+//Same behavior as compactPointCloudToVBO except with no stream compaction
+void copyPointCloudToVBO(PointCloud* vbo);
 
 //Draws depth image buffer to the texture.
 //Texture width and height must match the resolution of the depth image.
@@ -75,6 +68,9 @@ bool drawColorImageBufferToPBO(float4* pbo, int texWidth, int texHeight);
 //Returns false if width or height does not match, true otherwise
 bool drawPCBToPBO(float4* dptrPosition, float4* dptrColor, float4* dptrNormal, int mXRes, int mYRes);
 
+//Writes triangle index buffers
+int triangulatePCB(triangleIndecies* ibo, float maxTriangleEdgeLength);
+
 struct IsValidPoint
 {
     template <typename T>
@@ -82,5 +78,15 @@ struct IsValidPoint
     bool operator() (const T a) const {
 		return true;
         //return (glm::length(a.normal) > EPSILON);
+    }
+};
+
+
+struct IsValidTriangle
+{
+    template <typename T>
+    __host__ __device__ __forceinline__
+    bool operator() (const T a) const {
+		return !(a.v0 == 0 && a.v1 == 0 && a.v2 == 0);//if any index is non-zero, valid triangle.
     }
 };

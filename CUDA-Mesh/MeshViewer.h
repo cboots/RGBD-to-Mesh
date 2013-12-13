@@ -31,7 +31,11 @@ enum DisplayModes
 	DISPLAY_MODE_IMAGE,
 	DISPLAY_MODE_POINT_CLOUD,
 	DISPLAY_MODE_3WAY_DEPTH_IMAGE_OVERLAY,
-	DISPLAY_MODE_4WAY_PCB
+	DISPLAY_MODE_4WAY_PCB,
+	DISPLAY_MODE_TRIANGLE,
+	DISPLAY_MODE_COLOR_MESH_COMPARE,
+	DISPLAY_MODE_POINTCLOUD_MESH_COMPARE,
+	DISPLAY_MODE_4WAY_COMPARE
 };
 
 
@@ -64,11 +68,21 @@ protected:
 
 	void resetCamera();
 
+	
+	time_t seconds;
+	int fpstracker;
+	float fps;
+
 	device_mesh2_t device_quad;
 	static MeshViewer* msSelf;
 	RGBDDevice* mDevice;
 	int mXRes, mYRes;
 	int mWidth, mHeight;
+
+	float mMaxTriangleEdgeLength;
+	bool mMeshWireframeMode;
+	bool mFastNormals;
+	bool mComputeNormals;
 
 	DisplayModes mViewState;
 
@@ -86,6 +100,7 @@ protected:
 	void initPointCloudVBO();
 	void initFBO();
 	void cleanupFBO();
+
 
 	virtual DeviceStatus initOpenGL(int argc, char **argv);
 	virtual void initTextures();
@@ -112,6 +127,9 @@ protected:
 	int fillPointCloudVBO();
 
 	void drawPointCloudVBOtoFBO(int numPoints);
+	void drawMeshVBOtoFBO(int numTriangles);
+
+	int computePCBTriangulation(float maxEdgeLength);
 
 	static void glutIdle();
 	static void glutDisplay();
@@ -142,9 +160,11 @@ private:
 	//Shader programs
 	GLuint depth_prog;
 	GLuint color_prog;
+	GLuint abs_prog;
 	GLuint pcbdebug_prog;
 	GLuint pcvbo_prog;
 	GLuint pcvbohairy_prog;
+	GLuint triangle_prog;
 
 	//PBOs
 	GLuint imagePBO0;
@@ -155,6 +175,7 @@ private:
 
 	//PC VBO
 	GLuint pointCloudVBO; 
+	GLuint triangleIBO;
 	//VBO attribs
 
 	static const GLuint PCVBOPositionLocation;//vec3

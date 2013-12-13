@@ -69,6 +69,15 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	mHeight = screenheight;
 	mViewState = DISPLAY_MODE_OVERLAY;
 	hairyPoints = false;
+	mMeshWireframeMode = false;
+	mFastNormals = true;
+	mComputeNormals = true;
+	mMaxTriangleEdgeLength = 0.1;
+
+	seconds = time (NULL);
+	fpstracker = 0;
+	fps = 0.0;
+
 	resetCamera();
 }
 
@@ -190,15 +199,21 @@ void MeshViewer::initShader()
 
 	const char * pass_vert  = "shaders/passVS.glsl";
 	const char * color_frag = "shaders/colorFS.glsl";
+	const char * abs_frag = "shaders/absFS.glsl";
 	const char * depth_frag = "shaders/depthFS.glsl";
 	const char * pcbdebug_frag = "shaders/pointCloudBufferDebugFS.glsl";
 	const char * pcvbo_vert = "shaders/pointCloudVBO_VS.glsl";
 	const char * pcvbo_geom = "shaders/pointCloudVBO_GS.glsl";
 	const char * pcvbo_geom_hairy = "shaders/pointCloudVBOHairy_GS.glsl";
 	const char * pcvbo_frag = "shaders/pointCloudVBO_FS.glsl";
+	const char * triangle_vert = "shaders/triangle_VS.glsl";
+	const char * triangle_frag = "shaders/triangle_FS.glsl";
 
 	//Color image shader
 	color_prog = glslUtility::createProgram(pass_vert, NULL, color_frag, quadAttributeLocations, 2);
+
+	//Absolute value shader
+	abs_prog = glslUtility::createProgram(pass_vert, NULL, abs_frag, quadAttributeLocations, 2);
 
 	//DEPTH image shader
 	depth_prog = glslUtility::createProgram(pass_vert, NULL, depth_frag, quadAttributeLocations, 2);
@@ -209,6 +224,8 @@ void MeshViewer::initShader()
 	//Point cloud VBO renderer
 	pcvbo_prog = glslUtility::createProgram(pcvbo_vert, pcvbo_geom, pcvbo_frag, vboAttributeLocations, 3);
 	pcvbohairy_prog = glslUtility::createProgram(pcvbo_vert, pcvbo_geom_hairy, pcvbo_frag, vboAttributeLocations, 3);
+
+	triangle_prog = glslUtility::createProgram(triangle_vert, NULL, triangle_frag, vboAttributeLocations, 3);
 }
 
 
@@ -464,6 +481,9 @@ void MeshViewer::initPointCloudVBO()
 	if(pointCloudVBO){
 		glDeleteBuffers(1, &pointCloudVBO);
 	}
+	if(triangleIBO){
+		glDeleteBuffers(1, &triangleIBO);
+	}
 
 	//Max num elements
 	int max_elements = mWidth*mHeight;
@@ -471,6 +491,7 @@ void MeshViewer::initPointCloudVBO()
 
 	//Fill with data
 	GLfloat *bodies    = new GLfloat[size_buf_data];
+	GLuint *indices   = new GLuint[max_elements*3*2];//3 indecies per triangle, 2 tris per pixel(overshoot, but makes initialization simpler)
 	for(int i = 0; i < max_elements; i++)
 	{
 		//Position
@@ -487,16 +508,34 @@ void MeshViewer::initPointCloudVBO()
 		bodies[i*PCVBOStride+6] = 0.0;
 		bodies[i*PCVBOStride+7] = 0.0;
 		bodies[i*PCVBOStride+8] = 0.0;
+
+		indices[i*6+0] = 0;
+		indices[i*6+1] = 0;
+		indices[i*6+2] = 0;
+		indices[i*6+3] = 0;
+		indices[i*6+4] = 0;
+		indices[i*6+5] = 0;
 	}
 
 	glGenBuffers(1,&pointCloudVBO);
+	glGenBuffers(1,&triangleIBO);
 
 	glBindBuffer(GL_ARRAY_BUFFER, pointCloudVBO);
 	glBufferData(GL_ARRAY_BUFFER, size_buf_data, bodies, GL_DYNAMIC_DRAW);//Initialize
 
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, triangleIBO);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2*3*max_elements*sizeof(GLuint), indices, GL_DYNAMIC_DRAW);
+
+	//Unbind buffers
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	cudaGLRegisterBufferObject( pointCloudVBO);
+	cudaGLRegisterBufferObject( triangleIBO);
+
+	delete[] indices;
+	delete[] bodies;
 }
 
 
@@ -745,24 +784,109 @@ void MeshViewer::drawPointCloudVBOtoFBO(int numPoints)
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
+
+void MeshViewer::drawMeshVBOtoFBO(int numTriangles)
+{
+	//Bind FBO
+	glDisable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D,0); //Bad mojo to unbind the framebuffer using the texture
+	glBindFramebuffer(GL_FRAMEBUFFER, fullscreenFBO);
+	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_DEPTH_TEST);
+
+	if(mMeshWireframeMode){
+		glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+	}else{
+		glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+	}
+
+	//Setup VBO
+	GLuint prog = triangle_prog;
+	glUseProgram(prog);
+
+	glEnableVertexAttribArray(PCVBOPositionLocation);
+	glEnableVertexAttribArray(PCVBOColorLocation);
+	glEnableVertexAttribArray(PCVBONormalLocation);
+
+
+	glBindBuffer(GL_ARRAY_BUFFER, pointCloudVBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, triangleIBO);
+
+	//Setup interleaved buffer
+	glVertexAttribPointer(PCVBOPositionLocation, 3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_PositionOffset*sizeof(GLfloat))); 
+	glVertexAttribPointer(PCVBOColorLocation,    3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_ColorOffset*sizeof(GLfloat))); 
+	glVertexAttribPointer(PCVBONormalLocation,   3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_NormalOffset*sizeof(GLfloat))); 
+
+
+	//Setup uniforms
+	mat4 persp = glm::perspective(radians(mCamera.fovy), float(mWidth)/float(mHeight), mCamera.zNear, mCamera.zFar);
+	mat4 viewmat = glm::lookAt(mCamera.eye, mCamera.eye+mCamera.view, -mCamera.up);
+	mat4 viewInvTrans = inverse(transpose(viewmat));
+
+
+	glUniformMatrix4fv(glGetUniformLocation(prog, "u_projMatrix"),1, GL_FALSE, &persp[0][0] );
+	glUniformMatrix4fv(glGetUniformLocation(prog, "u_viewMatrix"),1, GL_FALSE, &viewmat[0][0] );
+	glUniformMatrix4fv(glGetUniformLocation(prog, "u_viewInvTrans"),1, GL_FALSE, &viewInvTrans[0][0] );
+
+
+	if(numTriangles > 0){
+		glDrawElements(GL_TRIANGLES, numTriangles*3, GL_UNSIGNED_INT, NULL);
+
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+}
+
 int MeshViewer::fillPointCloudVBO()
 {
 	PointCloud* dptr;
 
 	cudaGLMapBufferObject((void**)&dptr, pointCloudVBO);
 	//Do CUDA stuff
-	int numElements = compactPointCloudToVBO(dptr);
+	//int numElements = compactPointCloudToVBO(dptr);
+	copyPointCloudToVBO(dptr);
 	cudaGLUnmapBufferObject(pointCloudVBO);
 
-	return numElements;
+	return mXRes*mYRes;
+}
+
+
+int MeshViewer::computePCBTriangulation(float maxEdgeLength)
+{
+	triangleIndecies* dptr;
+
+	cudaGLMapBufferObject((void**)&dptr, triangleIBO);
+	//Do CUDA stuff
+	int numTriangles = triangulatePCB(dptr, maxEdgeLength);
+	cudaGLUnmapBufferObject(triangleIBO); 
+
+	return numTriangles;
 }
 
 
 ////All the important runtime stuff happens here:
 void MeshViewer::display()
 {
+	//Grab local copy of latest frames
 	ColorPixelArray localColorArray = mColorArray;
 	DPixelArray localDepthArray = mDepthArray;
+
+	//Update frame counter
+	time_t seconds2 = time (NULL);
+
+	fpstracker++;
+	if(seconds2-seconds >= 1){
+		fps = fpstracker/(seconds2-seconds);
+		fpstracker = 0;
+		seconds = seconds2;
+	}
+
+	stringstream title;
+	title << "RGBD to Mesh Visualization | " << (int)fps  << "FPS";
+	glutSetWindowTitle(title.str().c_str());
 
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -775,12 +899,21 @@ void MeshViewer::display()
 	convertToPointCloud();
 
 	//Compute normals
-	computePointCloudNormals();
-
-	//Stream compaction, prep for rendering
+	if(mComputeNormals){
+		if(mFastNormals){
+			computePointCloudNormalsFast();
+		}else{
+			computePointCloudNormals();
+		}
+	}
+	//Stream compaction optional, prep for rendering
 	int numCompactedPoints = fillPointCloudVBO();
 
+	int numTriangles = computePCBTriangulation(mMaxTriangleEdgeLength);
+	//cout << "Num Triangles: "<<numTriangles<<endl;
 	cudaDeviceSynchronize();
+
+
 	//=====RENDERING======
 
 	GLuint pcbTextures[] = { positionTexture, colorTexture, normalTexture};
@@ -823,8 +956,8 @@ void MeshViewer::display()
 	case DISPLAY_MODE_4WAY_PCB:
 		drawPCBtoTextures(positionTexture, colorTexture, normalTexture);
 		drawQuad(color_prog, -0.5,  0.5, 0.5, 0.5, &colorTexture, 1);//Upper Left
-		drawQuad(color_prog, -0.5, -0.5, 0.5, 0.5, &positionTexture, 1);//Lower Left
-		drawQuad(color_prog,  0.5,  0.5, 0.5, 0.5, &normalTexture, 1);//Upper Right
+		drawQuad(abs_prog, -0.5, -0.5, 0.5, 0.5, &positionTexture, 1);//Lower Left
+		drawQuad(abs_prog,  0.5,  0.5, 0.5, 0.5, &normalTexture, 1);//Upper Right
 
 		drawQuad(pcbdebug_prog, 0.5, -0.5, 0.5, 0.5, &pcbTextures[0], 3);//Lower right
 
@@ -832,6 +965,38 @@ void MeshViewer::display()
 	case DISPLAY_MODE_POINT_CLOUD:
 		drawPointCloudVBOtoFBO(numCompactedPoints);
 		drawQuad(color_prog, 0, 0, 1, 1, &FBOColorTexture, 1);
+		break;
+	case DISPLAY_MODE_TRIANGLE:
+		drawMeshVBOtoFBO(numTriangles);
+		drawQuad(color_prog, 0, 0, 1, 1, &FBOColorTexture, 1);
+		break;
+	case DISPLAY_MODE_COLOR_MESH_COMPARE:
+		drawColorImageBufferToTexture(colorTexture);
+		drawMeshVBOtoFBO(numTriangles);
+		drawQuad(color_prog, -0.5,  0.0, -0.5, 1.0, &colorTexture, 1);//Left side, mirror x
+		drawQuad(color_prog, 0.5, 0.0, 0.5, 1, &FBOColorTexture, 1);//Right side
+		break;
+	case DISPLAY_MODE_POINTCLOUD_MESH_COMPARE:
+
+		drawMeshVBOtoFBO(numTriangles);
+		drawQuad(color_prog, -0.5, 0.0, 0.5, 1, &FBOColorTexture, 1);//Left side
+		drawPointCloudVBOtoFBO(numCompactedPoints);
+		drawQuad(color_prog, 0.5, 0.0, 0.5, 1, &FBOColorTexture, 1);//Right side
+		break;
+	case DISPLAY_MODE_4WAY_COMPARE:
+
+		drawDepthImageBufferToTexture(depthTexture);
+		drawColorImageBufferToTexture(colorTexture);
+
+		//Inputs on top
+		drawQuad(depth_prog, -0.5,  0.5, -0.5, 0.5, &depthTexture, 1);
+		drawQuad(color_prog,  0.5,  0.5, -0.5, 0.5, &colorTexture, 1);
+
+		//Outputs on bottom
+		drawPointCloudVBOtoFBO(numCompactedPoints);
+		drawQuad(abs_prog, -0.5, -0.5, 0.5, 0.5, &FBOColorTexture, 1);//Left side
+		drawMeshVBOtoFBO(numTriangles);
+		drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, &FBOColorTexture, 1);//Right side
 		break;
 	}
 
@@ -866,6 +1031,7 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 
 	float cameraHighSpeed = 0.1f;
 	float cameraLowSpeed = 0.025f;
+	float edgeLengthStep = 0.001f;
 	switch (key)
 	{
 	case 27://ESC
@@ -896,6 +1062,18 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		break;
 	case '6':
 		mViewState = DISPLAY_MODE_POINT_CLOUD;
+		break;
+	case '7':
+		mViewState = DISPLAY_MODE_TRIANGLE;
+		break;
+	case '8':
+		mViewState = DISPLAY_MODE_COLOR_MESH_COMPARE;
+		break;
+	case '9':
+		mViewState = DISPLAY_MODE_POINTCLOUD_MESH_COMPARE;
+		break;
+	case '0':
+		mViewState = DISPLAY_MODE_4WAY_COMPARE;
 		break;
 	case('r'):
 		cout << "Reloading Shaders" <<endl;
@@ -997,6 +1175,41 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		hairyPoints = !hairyPoints;
 		cout << "Toggle normal hairs" << endl;
 		break;
+	case 'M':
+		mMaxTriangleEdgeLength += 10*edgeLengthStep;
+		cout << "Triangle Max Edge Length (mm): " << mMaxTriangleEdgeLength << endl;
+		break;
+	case 'm':
+		mMaxTriangleEdgeLength += edgeLengthStep;
+		cout << "Triangle Max Edge Length (mm): " << mMaxTriangleEdgeLength << endl;
+		break;
+
+	case 'N':
+		if(mMaxTriangleEdgeLength > 10*edgeLengthStep)
+		{
+			mMaxTriangleEdgeLength -= 10*edgeLengthStep;
+		}
+		cout << "Triangle Max Edge Length (mm): " << mMaxTriangleEdgeLength << endl;
+		break;
+	case 'n':
+		if(mMaxTriangleEdgeLength > edgeLengthStep)
+		{
+			mMaxTriangleEdgeLength -= edgeLengthStep;
+		}
+		cout << "Triangle Max Edge Length (mm): " << mMaxTriangleEdgeLength << endl;
+		break;
+	case 'v':
+		mMeshWireframeMode = !mMeshWireframeMode;
+		cout << "Toggle wireframe mode" << endl;
+		break;
+	case 'b':
+		mFastNormals = !mFastNormals;
+		cout << "Fast normals " << (mFastNormals?"On":"Off") << endl;
+		break;
+	case 'B':
+		mComputeNormals = !mComputeNormals;
+		cout << "Normal Computation " << (mComputeNormals?"On":"Off") << endl;
+		break;
 	}
 
 }
@@ -1066,7 +1279,7 @@ void MeshViewer::mouse_move(int x, int y) {
 
 		if(rightclick)
 		{
-
+			mCamera.view = vec3(glm::rotate(glm::rotate(mat4(1.0f), rotSpeed*delY, Right), rotSpeed*delX, Up)*vec4(mCamera.view, 0.0f));
 		}else{
 			//Simple rotation
 			mCamera.view = vec3(glm::rotate(glm::rotate(mat4(1.0f), rotSpeed*delY, Right), rotSpeed*delX, Up)*vec4(mCamera.view, 0.0f));
