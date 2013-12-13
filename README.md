@@ -15,7 +15,7 @@ alt="Project Overview (YouTube)" width="640" height="480" border="10" />
 
 NOTE:
 -------------------------------------------------------------------------------
-This project requires a CUDA-capable graphics card, as well as OpenNI and an
+This project requires a CUDA-capable graphics card, as well as Boost, OpenNI and an
 Xbox Kinect to run a live demonstration.
 
 -------------------------------------------------------------------------------
@@ -44,9 +44,9 @@ CONTENTS:
 -------------------------------------------------------------------------------
 The Project6 root directory contains the following subdirectories:
 	
-* CUDA-Mesh/ is ...
-* Recorder-Viewer/ is ...
-* algorithm-python/ is ...
+* CUDA-Mesh/ is the main project directory.
+* Recorder-Viewer/ is a tool for viewing the sensor input and recording/playing back logs.
+* algorithm-python/ is a prototype algorithm used to test the math for normal estimation.
 * shared/ contains glew
 
 -------------------------------------------------------------------------------
