@@ -155,25 +155,15 @@ Scissor Test Specular Bug:
 -------------------------------------------------------------------------------
 PERFORMANCE EVALUATION
 -------------------------------------------------------------------------------
-blah blah blah
+Global vs shared memory for point normals computation:
 
-Full Hall Metrics:
-
-![TimingFH](/renders/FullHallTiming.PNG "Full Hall")
-![TimingFHB](/renders/FullHallTimingBloom.PNG "Full Hall Including Bloom")
-
-Lion Closeup Metrics:
-
-![TimingLC](/renders/LionCloseupTiming.PNG "Lion Closeup")
-![TimingLCB](/renders/LionCloseupTimingBloom.PNG "Lion Closeup Including Bloom")
-
-Clearly the non-seperated convolution involved in the bloom effect has a huge impact on performance.
-Most of the other effects had only minimal impact on performance. 
-The scissor test gave a huge boost to stage 2 performance but as shown above it results in visual artifacts.
-Another takeaway of this data is the second stage (lighting calculation) is the most intensive part of the process.
+![KernelRuntime](/docs/performance/SharedVsGlobalRuntime.PNG "Kernel Runtime")
+![FPS](/docs/performance/SharedVsGlobalFPS.PNG "FPS")
 
 ---
 ACKNOWLEDGEMENTS
 ---
 This project makes use of [tinyobjloader](http://syoyo.github.io/tinyobjloader/) and [SOIL](http://lonesock.net/soil.html)
+
+REMEMBER TO ACKNOWLEDGE LIBRARIES
 
