@@ -52,8 +52,10 @@ The Project6 root directory contains the following subdirectories:
 CODE TOUR
 -------------------------------------------------------------------------------
 
-![Framework Layout](/docs/diagrams/FrameworkLayout.png "Framework Layout")
+The overall image processing line is shown below. First, an RGB frame and a depth frame are pulled from the Kinect and shipped to the GPU for processing. A world-space point cloud is then generated from the RGBD data, and a neighborhood-based estimate of the point normals is then extracted for later processing. Finally, the point cloud is triangulated and the generated mesh is passed to OpenGL where a variety of rendering options are implemented.
+
 ![Image Processing Pipeline](/docs/diagrams/ImageProcessingPipeline.png "Image Processing Pipeline")
+![Framework Layout](/docs/diagrams/FrameworkLayout.png "Framework Layout")
 ![Program Flow](/docs/diagrams/ProgramFlow.png "Program Flow")
 ![OpenGL Pipeline](/docs/diagrams/OpenGLPipeline.png "OpenGL Pipeline")
 
