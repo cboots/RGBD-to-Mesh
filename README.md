@@ -4,7 +4,7 @@ Surface Mesh Reconstruction from RGBD Images
 Final Project for Patrick Cozzi's CIS 565, Fall 2013
 -------------------------------------------------------------------------------
 
-Video Overview (click to view)
+Click for video
 <dl>
 <a href="http://www.youtube.com/watch?feature=player_embedded&v=pg0YZ76ZZw4
 " target="_blank">
@@ -54,7 +54,7 @@ CODE TOUR
 -------------------------------------------------------------------------------
 
 The overall image processing line is shown below. First, an RGB frame and a
-depth frame are pulled from the Kinect and shipped to the GPU for processing. A
+depth frame are pulled from the Kinect and pushed to the GPU for processing. A
 world-space point cloud is then generated from the RGBD data, and a
 neighborhood-based estimate of the point normals is then extracted for later
 processing. Finally, the point cloud is triangulated and the generated mesh is
@@ -71,11 +71,12 @@ was obtained.
 ![Framework Layout](/docs/diagrams/FrameworkLayout.png "Framework Layout")
 
 A more detailed view of the program flow is shown below. Note that after the
-RGB and depth frames are synchronized and shipped to the GPU, all computation
+RGB and depth frames are synchronized and shipped to the GPU (the purple arrow), all computation
 and rendering is performed on the GPU, enhancing performance and allowing the
 CPU to be free for other tasks. The ComputeNormalsFast kernel supplants an
 earlier iteration, ComputeNormals, which was written for estimation quality at
-the cost of a significant performance penalty.
+the cost of a significant performance penalty. 
+The new implementation is much faster thanks to shared memory optimization (see performance section below).
 
 ![Program Flow](/docs/diagrams/ProgramFlow.png "Program Flow")
 
@@ -88,18 +89,41 @@ keypresses to completely change the render output on-the-fly.
 ![OpenGL Pipeline](/docs/diagrams/OpenGLPipeline.png "OpenGL Pipeline")
 
 -------------------------------------------------------------------------------
-Features:
--------------------------------------------------------------------------------
-
-* Bloom (Not seperable, very inefficient)
-![NoBloom](/renders/LampNoBloom.PNG "Without Bloom")
-
-* Rich set of controls for experimenting with different program options and exploring an image stream
-
--------------------------------------------------------------------------------
 CONTROLS
 -------------------------------------------------------------------------------
 
+Click and drag the mouse to look around in 3D views
+
+Keypress | Function
+--- | ---
+w a s d q z| Move Camera in 3D views Forward/Left/Back/Right/Up/Down
+W A S D Q Z| Move Camera slowly in 3D views
+x | Reset camera view
+r | Reload GLSL shaders
+p | Restart playback at beginning of log (only for LogDevice input)
+= | Increase playback speed (only for LogDevice input)
+- | Decrease playback speed (only for LogDevice input)
+F | Increase camera FOV
+f | Decrease camera FOV
+ESC | Exit
+h | Toggle normal hair display in 3D point cloud mode
+v | Toggle wireframe mode for 3D mesh
+M | Increase maximum triangle edge length by 1cm
+m | Increase maximum triangle edge length by 1mm
+N | Decrease maximum triangle edge length by 1cm
+n | Decrease maximum triangle edge length by 1mm
+b | Toggle fast/slow normal computation algorithm
+B | Toggle normal computation on/off
+1 | Display depth overlaid on color input image
+2 | Display depth only
+3 | Display color only
+4 | Display depth, color, and overlay on same screen
+5 | Display point cloud buffer debug views
+6 | Display 3D point cloud rendered from VBO
+7 | Display 3D mesh reconstruction
+8 | Display side by side comparison of color input image and 3D mesh reconstruction
+9 | Display side by side comparison of 3D point cloud and 3D mesh reconstruction
+0 | Display both input images, 3D point, and 3D mesh
 
 
 -------------------------------------------------------------------------------
