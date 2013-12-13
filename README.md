@@ -1,7 +1,7 @@
 -------------------------------------------------------------------------------
-Deferred Shader
+GPU-Accelerated Conversion of RGBD Images to Textured Triangle Meshes
 -------------------------------------------------------------------------------
-Fall 2013
+Final Project Fall 2013
 -------------------------------------------------------------------------------
 ![AllStages](/docs/screenshots/AllStages.PNG)
 
