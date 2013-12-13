@@ -8,7 +8,7 @@ Final Project Fall 2013
 Youtube Video of Rendering:
 <dl>
 <a href="http://www.youtube.com/watch?feature=player_embedded&v=pg0YZ76ZZw4
-" target="_blank"><img src="http://img.youtube.com/vi/pg0YZ76ZZw4/1.jpg" 
+" target="_blank"><img src="http://img.youtube.com/vi/pg0YZ76ZZw4/0.jpg" 
 alt="Project Overview (YouTube)" width="480" height="360" border="10" /></a>
 </dl>
 
