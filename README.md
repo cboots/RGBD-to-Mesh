@@ -52,9 +52,10 @@ The Project6 root directory contains the following subdirectories:
 CODE TOUR
 -------------------------------------------------------------------------------
 
-![Framework Layout](/docs/FrameworkLayout.png "Framework Layout")
-![Image Processing Pipeline](/docs/ImageProcessingPipeline.png "Image Processing Pipeline")
-![Program Flow](/docs/ProgramFlow.png "Program Flow")
+![Framework Layout](/docs/diagrams/FrameworkLayout.png "Framework Layout")
+![Program Flow](/docs/diagrams/ProgramFlow.png "Program Flow")
+![Image Processing Pipeline](/docs/diagrams/ImageProcessingPipeline.png "Image Processing Pipeline")
+![OpenGL Pipeline](/docs/diagrams/OpenGLPipeline.png "OpenGL Pipeline")
 
 -------------------------------------------------------------------------------
 CODE TOURCONTROLS
