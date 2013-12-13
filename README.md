@@ -49,7 +49,15 @@ The Project6 root directory contains the following subdirectories:
 * shared/ contains glew
 
 -------------------------------------------------------------------------------
-CODE TOUR/CONTROLS
+CODE TOUR
+-------------------------------------------------------------------------------
+
+![Framework Layout](/docs/FrameworkLayout.pdf "Framework Layout")
+![Image Processing Pipeline](/docs/ImageProcessingPipeline.pdf "Image Processing Pipeline")
+![Program Flow](/docs/ProgramFlow.pdf "Program Flow")
+
+-------------------------------------------------------------------------------
+CODE TOURCONTROLS
 -------------------------------------------------------------------------------
 
 Stage 1 samples model textures renders the scene geometry to the G-Buffer
@@ -122,12 +130,13 @@ Features:
 
 ![Point Specular](/renders/PointLightSpeculars.PNG "Point Light Speculars")
 
+
 -------------------------------------------------------------------------------
 SCREENSHOTS
 -------------------------------------------------------------------------------
 
 3D Point Cloud Normals Above.PNG:
-![3D Point Cloud Normals Above.PNG](/docs/screenshots/3D Point Cloud Normals Above.PNG "3D Point Cloud Normals Above.PNG")
+![3DPointCloudNormalsAbove.PNG](/docs/screenshots/3DPointCloudNormalsAbove.PNG "3DPointCloudNormalsAbove.PNG")
 ColorfulOverlay.PNG:
 ![ColorfulOverlay.PNG](/docs/screenshots/ColorfulOverlay.PNG "ColorfulOverlay.PNG")
 ImprovedNormals.PNG:
@@ -135,7 +144,7 @@ ImprovedNormals.PNG:
 MeshNormals.PNG:
 ![MeshNormals.PNG](/docs/screenshots/MeshNormals.PNG "MeshNormals.PNG")
 3D Point Cloud Normals.PNG:
-![3D Point Cloud Normals.PNG](/docs/screenshots/3D Point Cloud Normals.PNG "3D Point Cloud Normals.PNG")
+![3DPointCloudNormals.PNG](/docs/screenshots/3DPointCloudNormals.PNG "3DPointCloudNormals.PNG")
 DepthDataGUI.PNG:
 ![DepthDataGUI.PNG](/docs/screenshots/DepthDataGUI.PNG "DepthDataGUI.PNG")
 Mesh.PNG:
@@ -156,6 +165,12 @@ Hairs.PNG:
 ![Hairs.PNG](/docs/screenshots/Hairs.PNG "Hairs.PNG")
 MeshHead.PNG:
 ![MeshHead.PNG](/docs/screenshots/MeshHead.PNG "MeshHead.PNG")
+AllStages.PNG:
+![AllStages.PNG](/docs/screenshots/AllStages.PNG "AllStages.PNG")
+MeshFace.PNG:
+![MeshFace.PNG](/docs/screenshots/MeshFace.PNG "MeshFace.PNG")
+Points.PNG:
+![Points.PNG](/docs/screenshots/Points.PNG "Points.PNG")
 
 -------------------------------------------------------------------------------
 PERFORMANCE EVALUATION
