@@ -4,7 +4,7 @@ Surface Mesh Reconstruction from RGBD Images
 Final Project for Patrick Cozzi's CIS 565, Fall 2013
 -------------------------------------------------------------------------------
 
-Click for video
+Video Overview (click to view)
 <dl>
 <a href="http://www.youtube.com/watch?feature=player_embedded&v=pg0YZ76ZZw4
 " target="_blank">
