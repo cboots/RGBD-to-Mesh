@@ -127,6 +127,40 @@ B | Toggle normal computation on/off
 
 
 -------------------------------------------------------------------------------
+PERFORMANCE EVALUATION
+-------------------------------------------------------------------------------
+
+Our point normals kernel was implemented as follows. A window radius is first
+specified as an algorithm parameter. For each point, we loop through its
+neighboring points in screen space in the square window specified by the
+radius, and pair it with a screen-space orthogonal point at the same radius. If
+both points are within a specified radius from the center point in world space,
+we take the cross product to compute the normal, which is then flipped if
+pointing away from the camera. If sufficiently many valid normals are found, we
+average them to produce the final normal estimate, otherwise we discard the
+point.
+
+To improve the runtime of the point normals kernel, we reimplemented the
+algorithm using shared memory. In the shared memory implementation, all points
+in given thread block are first loaded into shared memory, along with the
+points lying within the specified neighborhood radius of the edges of the
+thread block, and the distance and cross product calculations are then
+performed using shared memory access. The results of the shared memory
+optimization on kernel runtime are shown for a range of window radii using a
+thread block size of 8x8.
+
+![KernelRuntime](/docs/performance/SharedVsGlobalRuntime.png "Kernel Runtime")
+![FPS](/docs/performance/SharedVsGlobalFPS.png "FPS")
+
+As demonstrated, the shared memory optimization reduced the kernel runtime by
+approximately a factor of 2. The impact on the overall FPS was less dramatic,
+though still pronounced, due to the time spent in the rendering pipeline.
+
+All testing for this project was conducted on the following hardware:
+* CPU: Intel Core i5-2450M, 2.5GHz 6GB (Windows 8, 64-bit OS)
+* GPU: NVIDIA GeForce GT 525M
+
+-------------------------------------------------------------------------------
 SCREENSHOTS
 -------------------------------------------------------------------------------
 
@@ -180,48 +214,15 @@ Another mesh rendering.
 Same view but as a point cloud.
 ![Points.PNG](/docs/screenshots/Points.PNG "Points.PNG")
 
--------------------------------------------------------------------------------
-PERFORMANCE EVALUATION
--------------------------------------------------------------------------------
-
-Our point normals kernel was implemented as follows. A window radius is first
-specified as an algorithm parameter. For each point, we loop through its
-neighboring points in screen space in the square window specified by the
-radius, and pair it with a screen-space orthogonal point at the same radius. If
-both points are within a specified radius from the center point in world space,
-we take the cross product to compute the normal, which is then flipped if
-pointing away from the camera. If sufficiently many valid normals are found, we
-average them to produce the final normal estimate, otherwise we discard the
-point.
-
-To improve the runtime of the point normals kernel, we reimplemented the
-algorithm using shared memory. In the shared memory implementation, all points
-in given thread block are first loaded into shared memory, along with the
-points lying within the specified neighborhood radius of the edges of the
-thread block, and the distance and cross product calculations are then
-performed using shared memory access. The results of the shared memory
-optimization on kernel runtime are shown for a range of window radii using a
-thread block size of 8x8.
-
-![KernelRuntime](/docs/performance/SharedVsGlobalRuntime.png "Kernel Runtime")
-![FPS](/docs/performance/SharedVsGlobalFPS.png "FPS")
-
-As demonstrated, the shared memory optimization reduced the kernel runtime by
-approximately a factor of 2. The impact on the overall FPS was less dramatic,
-though still pronounced, due to the time spent in the rendering pipeline.
-
-All testing for this project was conducted on the following hardware:
-* CPU: Intel Core i5-2450M, 2.5GHz 6GB (Windows 8, 64-bit OS)
-* GPU: NVIDIA GeForce GT 525M with 2 SM's:
 
 -------------------------------------------------------------------------------
 ACKNOWLEDGEMENTS
 -------------------------------------------------------------------------------
 
 This project makes use of the following 3rd party libraries
-Boost: http://www.boost.org/
-CUB: http://nvlabs.github.io/cub/
-Thrust: https://code.google.com/p/thrust/
-LZ4: https://code.google.com/p/lz4/
-RapidXML: http://rapidxml.sourceforge.net/
+* Boost: http://www.boost.org/
+* CUB: http://nvlabs.github.io/cub/
+* Thrust: https://code.google.com/p/thrust/
+* LZ4: https://code.google.com/p/lz4/
+* RapidXML: http://rapidxml.sourceforge.net/
 
