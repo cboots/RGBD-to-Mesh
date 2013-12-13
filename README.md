@@ -53,12 +53,12 @@ CODE TOUR
 -------------------------------------------------------------------------------
 
 ![Framework Layout](/docs/diagrams/FrameworkLayout.png "Framework Layout")
-![Program Flow](/docs/diagrams/ProgramFlow.png "Program Flow")
 ![Image Processing Pipeline](/docs/diagrams/ImageProcessingPipeline.png "Image Processing Pipeline")
+![Program Flow](/docs/diagrams/ProgramFlow.png "Program Flow")
 ![OpenGL Pipeline](/docs/diagrams/OpenGLPipeline.png "OpenGL Pipeline")
 
 -------------------------------------------------------------------------------
-CODE TOURCONTROLS
+CONTROLS
 -------------------------------------------------------------------------------
 
 Stage 1 samples model textures renders the scene geometry to the G-Buffer
@@ -176,14 +176,28 @@ Points.PNG:
 -------------------------------------------------------------------------------
 PERFORMANCE EVALUATION
 -------------------------------------------------------------------------------
-Global vs shared memory for point normals computation:
+
+Our point normals kernel was implemented as follows. A window radius is first specified
+as an algorithm parameter. For each point, we loop through its neighboring points in
+screen space in the square window specified by the radius, and pair it with an orthogonal
+point at the same radius. If both points are within a specified radius from the center
+point in world space, we take the cross product to compute the normal, which is then 
+flipped if pointing away from the camera. If sufficiently many valid normals are found,
+we average them to produce the final normal estimate, otherwise we discard the point.
+
+To improve the runtime of the point normals kernel, we reimplemented the algorithm
+using shared memory. In the shared memory implementation, all points in given thread block
+are first loaded into shared memory, along with the points lying within the specified neighborhood
+radius of the edges of the thread block, and the distance and cross product calculations are
+then performed using shared memory access. The results of the shared memory optimization on
+kernel runtime are as follows:
 
 ![KernelRuntime](/docs/performance/SharedVsGlobalRuntime.png "Kernel Runtime")
 ![FPS](/docs/performance/SharedVsGlobalFPS.png "FPS")
 
----
+-------------------------------------------------------------------------------
 ACKNOWLEDGEMENTS
----
+-------------------------------------------------------------------------------
 
 REMEMBER TO ACKNOWLEDGE LIBRARIES
 
