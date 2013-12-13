@@ -121,6 +121,7 @@ Features:
 * Point light sources with specular
 
 ![Point Specular](/renders/PointLightSpeculars.PNG "Point Light Speculars")
+
 -------------------------------------------------------------------------------
 SCREENSHOTS
 -------------------------------------------------------------------------------
@@ -152,6 +153,8 @@ Scissor Test Specular Bug:
 ![ScissorNo](/renders/SpecularNoScissorTest.PNG "No Scissor Test")
 ![Scissor](/renders/SpecularWithScissorTest.PNG "With Scissor Test")
 
+![3D Point Cloud Normals Above.PNG](3D Point Cloud Normals Above.PNG "3D Point Cloud Normals Above.PNG")
+
 -------------------------------------------------------------------------------
 PERFORMANCE EVALUATION
 -------------------------------------------------------------------------------
@@ -163,7 +166,6 @@ Global vs shared memory for point normals computation:
 ---
 ACKNOWLEDGEMENTS
 ---
-This project makes use of [tinyobjloader](http://syoyo.github.io/tinyobjloader/) and [SOIL](http://lonesock.net/soil.html)
 
 REMEMBER TO ACKNOWLEDGE LIBRARIES
 
