@@ -3,7 +3,7 @@ Deferred Shader
 -------------------------------------------------------------------------------
 Fall 2013
 -------------------------------------------------------------------------------
-![fullscene](/renders/FullHallAllTextures.PNG "Finished Rendering")
+![AllStages](/docs/screenshots/AllStages.PNG)
 
 Youtube Video of Rendering:
 <dl>
