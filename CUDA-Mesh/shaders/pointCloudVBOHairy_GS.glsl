@@ -21,12 +21,12 @@ void main()
 
 	//Passthrough point	
 	fs_eyeNormal = vertexData[0].EyeNormal;
-	fs_color = vertexData[0].Color;
+	fs_color = abs(vertexData[0].EyeNormal);//vertexData[0].Color;
 	gl_Position = gl_in[0].gl_Position;
 	EmitVertex();
 	
 	fs_eyeNormal = vertexData[0].EyeNormal;
-	fs_color = vertexData[0].Color;
+	fs_color = abs(vertexData[0].EyeNormal);//vertexData[0].Color;
 	gl_Position = gl_in[0].gl_Position+vec4(fs_eyeNormal*0.025,0.0);
 	EmitVertex();
 	
