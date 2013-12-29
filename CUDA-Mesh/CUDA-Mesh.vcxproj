@@ -93,7 +93,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN64;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>../shared/glew/include;.;$(BOOST_ROOT);$(OPENNI2_INCLUDE64);%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../RGBDFrameworkLib/include;../shared/glew/include;.;$(BOOST_ROOT);$(OPENNI2_INCLUDE64);%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -139,7 +139,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN64;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>../shared/glew/include;.;$(BOOST_ROOT);$(OPENNI2_INCLUDE64);%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../RGBDFrameworkLib/include;../shared/glew/include;.;$(BOOST_ROOT);$(OPENNI2_INCLUDE64);%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -165,35 +165,21 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <CudaCompile Include="kernel.cu" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="FileUtils.cpp" />
-    <ClCompile Include="FrameLogger.cpp" />
     <ClCompile Include="glslUtility.cpp" />
-    <ClCompile Include="LogDevice.cpp" />
-    <ClCompile Include="lz4\lz4.c" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MeshViewer.cpp" />
-    <ClCompile Include="ONIKinectDevice.cpp" />
-    <ClCompile Include="RGBDDevice.cpp" />
-    <ClCompile Include="RGBDFrame.cpp" />
-    <ClCompile Include="RGBDFrameFactory.cpp" />
-    <ClCompile Include="Viewer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Device.h" />
     <ClInclude Include="device_structs.h" />
-    <ClInclude Include="FileUtils.h" />
-    <ClInclude Include="FrameLogger.h" />
     <ClInclude Include="glslUtility.h" />
-    <ClInclude Include="LogDevice.h" />
-    <ClInclude Include="lz4\lz4.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="MeshViewer.h" />
-    <ClInclude Include="ONIKinectDevice.h" />
-    <ClInclude Include="OniSampleUtilities.h" />
-    <ClInclude Include="RGBDDevice.h" />
-    <ClInclude Include="RGBDFrame.h" />
-    <ClInclude Include="RGBDFrameFactory.h" />
-    <ClInclude Include="Viewer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RGBDFrameworkLib\RGBDFrameworkLib.vcxproj">
+      <Project>{9b00fa51-64d2-4ab4-816b-eabdd92c9f5b}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

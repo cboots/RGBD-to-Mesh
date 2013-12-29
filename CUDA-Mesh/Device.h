@@ -14,6 +14,7 @@
 #include <thrust/iterator/counting_iterator.h>
 #include <iostream>
 
+using namespace rgbd::framework;
 
 #define PI      3.141592653589793238
 #define EPSILON 0.000000001

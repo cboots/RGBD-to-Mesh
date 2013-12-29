@@ -9,7 +9,7 @@
 #include <vector>
 #include <queue>
 #include <boost/thread.hpp>
-#include "rapidxml/rapidxml.hpp"
+#include "../rapidxml/rapidxml.hpp"
 #include <boost/date_time.hpp>
 #include <stdlib.h>
 #include <boost/lexical_cast.hpp>
