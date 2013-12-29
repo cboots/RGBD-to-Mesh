@@ -12,108 +12,115 @@ using namespace openni;
 
 
 
-class ONIKinectDevice :
-	public RGBDDevice,
-	//Event listeners
-	public OpenNI::DeviceConnectedListener,
-	public OpenNI::DeviceDisconnectedListener,
-	public OpenNI::DeviceStateChangedListener
+namespace rgbd
 {
-protected:
+	namespace framework
+	{
 
-	class NewDepthFrameListener:public VideoStream::NewFrameListener{
-
-	private:
-		VideoFrameRef m_frame;
-		ONIKinectDevice* outer;
-	public:
-		NewDepthFrameListener() { outer = NULL;}
-		NewDepthFrameListener(ONIKinectDevice* o)
+		class ONIKinectDevice :
+			public RGBDDevice,
+			//Event listeners
+			public OpenNI::DeviceConnectedListener,
+			public OpenNI::DeviceDisconnectedListener,
+			public OpenNI::DeviceStateChangedListener
 		{
-			outer = o;
-		}
+		protected:
 
-		void onNewFrame(VideoStream& stream)
-		{
-			stream.readFrame(&m_frame);
-			if(outer != NULL)
-				outer->onNewDepthFrame(m_frame);
-		}
-	} newDepthFrameListener;
+			class NewDepthFrameListener:public VideoStream::NewFrameListener{
 
-	class NewColorFrameListener:public VideoStream::NewFrameListener{
+			private:
+				VideoFrameRef m_frame;
+				ONIKinectDevice* outer;
+			public:
+				NewDepthFrameListener() { outer = NULL;}
+				NewDepthFrameListener(ONIKinectDevice* o)
+				{
+					outer = o;
+				}
 
-	private:
-		VideoFrameRef m_frame;
-		ONIKinectDevice* outer;
-	public:
-		NewColorFrameListener() { outer = NULL;}
-		NewColorFrameListener(ONIKinectDevice* o)
-		{
-			outer = o;
-		}
+				void onNewFrame(VideoStream& stream)
+				{
+					stream.readFrame(&m_frame);
+					if(outer != NULL)
+						outer->onNewDepthFrame(m_frame);
+				}
+			} newDepthFrameListener;
 
-		void onNewFrame(VideoStream& stream)
-		{
-			stream.readFrame(&m_frame);
+			class NewColorFrameListener:public VideoStream::NewFrameListener{
 
-			if(outer != NULL)
-				outer->onNewColorFrame(m_frame);
-		}
-	} newColorFrameListener;
+			private:
+				VideoFrameRef m_frame;
+				ONIKinectDevice* outer;
+			public:
+				NewColorFrameListener() { outer = NULL;}
+				NewColorFrameListener(ONIKinectDevice* o)
+				{
+					outer = o;
+				}
 
-	//OpenNI Device
-	Device mDevice;
-	//Streams
-	VideoStream mDepthStream;
-	VideoStream mColorStream;
-	//Factory for frame
-	RGBDFrameFactory mFrameFactory;
+				void onNewFrame(VideoStream& stream)
+				{
+					stream.readFrame(&m_frame);
 
-	//Lock for synchronized frames
-	boost::mutex frameGuard;
-	RGBDFramePtr mRGBDFrameSynced;
-	bool mSyncDepthAndColor;
-public:
-	ONIKinectDevice(void);
-	~ONIKinectDevice(void);
+					if(outer != NULL)
+						outer->onNewColorFrame(m_frame);
+				}
+			} newColorFrameListener;
 
-	DeviceStatus initialize(void)  override;//Initialize 
-	DeviceStatus connect(void)	   override;//Connect to any device
-	DeviceStatus disconnect(void)  override;//Disconnect from current device
-	DeviceStatus shutdown(void) override;
+			//OpenNI Device
+			Device mDevice;
+			//Streams
+			VideoStream mDepthStream;
+			VideoStream mColorStream;
+			//Factory for frame
+			RGBDFrameFactory mFrameFactory;
 
-	bool hasDepthStream() override;
-	bool hasColorStream() override;
+			//Lock for synchronized frames
+			boost::mutex frameGuard;
+			RGBDFramePtr mRGBDFrameSynced;
+			bool mSyncDepthAndColor;
+		public:
+			ONIKinectDevice(void);
+			~ONIKinectDevice(void);
 
-	bool createColorStream() override;
-	bool createDepthStream() override;
+			DeviceStatus initialize(void)  override;//Initialize 
+			DeviceStatus connect(void)	   override;//Connect to any device
+			DeviceStatus disconnect(void)  override;//Disconnect from current device
+			DeviceStatus shutdown(void) override;
 
-	bool destroyColorStream()  override;
-	bool destroyDepthStream()  override;
-	
-	bool setImageRegistrationMode(RGBDImageRegistrationMode) override;
-	RGBDImageRegistrationMode getImageRegistrationMode(void) override;
+			bool hasDepthStream() override;
+			bool hasColorStream() override;
 
-	//Override to implement
-	bool getSyncColorAndDepth() override {return mSyncDepthAndColor;}
-	bool setSyncColorAndDepth(bool sync) override { mSyncDepthAndColor = sync; return true;}
+			bool createColorStream() override;
+			bool createDepthStream() override;
+
+			bool destroyColorStream()  override;
+			bool destroyDepthStream()  override;
+
+			bool setImageRegistrationMode(RGBDImageRegistrationMode) override;
+			RGBDImageRegistrationMode getImageRegistrationMode(void) override;
+
+			//Override to implement
+			bool getSyncColorAndDepth() override {return mSyncDepthAndColor;}
+			bool setSyncColorAndDepth(bool sync) override { mSyncDepthAndColor = sync; return true;}
 
 
-	//Event handlers
-	void onDeviceStateChanged(const DeviceInfo* pInfo, DeviceState state);
-	void onDeviceConnected(const DeviceInfo* pInfo);
-	void onDeviceDisconnected(const DeviceInfo* pInfo);
+			//Event handlers
+			void onDeviceStateChanged(const DeviceInfo* pInfo, DeviceState state);
+			void onDeviceConnected(const DeviceInfo* pInfo);
+			void onDeviceDisconnected(const DeviceInfo* pInfo);
 
-	virtual void onNewDepthFrame(VideoFrameRef frame);
-	virtual void onNewColorFrame(VideoFrameRef frame);
-	
-	int getDepthResolutionX() override;
-	int getDepthResolutionY() override;
-	int getColorResolutionX() override;
-	int getColorResolutionY() override;
-	bool isDepthStreamValid() override;
-	bool isColorStreamValid() override;
+			virtual void onNewDepthFrame(VideoFrameRef frame);
+			virtual void onNewColorFrame(VideoFrameRef frame);
 
-};
+			int getDepthResolutionX() override;
+			int getDepthResolutionY() override;
+			int getColorResolutionX() override;
+			int getColorResolutionY() override;
+			bool isDepthStreamValid() override;
+			bool isColorStreamValid() override;
 
+		};
+
+	}
+}

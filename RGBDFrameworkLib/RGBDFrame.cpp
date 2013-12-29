@@ -1,97 +1,105 @@
 #include "RGBDFrame.h"
 
 
-RGBDFrame::RGBDFrame(void)
+
+namespace rgbd
 {
-	init();
-}
-
-RGBDFrame::RGBDFrame(int width, int height)
-{
-	init();
-	setResolution(width, height);
-}
-
-
-RGBDFrame::~RGBDFrame(void)
-{
-	//Clear arrays;
-	mDepthData.reset();
-	mColorData.reset();
-}
-
-
-void RGBDFrame::init(void)
-{
-	mXRes = 0;
-	mYRes = 0;
-	//NULL Pointers
-	mDepthData = DPixelArray();
-	mColorData = ColorPixelArray();
-	
-	mDepthTime = 0;
-	mColorTime = 0;
-	mHasDepth = false;
-	mHasColor = false;
-
-}
-
-
-void RGBDFrame::resetMetaData(void)
-{	
-	mDepthTime = 0;
-	mColorTime = 0;
-	mHasDepth = false;
-	mHasColor = false;
-}
-
-//forceAlloc is default false.
-void RGBDFrame::setResolution(int width, int height, bool forceAlloc /*=false*/)
-{
-	if(width != mXRes || height != mYRes || forceAlloc)
+	namespace framework
 	{
-		if(width > 0 && height > 0){
-			//Resolution changed, reallocate
-			mXRes = width;
-			mYRes = height;
-			mDepthData = DPixelArray(new DPixel[width*height]);
-			mColorData = ColorPixelArray(new ColorPixel[width*height]);
-		}else{
-			//width and height invalid. Clear
+		RGBDFrame::RGBDFrame(void)
+		{
+			init();
+		}
+
+		RGBDFrame::RGBDFrame(int width, int height)
+		{
+			init();
+			setResolution(width, height);
+		}
+
+
+		RGBDFrame::~RGBDFrame(void)
+		{
+			//Clear arrays;
+			mDepthData.reset();
+			mColorData.reset();
+		}
+
+
+		void RGBDFrame::init(void)
+		{
 			mXRes = 0;
 			mYRes = 0;
-			//Null pointers
+			//NULL Pointers
 			mDepthData = DPixelArray();
 			mColorData = ColorPixelArray();
-		}
-	}
-}
 
-void RGBDFrame::clearDepthImage(void)
-{
-	DPixel clear = {0};
-	if(mDepthData != NULL){
-		for(int y = 0; y < mYRes; y++)
+			mDepthTime = 0;
+			mColorTime = 0;
+			mHasDepth = false;
+			mHasColor = false;
+
+		}
+
+
+		void RGBDFrame::resetMetaData(void)
+		{	
+			mDepthTime = 0;
+			mColorTime = 0;
+			mHasDepth = false;
+			mHasColor = false;
+		}
+
+		//forceAlloc is default false.
+		void RGBDFrame::setResolution(int width, int height, bool forceAlloc /*=false*/)
 		{
-			for(int x = 0; x < mXRes; x++)
+			if(width != mXRes || height != mYRes || forceAlloc)
 			{
-				mDepthData[getLinearIndex(x,y)] = clear;
+				if(width > 0 && height > 0){
+					//Resolution changed, reallocate
+					mXRes = width;
+					mYRes = height;
+					mDepthData = DPixelArray(new DPixel[width*height]);
+					mColorData = ColorPixelArray(new ColorPixel[width*height]);
+				}else{
+					//width and height invalid. Clear
+					mXRes = 0;
+					mYRes = 0;
+					//Null pointers
+					mDepthData = DPixelArray();
+					mColorData = ColorPixelArray();
+				}
 			}
 		}
-	}
-}
 
-void RGBDFrame::clearColorImage(void)
-{
-	ColorPixel clear = {0,0,0};
-
-	if(mColorData != NULL){
-		for(int y = 0; y < mYRes; y++)
+		void RGBDFrame::clearDepthImage(void)
 		{
-			for(int x = 0; x < mXRes; x++)
-			{
-				mColorData[getLinearIndex(x,y)] = clear;
+			DPixel clear = {0};
+			if(mDepthData != NULL){
+				for(int y = 0; y < mYRes; y++)
+				{
+					for(int x = 0; x < mXRes; x++)
+					{
+						mDepthData[getLinearIndex(x,y)] = clear;
+					}
+				}
 			}
 		}
+
+		void RGBDFrame::clearColorImage(void)
+		{
+			ColorPixel clear = {0,0,0};
+
+			if(mColorData != NULL){
+				for(int y = 0; y < mYRes; y++)
+				{
+					for(int x = 0; x < mXRes; x++)
+					{
+						mColorData[getLinearIndex(x,y)] = clear;
+					}
+				}
+			}
+		}
+
 	}
 }

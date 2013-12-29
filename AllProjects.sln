@@ -5,7 +5,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CUDA-Mesh", "CUDA-Mesh\CUDA
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Viewer-Recorder", "Recorder-Viewer\Recorder-Viewer.vcxproj", "{190FE85B-189F-4244-BCDF-2279229D32A8}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Viewer-Recorder", "RGBDFrameworkLib\RGBDFrameworkLib.vcxproj", "{9B00FA51-64D2-4AB4-816B-EABDD92C9F5B}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RGBDFrameworkLib", "RGBDFrameworkLib\RGBDFrameworkLib.vcxproj", "{9B00FA51-64D2-4AB4-816B-EABDD92C9F5B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
