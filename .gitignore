@@ -73,3 +73,10 @@
 /Recorder-Viewer/logs/flat-wall-synced
 /Demo Reel.wlmp
 /Demo Reel.mp4
+/RGBDFrameworkLib/x64/Release/*.tlog
+
+/RGBDFrameworkLib/x64/Release/*.lastbuildstate
+
+/RGBDFrameworkLib/x64/Release/*.pdb
+
+/RGBDFrameworkLib/x64/Release/*.unsuccessfulbuild

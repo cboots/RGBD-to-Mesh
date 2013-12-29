@@ -44,10 +44,10 @@ int main(int argc, char** argv)
 	boost::filesystem::path full_path( boost::filesystem::current_path() );
 	cout << full_path << endl;
 
-	LogDevice device;
-	device.setSourceDirectory("logs\\chairlogs");
-	device.setLoopStreams(true);
-	//ONIKinectDevice device;
+	//LogDevice device;
+	//device.setSourceDirectory("logs\\chairlogs");
+	//device.setLoopStreams(true);
+	ONIKinectDevice device;
 
 	RGBDDeviceListener deviceStateListener;
 	RGBDFrameListener frameListener;
