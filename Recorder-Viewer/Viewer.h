@@ -23,14 +23,10 @@
 
 #include <OpenNI.h>
 #include <iostream>
-#include "RGBDDevice.h"
-#include "RGBDFrame.h"
-#include "RGBDFrameFactory.h"
-#include "FileUtils.h"
-#include "FrameLogger.h"
-#include "LogDevice.h"
+#include "RGBDFrameworkLib.h"
 
 using namespace std;
+using namespace rgbd::framework;
 
 #define MAX_DEPTH 10000
 

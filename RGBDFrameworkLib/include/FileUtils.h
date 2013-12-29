@@ -8,7 +8,7 @@
 #include <string>
 #include "RGBDFrame.h"
 #include <boost/filesystem.hpp>
-#include "lz4/lz4.h"
+#include "lz4.h"
 #include <iostream>
 
 using namespace std;

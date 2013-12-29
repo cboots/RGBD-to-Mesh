@@ -18,6 +18,28 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\FileUtils.h" />
+    <ClInclude Include="include\FrameLogger.h" />
+    <ClInclude Include="include\LogDevice.h" />
+    <ClInclude Include="include\lz4.h" />
+    <ClInclude Include="include\ONIKinectDevice.h" />
+    <ClInclude Include="include\OniSampleUtilities.h" />
+    <ClInclude Include="include\RGBDDevice.h" />
+    <ClInclude Include="include\RGBDFrame.h" />
+    <ClInclude Include="include\RGBDFrameFactory.h" />
+    <ClInclude Include="include\RGBDFrameworkLib.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\FileUtils.cpp" />
+    <ClCompile Include="src\FrameLogger.cpp" />
+    <ClCompile Include="src\LogDevice.cpp" />
+    <ClCompile Include="src\lz4.c" />
+    <ClCompile Include="src\ONIKinectDevice.cpp" />
+    <ClCompile Include="src\RGBDDevice.cpp" />
+    <ClCompile Include="src\RGBDFrame.cpp" />
+    <ClCompile Include="src\RGBDFrameFactory.cpp" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{9B00FA51-64D2-4AB4-816B-EABDD92C9F5B}</ProjectGuid>
     <RootNamespace>SimpleViewer</RootNamespace>
@@ -92,7 +114,7 @@ xcopy /D /F /Y "$(ProjectDir)\glut32.dll" "$(OutDir)"
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(BOOST_ROOT);$(OPENNI2_INCLUDE64);.;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(BOOST_ROOT);$(OPENNI2_INCLUDE64);.;.;include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <WarningLevel>Level4</WarningLevel>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -147,7 +169,7 @@ xcopy /D /F /Y "$(ProjectDir)\glut32.dll" "$(OutDir)"
       <WarningLevel>Level4</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(BOOST_ROOT);$(OPENNI2_INCLUDE64);.;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(BOOST_ROOT);$(OPENNI2_INCLUDE64);.;.;include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
@@ -171,26 +193,6 @@ xcopy /D /F /Y "$(ProjectDir)\glut32.dll" "$(OutDir)"
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="FileUtils.cpp" />
-    <ClCompile Include="FrameLogger.cpp" />
-    <ClCompile Include="LogDevice.cpp" />
-    <ClCompile Include="lz4\lz4.c" />
-    <ClCompile Include="ONIKinectDevice.cpp" />
-    <ClCompile Include="RGBDDevice.cpp" />
-    <ClCompile Include="RGBDFrame.cpp" />
-    <ClCompile Include="RGBDFrameFactory.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="FileUtils.h" />
-    <ClInclude Include="FrameLogger.h" />
-    <ClInclude Include="LogDevice.h" />
-    <ClInclude Include="lz4\lz4.h" />
-    <ClInclude Include="ONIKinectDevice.h" />
-    <ClInclude Include="RGBDDevice.h" />
-    <ClInclude Include="RGBDFrame.h" />
-    <ClInclude Include="RGBDFrameFactory.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
