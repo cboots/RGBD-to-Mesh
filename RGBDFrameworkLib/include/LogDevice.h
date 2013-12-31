@@ -38,6 +38,11 @@ namespace rgbd
 			}
 		};
 
+		struct SyncFrameMetaData{
+			FrameMetaData depthData;
+			FrameMetaData colorData;
+		};
+
 		struct BufferFrame{
 			RGBDFramePtr frame;
 			int id;
@@ -62,11 +67,9 @@ namespace rgbd
 			int mXRes,mYRes;
 
 			//Stream frames for various 
-			vector<FrameMetaData> mColorStreamFrames;
-			vector<FrameMetaData> mDepthStreamFrames;
+			vector<SyncFrameMetaData> mLogFrames;
 
 			//Stream management
-			bool mSyncDepthAndColor;
 			bool mLoopStreams;
 			timestamp mStartTime;
 			boost::posix_time::ptime mPlaybackStartTime;
@@ -87,8 +90,7 @@ namespace rgbd
 			boost::thread mColorThread;
 			boost::thread mDepthThread;
 			boost::thread mEventThread;
-			boost::mutex mColorGuard;
-			boost::mutex mDepthGuard;
+			boost::mutex mLogGuard;
 
 			RGBDFramePtr mRGBDFrameSynced;
 			boost::mutex mFrameGuard;
@@ -101,6 +103,7 @@ namespace rgbd
 			void bufferColor();
 			void bufferDepth();
 			void dispatchEvents();
+			void insertColorFrameToSyncedFrames(FrameMetaData colorData);
 		public:
 			LogDevice(void);
 			~LogDevice(void);
@@ -135,8 +138,8 @@ namespace rgbd
 			inline void setLoopStreams(bool loop) {mLoopStreams = loop;}
 			inline bool getLoopStreams(){return mLoopStreams;}
 
-			bool getSyncColorAndDepth() override {return mSyncDepthAndColor;}
-			bool setSyncColorAndDepth(bool sync) override { mSyncDepthAndColor = sync; return true;}
+			bool getSyncColorAndDepth() override {return true;}
+			bool setSyncColorAndDepth(bool sync) override { return false;}
 
 			//Getter/Setter for playback speed
 			//1.0 is normal, 0.5 is half speed, 2.0 is double speed, etc

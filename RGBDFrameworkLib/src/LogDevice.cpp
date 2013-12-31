@@ -14,7 +14,6 @@ namespace rgbd
 			mYRes = 0;
 
 			//Stream management
-			mSyncDepthAndColor = false;
 			mLoopStreams = false;
 			mStartTime = 0; 
 			mColorStreaming = false;
@@ -40,6 +39,37 @@ namespace rgbd
 			return DEVICESTATUS_OK;	
 		}
 
+		void LogDevice::insertColorFrameToSyncedFrames(FrameMetaData colorData)
+		{
+			//Assumes depth data is sorted.
+			//Starts search at frame id and does gradient descent to find minimum dt
+			mFrameGuard.lock();
+
+			int index = colorData.id - 1;//Ids a 1 based index
+			std::vector<SyncFrameMetaData>::iterator it = mLogFrames.begin() + index;
+			
+			timestamp deltaT = colorData.time - it->depthData.time;//Current gradient
+
+			//If not first element and previous element is closer, move down the list
+			while(it != mLogFrames.begin() && (deltaT > colorData.time - (it-1)->depthData.time))
+			{
+				--it;
+				deltaT = colorData.time - it->depthData.time;//Current gradient
+			}
+
+			//If not last element and next element is closer, move up
+			while(it != mLogFrames.end() - 1 && (deltaT > colorData.time - (it+1)->depthData.time))
+			{
+				++it;
+				deltaT = colorData.time - it->depthData.time;//Current gradient
+			}
+
+			//At correct insertion point. (minimum difference)
+			it->colorData = colorData;
+
+			mFrameGuard.unlock();
+		}
+
 		void LogDevice::loadLog(string logFile)
 		{
 			string logStr = loadTextFile(logFile);
@@ -50,6 +80,7 @@ namespace rgbd
 			xml_document<> doc;    // character type defaults to char
 			doc.parse<0>(cstr);    // 0 means default parse flags
 
+			vector<FrameMetaData> colorFrames;
 
 			//Parse tree
 			xml_node<char>* root = doc.first_node("device");
@@ -62,13 +93,10 @@ namespace rgbd
 					mXRes = atoi(xres->value());
 					mYRes = atoi(yres->value());
 
-					//Clear arrays
-					mColorGuard.lock();
-					mColorStreamFrames.clear();
-					mColorGuard.unlock();
-					mDepthGuard.lock();
-					mDepthStreamFrames.clear();
-					mDepthGuard.unlock();
+					//Clear array
+					mLogGuard.lock();
+					mLogFrames.clear();
+					mLogGuard.unlock();
 
 					xml_node<char>* frame = root->first_node("frame");
 					if(frame != 0){
@@ -96,9 +124,7 @@ namespace rgbd
 										compressionMethod = getCompressionMethodFromTag(string(compressionAlgId));
 									}
 
-									mColorGuard.lock();
-									mColorStreamFrames.push_back(FrameMetaData(frameId, time, compressionMethod));
-									mColorGuard.unlock();
+									colorFrames.push_back(FrameMetaData(frameId, time, compressionMethod));
 								}
 
 								if(depthTimestamp != 0)
@@ -114,9 +140,12 @@ namespace rgbd
 										compressionMethod = getCompressionMethodFromTag(string(compressionAlgId));
 									}
 
-									mDepthGuard.lock();
-									mDepthStreamFrames.push_back(FrameMetaData(frameId, time, compressionMethod));
-									mDepthGuard.unlock();
+									//Build master list from depth frames
+									mLogGuard.lock();
+									SyncFrameMetaData syncFrame;
+									syncFrame.depthData = FrameMetaData(frameId, time, compressionMethod);
+									mLogFrames.push_back(syncFrame);
+									mLogGuard.unlock();
 								}
 
 							}
@@ -124,6 +153,14 @@ namespace rgbd
 						}
 
 						mStartTime = min(depthStartTime, colorStartTime);
+
+						//Merge color and depth streams by timestamp
+
+						for(std::vector<FrameMetaData>::iterator it = colorFrames.begin(); it != colorFrames.end(); ++it)
+						{
+							insertColorFrameToSyncedFrames(*it);
+						}
+
 
 					}else{
 						onMessage("Empty Log File\n");
