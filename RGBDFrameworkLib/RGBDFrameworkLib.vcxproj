@@ -129,9 +129,7 @@ xcopy /D /F /Y "$(ProjectDir)\glut32.dll" "$(OutDir)"
       <TreatLinkerWarningAsErrors>true</TreatLinkerWarningAsErrors>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /D /S /F /Y "$(OPENNI2_REDIST64)\*" "$(OutDir)"
-xcopy /D /F /Y "$(ProjectDir)\glut64.dll" "$(OutDir)"
-</Command>
+      <Command>xcopy /D /S /F /Y "$(OPENNI2_REDIST64)\*" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">

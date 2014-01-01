@@ -80,3 +80,12 @@
 /RGBDFrameworkLib/x64/Release/*.pdb
 
 /RGBDFrameworkLib/x64/Release/*.unsuccessfulbuild
+/RGBDFrameworkLib/x64/Debug/*.tlog
+
+/RGBDFrameworkLib/x64/Debug/*.obj
+
+/RGBDFrameworkLib/x64/Debug/*.pdb
+
+/RGBDFrameworkLib/x64/Debug/*.lastbuildstate
+
+/oleaut32.pdb/1FEB56FFD5244668835CCD433DD9EBA82/*.pd_

@@ -23,8 +23,7 @@ namespace rgbd
 {
 	namespace framework
 	{
-		//TODO: Make setable parameter
-#define MAX_BUFFER_FRAMES 150 //5 seconds of data
+	
 
 
 		struct FrameMetaData{
@@ -36,20 +35,32 @@ namespace rgbd
 				this->time = time;
 				this->compressionMode = compressionMode;
 			}
+
+			FrameMetaData()
+			{
+				id = 0;
+				time = 0;
+				compressionMode = NO_COMPRESSION;
+			}
 		};
 
 		struct SyncFrameMetaData{
 			FrameMetaData depthData;
 			FrameMetaData colorData;
+			SyncFrameMetaData() : 
+				depthData(), colorData()
+			{
+			
+			}
 		};
 
 		struct BufferFrame{
 			RGBDFramePtr frame;
-			int id;
+			timestamp time;
 
-			BufferFrame(int id, RGBDFramePtr frame)
+			BufferFrame(timestamp time, RGBDFramePtr frame)
 			{
-				this->id = id;
+				this->time = time;
 				this->frame = frame;
 			}
 		};
@@ -75,33 +86,26 @@ namespace rgbd
 			boost::posix_time::ptime mPlaybackStartTime;
 			volatile bool mColorStreaming;
 			volatile bool mDepthStreaming;
-			volatile int mColorInd;
-			volatile int mDepthInd;
+			volatile int mLogInd;
 
 
 			//Stream frame buffers.
-			//const int cBufferCapacity = 500;//Max number of frames to buffer per stream
-			queue<BufferFrame> mColorStreamBuffer;
-			queue<BufferFrame> mDepthStreamBuffer;
+			int mBufferCapacity;//Max number of frames to buffer per stream
+			queue<BufferFrame> mStreamBuffer;
 
 			//1.0 is normal, 0.5 is half speed, 2.0 is double speed, etc
 			double mPlaybackSpeed;
 
-			boost::thread mColorThread;
-			boost::thread mDepthThread;
+			boost::thread mBufferThread;
 			boost::thread mEventThread;
 			boost::mutex mLogGuard;
-
-			RGBDFramePtr mRGBDFrameSynced;
-			boost::mutex mFrameGuard;
-
-
+			boost::mutex mBufferGuard;
+			
 
 			void loadColorFrame(string sourceDir, FrameMetaData data, RGBDFramePtr frameOut, COMPRESSION_METHOD colorCompressMode);
 			void loadDepthFrame(string sourceDir, FrameMetaData data, RGBDFramePtr frameOut, COMPRESSION_METHOD depthCompressMode);
 			void loadLog(string logFile);
-			void bufferColor();
-			void bufferDepth();
+			void bufferFrames();
 			void dispatchEvents();
 			void insertColorFrameToSyncedFrames(FrameMetaData colorData);
 		public:
@@ -139,7 +143,7 @@ namespace rgbd
 			inline bool getLoopStreams(){return mLoopStreams;}
 
 			bool getSyncColorAndDepth() override {return true;}
-			bool setSyncColorAndDepth(bool sync) override { return false;}
+			bool setSyncColorAndDepth(bool) override { return false;}
 
 			//Getter/Setter for playback speed
 			//1.0 is normal, 0.5 is half speed, 2.0 is double speed, etc
