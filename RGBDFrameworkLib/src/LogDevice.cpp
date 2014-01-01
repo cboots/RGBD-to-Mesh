@@ -42,18 +42,9 @@ namespace rgbd
 		void LogDevice::insertColorFrameToSyncedFrames(FrameMetaData colorData)
 		{
 			//Assumes depth data is sorted.
-			//Starts search at frame id and does gradient descent to find minimum dt
-			int index = colorData.id - 1;//Ids a 1 based index
-			std::vector<SyncFrameMetaData>::iterator it = mLogFrames.begin() + index;
+			std::vector<SyncFrameMetaData>::iterator it = mLogFrames.begin();
 
 			timestamp deltaT = colorData.time - it->depthData.time;//Current gradient
-
-			//If not first element and previous element is closer, move down the list
-			while(it != mLogFrames.begin() && (deltaT > colorData.time - (it-1)->depthData.time))
-			{
-				--it;
-				deltaT = colorData.time - it->depthData.time;//Current gradient
-			}
 
 			//If not last element and next element is closer, move up
 			while(it != mLogFrames.end() - 1 && (deltaT > colorData.time - (it+1)->depthData.time))
@@ -265,6 +256,7 @@ namespace rgbd
 
 		void LogDevice::dispatchEvents()
 		{
+			timestamp lastTimeUS = 0;//Time of previous frame. If 
 			while(mColorStreaming || mDepthStreaming)
 			{
 				//Tick thread time
@@ -273,7 +265,7 @@ namespace rgbd
 				timestamp currentPlaybackTimeUS = (timestamp) (duration.total_microseconds()*mPlaybackSpeed);//Time in microseconds. Normalized to playback time
 
 				//Check for next time frame
-
+	
 				if(mStreamBuffer.size() > 0){
 					mBufferGuard.lock();
 					BufferFrame bufFrame = mStreamBuffer.front();
@@ -281,17 +273,24 @@ namespace rgbd
 					mBufferGuard.unlock();
 					if(nextTimeUS > 0)
 					{
+						if(nextTimeUS < lastTimeUS){
+							//Reset playback timer
+							mPlaybackStartTime  = boost::posix_time::microsec_clock::local_time();
+						}
+
 						if(nextTimeUS <= currentPlaybackTimeUS)
 						{
 							//Reached time to dispatch frame
 							mBufferGuard.lock();
 							mStreamBuffer.pop();
 							mBufferGuard.unlock();
+							lastTimeUS = nextTimeUS;
 							onNewRGBDFrame(bufFrame.frame);
 						}else{
 							//Sleep until appropriate time
-							boost::this_thread::sleep_for(boost::chrono::microseconds((timestamp) ((nextTimeUS - currentPlaybackTimeUS)/mPlaybackSpeed)));
-
+							//boost::this_thread::sleep_for(boost::chrono::microseconds((timestamp) ((nextTimeUS - currentPlaybackTimeUS)/mPlaybackSpeed)));
+							
+							boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
 						}
 					}
 
