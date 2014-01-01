@@ -243,7 +243,7 @@ namespace rgbd
 						if(mDepthStreaming && frame.depthData.id > 0)
 							loadDepthFrame(mDirectory, frame.depthData, localFrame, frame.depthData.compressionMode);
 
-						mStreamBuffer.push(BufferFrame(frame.depthData.id, localFrame));
+						mStreamBuffer.push(BufferFrame(max(frame.depthData.time, frame.colorData.time), localFrame));
 						localFrame = NULL;//Pass to buffer
 						mBufferGuard.unlock();
 
@@ -278,8 +278,6 @@ namespace rgbd
 					mBufferGuard.lock();
 					BufferFrame bufFrame = mStreamBuffer.front();
 					timestamp nextTimeUS = bufFrame.time - mStartTime;
-
-
 					mBufferGuard.unlock();
 					if(nextTimeUS > 0)
 					{
