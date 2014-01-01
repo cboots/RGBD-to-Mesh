@@ -45,7 +45,7 @@ int main(int argc, char** argv)
 	cout << full_path << endl;
 
 	LogDevice device;
-	device.setSourceDirectory("logs\\chairlogs");
+	device.setSourceDirectory("logs\\siglab");
 	device.setLoopStreams(true);
 	//ONIKinectDevice device;
 
@@ -72,7 +72,7 @@ int main(int argc, char** argv)
 		pause();
 		return 2;
 	}
-	/*
+	
 	if(!device.createColorStream())
 	{
 		printf("Could not create color stream\n");
@@ -80,7 +80,7 @@ int main(int argc, char** argv)
 		pause();
 		return 3;
 	}
-	*/
+	
 	printf("Streams created succesfully\n");
 
 	
