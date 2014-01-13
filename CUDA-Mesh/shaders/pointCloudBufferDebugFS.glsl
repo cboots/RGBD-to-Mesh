@@ -19,8 +19,8 @@ void main()
 	vec4 normal = 	texture(u_Texture2, fs_texCoord);
 	
 	float depth = -position.z;
-	float shade = 1.0-clamp(mod(depth,0.005)/0.005, 0.0, 1.0);
-	FragColor = step(0.0001, depth)*vec4(shade, 1.0-step(0.0001,shade), 1.0-shade, 0.7);
+	float shade = 1.0-clamp(mod(depth,0.001)/0.001, 0.0, 1.0);
+	FragColor = vec4(shade, shade, shade, 1.0);
 	//FragColor = vec4(-position.y, position.y, 0.0, 1.0);
 	//FragColor = vec4(-position.zzz/10.0, 1.0);
 	//FragColor = vec4(step(0.01, position.z)*(1.0-step(0.01, length(normal))), 0.0, 0.0, 1.0);

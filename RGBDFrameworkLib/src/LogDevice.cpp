@@ -223,7 +223,7 @@ namespace rgbd
 					//Check if stream has pending frames
 					if(mLogInd < mLogFrames.size())
 					{
-						
+
 						//Buffer the frame
 						mBufferGuard.lock();
 						SyncFrameMetaData frame = mLogFrames[mLogInd];
@@ -265,12 +265,12 @@ namespace rgbd
 				timestamp currentPlaybackTimeUS = (timestamp) (duration.total_microseconds()*mPlaybackSpeed);//Time in microseconds. Normalized to playback time
 
 				//Check for next time frame
-	
+
+				mBufferGuard.lock();
 				if(mStreamBuffer.size() > 0){
-					mBufferGuard.lock();
 					BufferFrame bufFrame = mStreamBuffer.front();
 					timestamp nextTimeUS = bufFrame.time - mStartTime;
-					mBufferGuard.unlock();
+
 					if(nextTimeUS > 0)
 					{
 						if(nextTimeUS < lastTimeUS){
@@ -281,22 +281,17 @@ namespace rgbd
 						if(nextTimeUS <= currentPlaybackTimeUS)
 						{
 							//Reached time to dispatch frame
-							mBufferGuard.lock();
 							mStreamBuffer.pop();
-							mBufferGuard.unlock();
 							lastTimeUS = nextTimeUS;
 							onNewRGBDFrame(bufFrame.frame);
-						}else{
-							//Sleep until appropriate time
-							//boost::this_thread::sleep_for(boost::chrono::microseconds((timestamp) ((nextTimeUS - currentPlaybackTimeUS)/mPlaybackSpeed)));
-							
-							boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
 						}
 					}
 
-				}else{
-					boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
 				}
+				
+				mBufferGuard.unlock();
+				
+				boost::this_thread::sleep_for(boost::chrono::milliseconds(1));
 			}
 		}
 
