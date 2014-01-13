@@ -44,39 +44,48 @@ int main(int argc, char** argv)
 	boost::filesystem::path full_path( boost::filesystem::current_path() );
 	cout << full_path << endl;
 
-	LogDevice device;
-	device.setSourceDirectory("logs\\chairlogs");
-	device.setLoopStreams(true);
-	//ONIKinectDevice device;
+	
+	RGBDDevice* devicePtr;
+
+	//Load source argument
+	if(argc > 1)
+	{
+		devicePtr = new LogDevice();
+		((LogDevice*)devicePtr)->setSourceDirectory(argv[1]);
+		((LogDevice*)devicePtr)->setLoopStreams(true);
+
+	}else{
+		devicePtr = new ONIKinectDevice();
+	}	
 
 	RGBDDeviceListener deviceStateListener;
 	RGBDFrameListener frameListener;
-	device.addDeviceConnectedListener(&deviceStateListener);
-	device.addDeviceDisconnectedListener(&deviceStateListener);
-	device.addDeviceMessageListener(&deviceStateListener);
-	device.addNewRGBDFrameListener(&frameListener);
+	devicePtr->addDeviceConnectedListener(&deviceStateListener);
+	devicePtr->addDeviceDisconnectedListener(&deviceStateListener);
+	devicePtr->addDeviceMessageListener(&deviceStateListener);
+	devicePtr->addNewRGBDFrameListener(&frameListener);
 
-	device.initialize();
-	if(DEVICESTATUS_OK != device.connect())
+	devicePtr->initialize();
+	if(DEVICESTATUS_OK != devicePtr->connect())
 	{
 		printf("Could not connect to device\n");
-		device.shutdown();
+		devicePtr->shutdown();
 		pause();
 		return 1;
 	}
 
-	if(!device.createDepthStream())
+	if(!devicePtr->createDepthStream())
 	{
 		printf("Could not create depth stream\n");
-		device.shutdown();
+		devicePtr->shutdown();
 		pause();
 		return 2;
 	}
 	
-	if(!device.createColorStream())
+	if(!devicePtr->createColorStream())
 	{
 		printf("Could not create color stream\n");
-		device.shutdown();
+		devicePtr->shutdown();
 		pause();
 		return 3;
 	}
@@ -84,15 +93,15 @@ int main(int argc, char** argv)
 	printf("Streams created succesfully\n");
 
 	
-	device.setImageRegistrationMode(REGISTRATION_DEPTH_TO_COLOR);
-	device.setSyncColorAndDepth(false);
+	devicePtr->setImageRegistrationMode(REGISTRATION_DEPTH_TO_COLOR);
+	devicePtr->setSyncColorAndDepth(false);
 
-	MeshViewer viewer(&device, screenwidth, screenheight);
+	MeshViewer viewer(devicePtr, screenwidth, screenheight);
 
 	DeviceStatus rc = viewer.init(argc, argv);
 	if (rc != DEVICESTATUS_OK)
 	{
-		device.shutdown();
+		devicePtr->shutdown();
 		pause();
 		return 4;
 	}
