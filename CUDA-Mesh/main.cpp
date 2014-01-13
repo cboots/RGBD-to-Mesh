@@ -45,7 +45,7 @@ int main(int argc, char** argv)
 	cout << full_path << endl;
 
 	LogDevice device;
-	device.setSourceDirectory("logs\\siglab");
+	device.setSourceDirectory("logs\\chairlogs");
 	device.setLoopStreams(true);
 	//ONIKinectDevice device;
 
