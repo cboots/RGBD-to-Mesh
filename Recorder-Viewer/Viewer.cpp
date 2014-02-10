@@ -186,6 +186,7 @@ void SampleViewer::display()
 		DPixel* pDepthRow = depthArray.get();
 		openni::RGB888Pixel* pTexRow = m_pTexMap;
 		int rowsize = m_width;
+		float alpha = 0.5;
 		for (int y = 0; y < m_height; ++y)
 		{
 			openni::RGB888Pixel* pTex = pTexRow;
@@ -195,9 +196,9 @@ void SampleViewer::display()
 				int depth = (*pDepth).depth;
 				if(depth != 0){
 					uint8_t scaledDepth = 256-(depth>>6);
-					pTex->r = scaledDepth;
+					pTex->r = pTex->r*alpha + (1-alpha)*scaledDepth;
 					pTex->g = 0;//scaledDepth;
-					pTex->b = 0;//scaledDepth;
+					pTex->b = pTex->b*alpha + (1-alpha)*(256 - scaledDepth);//scaledDepth;
 				}
 			}
 			pTexRow += m_nTexMapX;
