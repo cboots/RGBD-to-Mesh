@@ -1,7 +1,7 @@
-#include "KinectMeshTracker.h"
+#include "MeshTracker.h"
 
 
-MeshTracker::KinectMeshTracker(int xResolution, int yResolution)
+MeshTracker::MeshTracker(int xResolution, int yResolution)
 {
 	mXRes = xResolution;
 	mYRes = yResolution;
@@ -12,7 +12,7 @@ MeshTracker::KinectMeshTracker(int xResolution, int yResolution)
 }
 
 
-MeshTracker::~KinectMeshTracker(void)
+MeshTracker::~MeshTracker(void)
 {
 	cleanupCuda();
 }
