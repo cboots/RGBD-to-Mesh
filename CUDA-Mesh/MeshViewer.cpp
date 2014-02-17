@@ -78,6 +78,8 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	fpstracker = 0;
 	fps = 0.0;
 
+	mMeshTracker = new MeshTracker(device->getDepthResolutionX(), device->getDepthResolutionY());
+
 	resetCamera();
 }
 
@@ -85,6 +87,8 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 MeshViewer::~MeshViewer(void)
 {
 	msSelf = NULL;
+	if(mMeshTracker != NULL)
+		delete mMeshTracker;
 }
 
 //Does not return;
@@ -892,9 +896,7 @@ void MeshViewer::display()
 
 	//=====CUDA CALLS=====
 	//Push buffers
-	pushColorArrayToBuffer(localColorArray.get(), mXRes, mYRes);
-	pushDepthArrayToBuffer(localDepthArray.get(), mXRes, mYRes);
-
+	pushRGBDFrameToDevice
 	//Generate point cloud
 	convertToPointCloud();
 

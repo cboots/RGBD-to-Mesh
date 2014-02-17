@@ -8,10 +8,11 @@
 #include "FileUtils.h"
 #include "FrameLogger.h"
 #include "device_structs.h"
-#include "Device.h"
+#include "kernel.h"
 #include "glslUtility.h"
 #include "LogDevice.h"
 #include "glm/gtc/matrix_transform.hpp"
+#include "MeshTracker.h"
 
 using namespace glm;
 
@@ -78,6 +79,8 @@ protected:
 	RGBDDevice* mDevice;
 	int mXRes, mYRes;
 	int mWidth, mHeight;
+
+	MeshTracker* mMeshTracker;
 
 	float mMaxTriangleEdgeLength;
 	bool mMeshWireframeMode;
