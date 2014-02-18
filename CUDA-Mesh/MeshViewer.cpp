@@ -841,6 +841,7 @@ void MeshViewer::display()
 
 		}
 
+		mMeshTracker->assemblePointCloud(10.0f);
 		
 	}
 
