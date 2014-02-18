@@ -139,7 +139,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN64;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>../RGBDFrameworkLib/include;../shared/glew/include;.;$(BOOST_ROOT);$(OPENNI2_INCLUDE64);%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>cuda;../RGBDFrameworkLib/include;../shared/glew/include;.;$(BOOST_ROOT);$(OPENNI2_INCLUDE64);%(AdditionalIncludeDirectories);$(CudaToolkitIncludeDir)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -157,8 +157,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
       <CompileOut>$(ProjectDir)$(Platform)/$(Configuration)/%(Filename)%(Extension).obj</CompileOut>
     </CudaCompile>
     <CudaCompile>
-      <Include>
-      </Include>
+      <Include>cuda</Include>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -168,14 +167,14 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <ClCompile Include="MeshViewer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="debug_rendering.h" />
+    <ClInclude Include="cuda\debug_rendering.h" />
+    <ClInclude Include="cuda\filtering.h" />
+    <ClInclude Include="cuda\normal_estimates.h" />
     <ClInclude Include="device_structs.h" />
-    <ClInclude Include="filtering.h" />
     <ClInclude Include="glslUtility.h" />
     <ClInclude Include="MeshTracker.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="MeshViewer.h" />
-    <ClInclude Include="normal_estimates.h" />
     <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>
@@ -184,9 +183,9 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <CudaCompile Include="debug_rendering.cu" />
-    <CudaCompile Include="filtering.cu" />
-    <CudaCompile Include="normal_estimates.cu" />
+    <CudaCompile Include="cuda\debug_rendering.cu" />
+    <CudaCompile Include="cuda\filtering.cu" />
+    <CudaCompile Include="cuda\normal_estimates.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
