@@ -76,7 +76,7 @@ __global__ void sendPCBToPBOs(float4* dptrPosition, float4* dptrColor, float4* d
 // Draws depth image buffer to the texture.
 // Texture width and height must match the resolution of the depth image.
 // Returns false if width or height does not match, true otherwise
-__host__ void drawDepthImageBufferToPBO(float4* dev_PBOpos, int texWidth, int texHeight)
+__host__ void drawDepthImageBufferToPBO(float4* dev_PBOpos, DPixel* dev_depthImageBuffer, int texWidth, int texHeight)
 {
 	int tileSize = 8;
 
@@ -92,7 +92,7 @@ __host__ void drawDepthImageBufferToPBO(float4* dev_PBOpos, int texWidth, int te
 // Texture width and height must match the resolution of the color image.
 // Returns false if width or height does not match, true otherwise
 // dev_PBOpos must be a CUDA device pointer
-__host__ void drawColorImageBufferToPBO(float4* dev_PBOpos, int texWidth, int texHeight)
+__host__ void drawColorImageBufferToPBO(float4* dev_PBOpos, ColorPixel* dev_colorImageBuffer, int texWidth, int texHeight)
 {
 	int tileSize = 8;
 
@@ -108,7 +108,7 @@ __host__ void drawColorImageBufferToPBO(float4* dev_PBOpos, int texWidth, int te
 // Renders various debug information about the 2D point cloud buffer to the texture.
 // Texture width and height must match the resolution of the point cloud buffer.
 // Returns false if width or height does not match, true otherwise
-__host__ void drawPCBToPBO(float4* dptrPosition, float4* dptrColor, float4* dptrNormal, int texWidth, int texHeight)
+__host__ void drawPCBToPBO(float4* dptrPosition, float4* dptrColor, float4* dptrNormal, PointCloud* dev_pcb, int texWidth, int texHeight)
 {
 	int tileSize = 8;
 
@@ -116,6 +116,6 @@ __host__ void drawPCBToPBO(float4* dptrPosition, float4* dptrColor, float4* dptr
 	dim3 fullBlocksPerGrid( (int)ceil(float(texWidth)/float(tileSize)), 
 		(int)ceil(float(texHeight)/float(tileSize)) );
 
-	sendPCBToPBOs<<<fullBlocksPerGrid, threadsPerBlock>>>(dptrPosition, dptrColor, dptrNormal, glm::vec2(texWidth, texHeight), dev_pointCloudBuffer);
+	sendPCBToPBOs<<<fullBlocksPerGrid, threadsPerBlock>>>(dptrPosition, dptrColor, dptrNormal, glm::vec2(texWidth, texHeight), dev_pcb);
 
 }

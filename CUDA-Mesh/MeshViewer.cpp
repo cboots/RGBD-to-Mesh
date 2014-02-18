@@ -143,7 +143,7 @@ DeviceStatus MeshViewer::init(int argc, char **argv)
 
 	//Register frame listener
 	mDevice->addNewRGBDFrameListener(this);
-	
+
 	//Create mesh tracker
 	mMeshTracker = new MeshTracker(mXRes, mYRes);
 
@@ -155,6 +155,11 @@ DeviceStatus MeshViewer::init(int argc, char **argv)
 }
 
 void MeshViewer::initRenderingCuda()
+{
+
+}
+
+void MeshViewer::cleanupRenderingCuda()
 {
 
 }
@@ -668,40 +673,38 @@ bool MeshViewer::drawColorImageBufferToTexture(GLuint texture)
 {
 	float4* dptr;
 	cudaGLMapBufferObject((void**)&dptr, imagePBO0);
-	bool result = drawColorImageBufferToPBO(dptr, mXRes, mYRes);
+	drawColorImageBufferToPBO(dptr, mMeshTracker->getColorImageDevicePtr(), mXRes, mYRes);
 	cudaGLUnmapBufferObject(imagePBO0);
-	if(result){
-		//Draw to texture
-		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
-		glBindTexture(GL_TEXTURE_2D, texture);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
-			GL_RGBA, GL_FLOAT, NULL);
+	//Draw to texture
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+		GL_RGBA, GL_FLOAT, NULL);
 
-		glBindTexture(GL_TEXTURE_2D, 0);
-		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
-	}
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
 
-	return result;
+	return true;
 }
 
 bool MeshViewer::drawDepthImageBufferToTexture(GLuint texture)
 {	
 	float4* dptr;
 	cudaGLMapBufferObject((void**)&dptr, imagePBO0);
-	bool result = drawDepthImageBufferToPBO(dptr, mXRes, mYRes);
+	drawDepthImageBufferToPBO(dptr,  mMeshTracker->getDepthImageDevicePtr(), mXRes, mYRes);
 	cudaGLUnmapBufferObject(imagePBO0);
-	if(result){
-		//Draw to texture
-		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
-		glBindTexture(GL_TEXTURE_2D, texture);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
-			GL_RGBA, GL_FLOAT, NULL);
 
-		glBindTexture(GL_TEXTURE_2D, 0);
-		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
-	}
+	//Draw to texture
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+		GL_RGBA, GL_FLOAT, NULL);
 
-	return result;
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
+
+
+	return true;
 }
 
 void MeshViewer::drawPCBtoTextures(GLuint posTexture, GLuint colTexture, GLuint normTexture)
@@ -713,170 +716,38 @@ void MeshViewer::drawPCBtoTextures(GLuint posTexture, GLuint colTexture, GLuint 
 	cudaGLMapBufferObject((void**)&dptrColor, imagePBO1);
 	cudaGLMapBufferObject((void**)&dptrNormal, imagePBO2);
 
-	bool result = drawPCBToPBO(dptrPosition, dptrColor, dptrNormal, mXRes, mYRes);
+	drawPCBToPBO(dptrPosition, dptrColor, dptrNormal, mMeshTracker->getPCBDevicePtr(), mXRes, mYRes);
 
 	cudaGLUnmapBufferObject(imagePBO0);
 	cudaGLUnmapBufferObject(imagePBO1);
 	cudaGLUnmapBufferObject(imagePBO2);
-	if(result){
-		//Unpack to textures
 
-		glActiveTexture(GL_TEXTURE12);
-		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO2);
-		glBindTexture(GL_TEXTURE_2D, normalTexture);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
-			GL_RGBA, GL_FLOAT, NULL);
-
-
-		glActiveTexture(GL_TEXTURE11);
-		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO1);
-		glBindTexture(GL_TEXTURE_2D, colorTexture);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
-			GL_RGBA, GL_FLOAT, NULL);
-
-		glActiveTexture(GL_TEXTURE10);
-		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
-		glBindTexture(GL_TEXTURE_2D, positionTexture);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
-			GL_RGBA, GL_FLOAT, NULL);
+	//Unpack to textures
+	glActiveTexture(GL_TEXTURE12);
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO2);
+	glBindTexture(GL_TEXTURE_2D, normalTexture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+		GL_RGBA, GL_FLOAT, NULL);
 
 
-		glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
-		glBindTexture(GL_TEXTURE_2D, 0);
-		glActiveTexture(GL_TEXTURE0);
-	}
+	glActiveTexture(GL_TEXTURE11);
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO1);
+	glBindTexture(GL_TEXTURE_2D, colorTexture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+		GL_RGBA, GL_FLOAT, NULL);
+
+	glActiveTexture(GL_TEXTURE10);
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
+	glBindTexture(GL_TEXTURE_2D, positionTexture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+		GL_RGBA, GL_FLOAT, NULL);
+
+
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glActiveTexture(GL_TEXTURE0);
+
 }
-
-
-void MeshViewer::drawPointCloudVBOtoFBO(int numPoints)
-{
-	//Bind FBO
-	glDisable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D,0); //Bad mojo to unbind the framebuffer using the texture
-	glBindFramebuffer(GL_FRAMEBUFFER, fullscreenFBO);
-	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-	glEnable(GL_DEPTH_TEST);
-
-	//Setup VBO
-	GLuint prog = hairyPoints? pcvbohairy_prog:pcvbo_prog;
-	glUseProgram(prog);
-
-	glEnableVertexAttribArray(PCVBOPositionLocation);
-	glEnableVertexAttribArray(PCVBOColorLocation);
-	glEnableVertexAttribArray(PCVBONormalLocation);
-
-
-	glBindBuffer(GL_ARRAY_BUFFER, pointCloudVBO);
-
-	//Setup interleaved buffer
-	glVertexAttribPointer(PCVBOPositionLocation, 3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_PositionOffset*sizeof(GLfloat))); 
-	glVertexAttribPointer(PCVBOColorLocation,    3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_ColorOffset*sizeof(GLfloat))); 
-	glVertexAttribPointer(PCVBONormalLocation,   3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_NormalOffset*sizeof(GLfloat))); 
-
-
-	//Setup uniforms
-	mat4 persp = glm::perspective(radians(mCamera.fovy), float(mWidth)/float(mHeight), mCamera.zNear, mCamera.zFar);
-	mat4 viewmat = glm::lookAt(mCamera.eye, mCamera.eye+mCamera.view, -mCamera.up);
-	mat4 viewInvTrans = inverse(transpose(viewmat));
-
-
-	glUniformMatrix4fv(glGetUniformLocation(prog, "u_projMatrix"),1, GL_FALSE, &persp[0][0] );
-	glUniformMatrix4fv(glGetUniformLocation(prog, "u_viewMatrix"),1, GL_FALSE, &viewmat[0][0] );
-	glUniformMatrix4fv(glGetUniformLocation(prog, "u_viewInvTrans"),1, GL_FALSE, &viewInvTrans[0][0] );
-
-
-	if(numPoints > 0){
-		glPointSize(2.0f); 
-		glDrawArrays(GL_POINTS, 0, numPoints);
-		glPointSize(1.0f); 
-	}
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
-
-void MeshViewer::drawMeshVBOtoFBO(int numTriangles)
-{
-	//Bind FBO
-	glDisable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D,0); //Bad mojo to unbind the framebuffer using the texture
-	glBindFramebuffer(GL_FRAMEBUFFER, fullscreenFBO);
-	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-	glEnable(GL_DEPTH_TEST);
-
-	if(mMeshWireframeMode){
-		glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
-	}else{
-		glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-	}
-
-	//Setup VBO
-	GLuint prog = triangle_prog;
-	glUseProgram(prog);
-
-	glEnableVertexAttribArray(PCVBOPositionLocation);
-	glEnableVertexAttribArray(PCVBOColorLocation);
-	glEnableVertexAttribArray(PCVBONormalLocation);
-
-
-	glBindBuffer(GL_ARRAY_BUFFER, pointCloudVBO);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, triangleIBO);
-
-	//Setup interleaved buffer
-	glVertexAttribPointer(PCVBOPositionLocation, 3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_PositionOffset*sizeof(GLfloat))); 
-	glVertexAttribPointer(PCVBOColorLocation,    3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_ColorOffset*sizeof(GLfloat))); 
-	glVertexAttribPointer(PCVBONormalLocation,   3, GL_FLOAT, GL_FALSE, PCVBOStride*sizeof(GLfloat), (void*)(PCVBO_NormalOffset*sizeof(GLfloat))); 
-
-
-	//Setup uniforms
-	mat4 persp = glm::perspective(radians(mCamera.fovy), float(mWidth)/float(mHeight), mCamera.zNear, mCamera.zFar);
-	mat4 viewmat = glm::lookAt(mCamera.eye, mCamera.eye+mCamera.view, -mCamera.up);
-	mat4 viewInvTrans = inverse(transpose(viewmat));
-
-
-	glUniformMatrix4fv(glGetUniformLocation(prog, "u_projMatrix"),1, GL_FALSE, &persp[0][0] );
-	glUniformMatrix4fv(glGetUniformLocation(prog, "u_viewMatrix"),1, GL_FALSE, &viewmat[0][0] );
-	glUniformMatrix4fv(glGetUniformLocation(prog, "u_viewInvTrans"),1, GL_FALSE, &viewInvTrans[0][0] );
-
-
-	if(numTriangles > 0){
-		glDrawElements(GL_TRIANGLES, numTriangles*3, GL_UNSIGNED_INT, NULL);
-
-	}
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-}
-
-int MeshViewer::fillPointCloudVBO()
-{
-	PointCloud* dptr;
-
-	cudaGLMapBufferObject((void**)&dptr, pointCloudVBO);
-	//Do CUDA stuff
-	//int numElements = compactPointCloudToVBO(dptr);
-	copyPointCloudToVBO(dptr);
-	cudaGLUnmapBufferObject(pointCloudVBO);
-
-	return mXRes*mYRes;
-}
-
-
-int MeshViewer::computePCBTriangulation(float maxEdgeLength)
-{
-	triangleIndecies* dptr;
-
-	cudaGLMapBufferObject((void**)&dptr, triangleIBO);
-	//Do CUDA stuff
-	int numTriangles = triangulatePCB(dptr, maxEdgeLength);
-	cudaGLUnmapBufferObject(triangleIBO); 
-
-	return numTriangles;
-}
-
 
 ////All the important runtime stuff happens here:
 void MeshViewer::display()
@@ -991,7 +862,7 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		mDevice->disconnect();
 		mDevice->shutdown();
 
-		cleanupCuda();
+		cleanupRenderingCuda();
 		cleanupTextures();
 		exit (0);
 		break;

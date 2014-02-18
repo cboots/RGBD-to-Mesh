@@ -31,5 +31,9 @@ public:
 
 	void initCudaBuffers(int xRes, int yResolution);
 	void cleanupCuda();
+
+	inline PointCloud* getPCBDevicePtr() { return dev_pointCloudBuffer;}
+	inline ColorPixel* getColorImageDevicePtr() { return dev_colorImageBuffer;}
+	inline DPixel* getDepthImageDevicePtr() { return dev_depthImageBuffer;}
 };
 

@@ -18,6 +18,8 @@
 #include "MeshTracker.h"
 #include "debug_rendering.h"
 
+#define PI      3.141592653589793238
+
 using namespace glm;
 
 struct Camera{
@@ -109,6 +111,7 @@ protected:
 	void cleanupFBO();
 
 	virtual void initRenderingCuda();
+	virtual void cleanupRenderingCuda();
 	virtual DeviceStatus initOpenGL(int argc, char **argv);
 	virtual void initTextures();
 	virtual void cleanupTextures();
@@ -129,14 +132,6 @@ protected:
 
 	void drawPCBtoTextures(GLuint posTexture, GLuint colTexture, GLuint normTexture);
 
-	//Compacts the valid points from the point cloud buffer into the VBO.
-	//Returns the number of valid elements
-	int fillPointCloudVBO();
-
-	void drawPointCloudVBOtoFBO(int numPoints);
-	void drawMeshVBOtoFBO(int numTriangles);
-
-	int computePCBTriangulation(float maxEdgeLength);
 
 	static void glutIdle();
 	static void glutDisplay();

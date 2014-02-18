@@ -162,24 +162,30 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <CudaCompile Include="kernel.cu" />
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="glslUtility.cpp" />
+    <ClCompile Include="MeshTracker.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MeshViewer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Device.h" />
+    <ClInclude Include="debug_rendering.h" />
     <ClInclude Include="device_structs.h" />
+    <ClInclude Include="filtering.h" />
     <ClInclude Include="glslUtility.h" />
+    <ClInclude Include="MeshTracker.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="MeshViewer.h" />
+    <ClInclude Include="normal_estimates.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\RGBDFrameworkLib\RGBDFrameworkLib.vcxproj">
       <Project>{9b00fa51-64d2-4ab4-816b-eabdd92c9f5b}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="debug_rendering.cu" />
+    <CudaCompile Include="filtering.cu" />
+    <CudaCompile Include="normal_estimates.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
