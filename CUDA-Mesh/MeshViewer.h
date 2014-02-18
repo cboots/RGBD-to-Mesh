@@ -1,6 +1,10 @@
 #pragma once
 
 
+#include "cuda_runtime.h"
+#include <GL/glew.h>
+#include <GL/glut.h>
+#include <cuda_gl_interop.h>
 #include <iostream>
 #include "RGBDDevice.h"
 #include "RGBDFrame.h"
@@ -12,6 +16,7 @@
 #include "LogDevice.h"
 #include "glm/gtc/matrix_transform.hpp"
 #include "MeshTracker.h"
+#include "debug_rendering.h"
 
 using namespace glm;
 
@@ -91,7 +96,7 @@ protected:
 	RGBDFramePtr mLatestFrame;
 	ColorPixelArray mColorArray;
 	DPixelArray mDepthArray;
-
+	timestamp mLatestTime;
 
 
 	//Open GL Init/cleanup routines
@@ -103,7 +108,7 @@ protected:
 	void initFBO();
 	void cleanupFBO();
 
-	virtual void initRenderingCuda(int xRes, int yRes, int );
+	virtual void initRenderingCuda();
 	virtual DeviceStatus initOpenGL(int argc, char **argv);
 	virtual void initTextures();
 	virtual void cleanupTextures();

@@ -77,7 +77,7 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	seconds = time (NULL);
 	fpstracker = 0;
 	fps = 0.0;
-
+	mLatestTime = 0;
 
 	resetCamera();
 }
@@ -145,15 +145,19 @@ DeviceStatus MeshViewer::init(int argc, char **argv)
 	mDevice->addNewRGBDFrameListener(this);
 	
 	//Create mesh tracker
-	mMeshTracker = new MeshTracker(mDevice->getDepthResolutionX(), mDevice->getDepthResolutionY());
-	
-	initRenderingCuda(mXRes, mYRes);
+	mMeshTracker = new MeshTracker(mXRes, mYRes);
+
+	//Init rendering cuda code
+	initRenderingCuda();
 
 	return initOpenGL(argc, argv);
 
 }
 
+void MeshViewer::initRenderingCuda()
+{
 
+}
 
 DeviceStatus MeshViewer::initOpenGL(int argc, char **argv)
 {
@@ -899,23 +903,8 @@ void MeshViewer::display()
 
 	//=====CUDA CALLS=====
 	//Push buffers
-	pushRGBDFrameToDevice
-	//Generate point cloud
-	convertToPointCloud();
+	mMeshTracker->pushRGBDFrameToDevice(localColorArray, localDepthArray, mLatestTime);
 
-	//Compute normals
-	if(mComputeNormals){
-		if(mFastNormals){
-			computePointCloudNormalsFast();
-		}else{
-			computePointCloudNormals();
-		}
-	}
-	//Stream compaction optional, prep for rendering
-	int numCompactedPoints = fillPointCloudVBO();
-
-	int numTriangles = computePCBTriangulation(mMaxTriangleEdgeLength);
-	//cout << "Num Triangles: "<<numTriangles<<endl;
 	cudaDeviceSynchronize();
 
 
@@ -958,51 +947,6 @@ void MeshViewer::display()
 		drawQuad(depth_prog, 0.5, 0, 0.5, 1, &depthTexture, 1);
 		glDisable(GL_BLEND);
 		break;
-	case DISPLAY_MODE_4WAY_PCB:
-		drawPCBtoTextures(positionTexture, colorTexture, normalTexture);
-		drawQuad(color_prog, -0.5,  0.5, 0.5, 0.5, &colorTexture, 1);//Upper Left
-		drawQuad(abs_prog, -0.5, -0.5, 0.5, 0.5, &positionTexture, 1);//Lower Left
-		drawQuad(abs_prog,  0.5,  0.5, 0.5, 0.5, &normalTexture, 1);//Upper Right
-
-		drawQuad(pcbdebug_prog, 0.5, -0.5, 0.5, 0.5, &pcbTextures[0], 3);//Lower right
-
-		break;
-	case DISPLAY_MODE_POINT_CLOUD:
-		drawPointCloudVBOtoFBO(numCompactedPoints);
-		drawQuad(color_prog, 0, 0, 1, 1, &FBOColorTexture, 1);
-		break;
-	case DISPLAY_MODE_TRIANGLE:
-		drawMeshVBOtoFBO(numTriangles);
-		drawQuad(color_prog, 0, 0, 1, 1, &FBOColorTexture, 1);
-		break;
-	case DISPLAY_MODE_COLOR_MESH_COMPARE:
-		drawColorImageBufferToTexture(colorTexture);
-		drawMeshVBOtoFBO(numTriangles);
-		drawQuad(color_prog, -0.5,  0.0, -0.5, 1.0, &colorTexture, 1);//Left side, mirror x
-		drawQuad(color_prog, 0.5, 0.0, 0.5, 1, &FBOColorTexture, 1);//Right side
-		break;
-	case DISPLAY_MODE_POINTCLOUD_MESH_COMPARE:
-
-		drawMeshVBOtoFBO(numTriangles);
-		drawQuad(color_prog, -0.5, 0.0, 0.5, 1, &FBOColorTexture, 1);//Left side
-		drawPointCloudVBOtoFBO(numCompactedPoints);
-		drawQuad(color_prog, 0.5, 0.0, 0.5, 1, &FBOColorTexture, 1);//Right side
-		break;
-	case DISPLAY_MODE_4WAY_COMPARE:
-
-		drawDepthImageBufferToTexture(depthTexture);
-		drawColorImageBufferToTexture(colorTexture);
-
-		//Inputs on top
-		drawQuad(depth_prog, -0.5,  0.5, -0.5, 0.5, &depthTexture, 1);
-		drawQuad(color_prog,  0.5,  0.5, -0.5, 0.5, &colorTexture, 1);
-
-		//Outputs on bottom
-		drawPointCloudVBOtoFBO(numCompactedPoints);
-		drawQuad(abs_prog, -0.5, -0.5, 0.5, 0.5, &FBOColorTexture, 1);//Left side
-		drawMeshVBOtoFBO(numTriangles);
-		drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, &FBOColorTexture, 1);//Right side
-		break;
 	}
 
 	glutSwapBuffers();
@@ -1024,6 +968,7 @@ void MeshViewer::onNewRGBDFrame(RGBDFramePtr frame)
 		if(mLatestFrame->hasDepth())
 		{
 			mDepthArray = mLatestFrame->getDepthArray();
+			mLatestTime = mLatestFrame->getDepthTimestamp();
 		}
 	}
 }
