@@ -78,7 +78,7 @@ __global__ void sendPCBToPBOs(float4* dptrPosition, float4* dptrColor, float4* d
 // Returns false if width or height does not match, true otherwise
 __host__ void drawDepthImageBufferToPBO(float4* dev_PBOpos, DPixel* dev_depthImageBuffer, int texWidth, int texHeight)
 {
-	int tileSize = 8;
+	int tileSize = 16;
 
 	dim3 threadsPerBlock(tileSize, tileSize);
 	dim3 fullBlocksPerGrid((int)ceil(float(texWidth)/float(tileSize)), 
@@ -94,7 +94,7 @@ __host__ void drawDepthImageBufferToPBO(float4* dev_PBOpos, DPixel* dev_depthIma
 // dev_PBOpos must be a CUDA device pointer
 __host__ void drawColorImageBufferToPBO(float4* dev_PBOpos, ColorPixel* dev_colorImageBuffer, int texWidth, int texHeight)
 {
-	int tileSize = 8;
+	int tileSize = 16;
 
 	dim3 threadsPerBlock(tileSize, tileSize);
 	dim3 fullBlocksPerGrid((int)ceil(float(texWidth)/float(tileSize)), 
@@ -110,7 +110,7 @@ __host__ void drawColorImageBufferToPBO(float4* dev_PBOpos, ColorPixel* dev_colo
 // Returns false if width or height does not match, true otherwise
 __host__ void drawPCBToPBO(float4* dptrPosition, float4* dptrColor, float4* dptrNormal, PointCloud* dev_pcb, int texWidth, int texHeight)
 {
-	int tileSize = 8;
+	int tileSize = 16;
 
 	dim3 threadsPerBlock(tileSize, tileSize);
 	dim3 fullBlocksPerGrid( (int)ceil(float(texWidth)/float(tileSize)), 

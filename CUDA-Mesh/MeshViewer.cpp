@@ -893,6 +893,7 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 
 		cleanupRenderingCuda();
 		cleanupTextures();
+		cudaDeviceReset();
 		exit (0);
 		break;
 	case '1':

@@ -62,7 +62,7 @@ void MeshTracker::pushRGBDFrameToDevice(ColorPixelArray colorArray, DPixelArray 
 
 void MeshTracker::depthToFloatNoFilter()
 {
-
+	depthBufferToFloat(dev_depthImageBuffer, dev_depthFilterIntermediateBuffer, mXRes, mYRes);
 }
 
 #pragma endregion
