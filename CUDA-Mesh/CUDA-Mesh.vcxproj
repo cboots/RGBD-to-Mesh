@@ -176,6 +176,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <ClInclude Include="main.h" />
     <ClInclude Include="MeshViewer.h" />
     <ClInclude Include="normal_estimates.h" />
+    <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\RGBDFrameworkLib\RGBDFrameworkLib.vcxproj">

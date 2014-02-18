@@ -4,6 +4,7 @@
 #include <GL/glew.h>
 #include <GL/glut.h>
 
+#pragma region GLUT Hooks
 void MeshViewer::glutIdle()
 {
 	glutPostRedisplay();
@@ -31,15 +32,16 @@ void MeshViewer::glutMouse(int button, int state, int x, int y)
 	MeshViewer::msSelf->mouse_click(button, state, x, y);
 }
 
-
-
 void MeshViewer::glutMotion(int x, int y)
 {
 	MeshViewer::msSelf->mouse_move(x, y);
 }
 
+#pragma endregion
+
 //End platform specific code
 
+#pragma region Variable definitions
 const GLuint MeshViewer::quadPositionLocation = 0;
 const GLuint MeshViewer::quadTexcoordsLocation = 1;
 const char * MeshViewer::quadAttributeLocations[] = { "Position", "Texcoords" };
@@ -59,20 +61,22 @@ const GLuint MeshViewer::PCVBO_ColorOffset = 3;
 const GLuint MeshViewer::PCVBO_NormalOffset = 6;
 
 MeshViewer* MeshViewer::msSelf = NULL;
+#pragma endregion
 
 
+#pragma region Constructors/Destructors
 MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 {
+	//Setup general modules
 	msSelf = this;
 	mDevice = device;
 	mWidth = screenwidth;
 	mHeight = screenheight;
+
+	//Setup default rendering/pipeline settings
+	mFilterMode = NO_FILTER;
 	mViewState = DISPLAY_MODE_OVERLAY;
 	hairyPoints = false;
-	mMeshWireframeMode = false;
-	mFastNormals = true;
-	mComputeNormals = false;
-	mMaxTriangleEdgeLength = 0.1;
 
 	seconds = time (NULL);
 	fpstracker = 0;
@@ -90,11 +94,49 @@ MeshViewer::~MeshViewer(void)
 		delete mMeshTracker;
 }
 
+#pragma endregion
+
+
 //Does not return;
 void MeshViewer::run()
 {
 	glutMainLoop();
 }
+
+#pragma region Helper functions
+//Framebuffer status helper function
+void checkFramebufferStatus(GLenum framebufferStatus) {
+	switch (framebufferStatus) {
+	case GL_FRAMEBUFFER_COMPLETE_EXT: break;
+	case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_EXT:
+		printf("Attachment Point Unconnected\n");
+		break;
+	case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT:
+		printf("Missing Attachment\n");
+		break;
+	case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT:
+		printf("Dimensions do not match\n");
+		break;
+	case GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT:
+		printf("Formats\n");
+		break;
+	case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER_EXT:
+		printf("Draw Buffer\n");
+		break;
+	case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT:
+		printf("Read Buffer\n");
+		break;
+	case GL_FRAMEBUFFER_UNSUPPORTED_EXT:
+		printf("Unsupported Framebuffer Configuration\n");
+		break;
+	default:
+		printf("Unkown Framebuffer Object Failure\n");
+		break;
+	}
+}
+#pragma endregion
+
+#pragma region Init/Cleanup Functions
 
 DeviceStatus MeshViewer::init(int argc, char **argv)
 {
@@ -197,8 +239,6 @@ DeviceStatus MeshViewer::initOpenGL(int argc, char **argv)
 	return DEVICESTATUS_OK;
 }
 
-
-
 void MeshViewer::initOpenGLHooks()
 {
 	glutKeyboardFunc(glutKeyboard);
@@ -208,7 +248,6 @@ void MeshViewer::initOpenGLHooks()
 	glutMouseFunc(glutMouse);
 	glutMotionFunc(glutMotion);
 }
-
 
 void MeshViewer::initShader()
 {
@@ -243,7 +282,6 @@ void MeshViewer::initShader()
 
 	triangle_prog = glslUtility::createProgram(triangle_vert, NULL, triangle_frag, vboAttributeLocations, 3);
 }
-
 
 void MeshViewer::initTextures()
 {
@@ -306,7 +344,6 @@ void MeshViewer::initTextures()
 
 }
 
-
 void MeshViewer::cleanupTextures()
 {
 	//Image space textures
@@ -316,39 +353,6 @@ void MeshViewer::cleanupTextures()
 	glDeleteTextures(1, &normalTexture);
 
 }
-
-
-void checkFramebufferStatus(GLenum framebufferStatus) {
-	switch (framebufferStatus) {
-	case GL_FRAMEBUFFER_COMPLETE_EXT: break;
-	case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_EXT:
-		printf("Attachment Point Unconnected\n");
-		break;
-	case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT:
-		printf("Missing Attachment\n");
-		break;
-	case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT:
-		printf("Dimensions do not match\n");
-		break;
-	case GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT:
-		printf("Formats\n");
-		break;
-	case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER_EXT:
-		printf("Draw Buffer\n");
-		break;
-	case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT:
-		printf("Read Buffer\n");
-		break;
-	case GL_FRAMEBUFFER_UNSUPPORTED_EXT:
-		printf("Unsupported Framebuffer Configuration\n");
-		break;
-	default:
-		printf("Unkown Framebuffer Object Failure\n");
-		break;
-	}
-}
-
-
 
 void MeshViewer::initFBO()
 {
@@ -423,7 +427,6 @@ void MeshViewer::cleanupFBO()
 	glDeleteFramebuffers(1,&fullscreenFBO);
 }
 
-
 void MeshViewer::initPBO()
 {
 	// Generate a buffer ID called a PBO (Pixel Buffer Object)
@@ -469,7 +472,6 @@ void MeshViewer::initPBO()
 	glBufferData(GL_PIXEL_UNPACK_BUFFER, size_tex_data, NULL, GL_DYNAMIC_COPY);
 	cudaGLRegisterBufferObject( imagePBO2);
 }
-
 
 void MeshViewer::initFullScreenPBO()
 {
@@ -554,8 +556,6 @@ void MeshViewer::initPointCloudVBO()
 	delete[] bodies;
 }
 
-
-
 void MeshViewer::initQuad() {
 	vertex2_t verts [] = { {vec3(-1,1,0),vec2(0,0)},
 	{vec3(-1,-1,0),vec2(0,1)},
@@ -593,6 +593,9 @@ void MeshViewer::initQuad() {
 }
 
 
+#pragma endregion
+
+#pragma region Rendering Helper Functions
 //Normalized device coordinates (-1 : 1, -1 : 1) center of viewport, and scale being 
 void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale, float heightScale, GLuint* textures, int numTextures)
 {
@@ -665,9 +668,6 @@ void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale,
 
 	glBindVertexArray(0);
 }
-
-
-
 
 bool MeshViewer::drawColorImageBufferToTexture(GLuint texture)
 {
@@ -749,7 +749,39 @@ void MeshViewer::drawPCBtoTextures(GLuint posTexture, GLuint colTexture, GLuint 
 
 }
 
-////All the important runtime stuff happens here:
+void MeshViewer::resetCamera()
+{
+	mCamera.eye = vec3(0.0f);
+	mCamera.view = vec3(0.0f, 0.0f, -1.0f);
+	mCamera.up = vec3(0.0f, 1.0f, 0.0f);
+	mCamera.fovy = 23.5f;
+	mCamera.zFar = 100.0f;
+	mCamera.zNear = 0.01;
+}
+
+#pragma endregion
+
+#pragma region Event Handlers
+void MeshViewer::onNewRGBDFrame(RGBDFramePtr frame)
+{
+	mLatestFrame = frame;
+	if(mLatestFrame != NULL)
+	{
+		if(mLatestFrame->hasColor())
+		{
+			mColorArray = mLatestFrame->getColorArray();
+		}
+
+		if(mLatestFrame->hasDepth())
+		{
+			mDepthArray = mLatestFrame->getDepthArray();
+			mLatestTime = mLatestFrame->getDepthTimestamp();
+		}
+	}
+}
+
+#pragma endregion
+
 void MeshViewer::display()
 {
 	//Grab local copy of latest frames
@@ -838,25 +870,8 @@ void MeshViewer::display()
 
 }
 
-
-
-void MeshViewer::onNewRGBDFrame(RGBDFramePtr frame)
-{
-	mLatestFrame = frame;
-	if(mLatestFrame != NULL)
-	{
-		if(mLatestFrame->hasColor())
-		{
-			mColorArray = mLatestFrame->getColorArray();
-		}
-
-		if(mLatestFrame->hasDepth())
-		{
-			mDepthArray = mLatestFrame->getDepthArray();
-			mLatestTime = mLatestFrame->getDepthTimestamp();
-		}
-	}
-}
+#pragma region OpenGL Callbacks
+////All the important runtime stuff happens here:
 
 void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 {
@@ -891,24 +906,6 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		break;
 	case '4':
 		mViewState = DISPLAY_MODE_3WAY_DEPTH_IMAGE_OVERLAY;
-		break;
-	case '5':
-		mViewState = DISPLAY_MODE_4WAY_PCB;
-		break;
-	case '6':
-		mViewState = DISPLAY_MODE_POINT_CLOUD;
-		break;
-	case '7':
-		mViewState = DISPLAY_MODE_TRIANGLE;
-		break;
-	case '8':
-		mViewState = DISPLAY_MODE_COLOR_MESH_COMPARE;
-		break;
-	case '9':
-		mViewState = DISPLAY_MODE_POINTCLOUD_MESH_COMPARE;
-		break;
-	case '0':
-		mViewState = DISPLAY_MODE_4WAY_COMPARE;
 		break;
 	case('r'):
 		cout << "Reloading Shaders" <<endl;
@@ -1010,45 +1007,9 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		hairyPoints = !hairyPoints;
 		cout << "Toggle normal hairs" << endl;
 		break;
-	case 'M':
-		mMaxTriangleEdgeLength += 10*edgeLengthStep;
-		cout << "Triangle Max Edge Length (mm): " << mMaxTriangleEdgeLength << endl;
-		break;
-	case 'm':
-		mMaxTriangleEdgeLength += edgeLengthStep;
-		cout << "Triangle Max Edge Length (mm): " << mMaxTriangleEdgeLength << endl;
-		break;
-
-	case 'N':
-		if(mMaxTriangleEdgeLength > 10*edgeLengthStep)
-		{
-			mMaxTriangleEdgeLength -= 10*edgeLengthStep;
-		}
-		cout << "Triangle Max Edge Length (mm): " << mMaxTriangleEdgeLength << endl;
-		break;
-	case 'n':
-		if(mMaxTriangleEdgeLength > edgeLengthStep)
-		{
-			mMaxTriangleEdgeLength -= edgeLengthStep;
-		}
-		cout << "Triangle Max Edge Length (mm): " << mMaxTriangleEdgeLength << endl;
-		break;
-	case 'v':
-		mMeshWireframeMode = !mMeshWireframeMode;
-		cout << "Toggle wireframe mode" << endl;
-		break;
-	case 'b':
-		mFastNormals = !mFastNormals;
-		cout << "Fast normals " << (mFastNormals?"On":"Off") << endl;
-		break;
-	case 'B':
-		mComputeNormals = !mComputeNormals;
-		cout << "Normal Computation " << (mComputeNormals?"On":"Off") << endl;
-		break;
 	}
 
 }
-
 
 void MeshViewer::reshape(int w, int h)
 {
@@ -1067,18 +1028,7 @@ void MeshViewer::reshape(int w, int h)
 }
 
 
-
-void MeshViewer::resetCamera()
-{
-	mCamera.eye = vec3(0.0f);
-	mCamera.view = vec3(0.0f, 0.0f, -1.0f);
-	mCamera.up = vec3(0.0f, 1.0f, 0.0f);
-	mCamera.fovy = 23.5f;
-	mCamera.zFar = 100.0f;
-	mCamera.zNear = 0.01;
-}
-
-
+#pragma region OpenGL Mouse Callbacks
 
 //MOUSE STUFF
 void MeshViewer::mouse_click(int button, int state, int x, int y) {
@@ -1123,3 +1073,7 @@ void MeshViewer::mouse_move(int x, int y) {
 		drag_y_last = y;
 	}
 }
+
+#pragma endregion
+
+#pragma endregion

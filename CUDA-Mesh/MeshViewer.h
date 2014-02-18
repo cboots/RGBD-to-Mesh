@@ -1,20 +1,27 @@
 #pragma once
 
+//Generic includes
+#include "Utils.h"
 
+//CUDA GL Includes
 #include "cuda_runtime.h"
 #include <GL/glew.h>
 #include <GL/glut.h>
 #include <cuda_gl_interop.h>
+#include "glslUtility.h"
+#include "glm/gtc/matrix_transform.hpp"
+
+//IO Includes
 #include <iostream>
+#include "FileUtils.h"
+#include "FrameLogger.h"
+#include "LogDevice.h"
+
+//RGBD Framework includes, device code, and mesh tracking modules
+#include "device_structs.h"
 #include "RGBDDevice.h"
 #include "RGBDFrame.h"
 #include "RGBDFrameFactory.h"
-#include "FileUtils.h"
-#include "FrameLogger.h"
-#include "device_structs.h"
-#include "glslUtility.h"
-#include "LogDevice.h"
-#include "glm/gtc/matrix_transform.hpp"
 #include "MeshTracker.h"
 #include "debug_rendering.h"
 
@@ -96,6 +103,11 @@ private:
 	float fps;
 #pragma endregion
 
+#pragma region Pipeline Options
+	FilterMode mFilterMode;
+
+#pragma endregion
+
 	//======Rendering options=======
 #pragma region Rendering Options
 	//Virtual Camera controls and parameters
@@ -103,7 +115,6 @@ private:
 	DisplayModes mViewState;
 	bool hairyPoints;
 #pragma endregion
-
 
 	//===========Open GL stuff==============
 #pragma region Quad Attributes
@@ -130,7 +141,6 @@ private:
 	static const GLuint PCVBO_ColorOffset;
 	static const GLuint PCVBO_NormalOffset;
 #pragma endregion
-
 
 	//=========Rendering Variables==========
 #pragma region Shader Programs
@@ -160,7 +170,6 @@ private:
 	GLuint fullscreenFBO;
 #pragma endregion
 
-
 #pragma region Textures
 	//Textures
 	//Image space textures
@@ -173,8 +182,6 @@ private:
 	GLuint FBOColorTexture;
 	GLuint FBODepthTexture;
 #pragma endregion
-
-
 
 #pragma endregion
 
