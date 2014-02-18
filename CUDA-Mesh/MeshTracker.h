@@ -4,6 +4,14 @@
 #include "cuda_runtime.h"
 
 using namespace rgbd::framework;
+
+enum FilterMode
+{
+	BILATERAL_FILTER,
+	GAUSSIAN_FILTER,
+	NO_FILTER
+};
+
 class MeshTracker
 {
 private:

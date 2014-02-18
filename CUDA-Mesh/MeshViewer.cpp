@@ -772,12 +772,26 @@ void MeshViewer::display()
 
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	//=====CUDA CALLS=====
+	//=====Tracker Pipeline=====
 	//Push buffers
 	mMeshTracker->pushRGBDFrameToDevice(localColorArray, localDepthArray, mLatestTime);
 
 	cudaDeviceSynchronize();
 
+	switch(mFilterMode)
+	{
+	case BILATERAL_FILTER:
+
+		break;
+	case GAUSSIAN_FILTER:
+
+		break;
+	case NO_FILTER:
+	default:
+
+		break;
+
+	}
 
 	//=====RENDERING======
 
