@@ -25,6 +25,7 @@ private:
 #pragma region Configuration Variables
 	int mXRes;
 	int mYRes;
+	Intrinsics mIntr;
 #pragma region
 
 #pragma region Pipeline Buffer Device Pointers
@@ -44,7 +45,7 @@ private:
 public:
 
 #pragma region Ctor/Dtor
-	MeshTracker(int xResolution, int yResolution);
+	MeshTracker(int xResolution, int yResolution, Intrinsics intr);
 	~MeshTracker(void);
 #pragma endregion
 
@@ -56,6 +57,7 @@ public:
 
 	void depthToFloatNoFilter();
 
+	void assemblePointCloud(float maxDepth);
 #pragma endregion
 
 #pragma region Buffer getters

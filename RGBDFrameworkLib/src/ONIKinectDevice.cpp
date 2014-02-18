@@ -31,6 +31,7 @@ namespace rgbd
 				OpenNI::addDeviceConnectedListener(this);
 				OpenNI::addDeviceDisconnectedListener(this);
 				OpenNI::addDeviceStateChangedListener(this);
+				
 				return DEVICESTATUS_OK;
 			}
 		}
@@ -38,6 +39,7 @@ namespace rgbd
 		DeviceStatus ONIKinectDevice::connect(void)
 		{
 			Status rc = mDevice.open(ANY_DEVICE);
+			
 			if (rc != STATUS_OK)
 			{
 				std::ostringstream out; 

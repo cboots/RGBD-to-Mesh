@@ -70,5 +70,8 @@
     <ClInclude Include="include\lz4.h">
       <Filter>LZ4</Filter>
     </ClInclude>
+    <ClInclude Include="include\Calibration.h">
+      <Filter>Include</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -7,7 +7,7 @@
 #include "glm/gtc/constants.hpp"
 
 
-typedef struct
+typedef struct PointCloud
 {
 	// Point location
 	glm::vec3 pos;
@@ -15,6 +15,7 @@ typedef struct
 	glm::vec3 color;
 	// Normalized point normal vector
 	glm::vec3 normal;
+	
 } PointCloud;
 
 

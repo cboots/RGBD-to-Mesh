@@ -1,5 +1,6 @@
 #pragma once
 #include "RGBDFrame.h"
+#include "Calibration.h"
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -28,6 +29,8 @@ namespace rgbd
 			DEVICESTATUS_NO_DEVICE = 6,
 			DEVICESTATUS_TIME_OUT = 102,
 		} DeviceStatus;
+
+
 
 		class RGBDDevice
 		{
@@ -97,6 +100,9 @@ namespace rgbd
 			//Override to implement
 			inline virtual bool getSyncColorAndDepth() {return false;}
 			inline virtual bool setSyncColorAndDepth(bool) {return false;}
+
+			inline virtual Intrinsics getColorIntrinsics() {return Intrinsics();}
+			inline virtual Intrinsics getDepthIntrinsics() {return Intrinsics();}
 
 
 			virtual int getDepthResolutionX() = 0;

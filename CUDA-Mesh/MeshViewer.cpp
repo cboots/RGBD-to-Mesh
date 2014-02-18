@@ -188,7 +188,7 @@ DeviceStatus MeshViewer::init(int argc, char **argv)
 	mDevice->addNewRGBDFrameListener(this);
 
 	//Create mesh tracker
-	mMeshTracker = new MeshTracker(mXRes, mYRes);
+	mMeshTracker = new MeshTracker(mXRes, mYRes, mDevice->getColorIntrinsics());
 
 	//Init rendering cuda code
 	initRenderingCuda();

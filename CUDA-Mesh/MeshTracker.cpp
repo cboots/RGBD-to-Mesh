@@ -2,10 +2,11 @@
 
 #pragma region Ctor/Dtor
 
-MeshTracker::MeshTracker(int xResolution, int yResolution)
+MeshTracker::MeshTracker(int xResolution, int yResolution, Intrinsics intr)
 {
 	mXRes = xResolution;
 	mYRes = yResolution;
+	mIntr = intr;
 
 	initCudaBuffers(mXRes, mYRes);
 
@@ -63,6 +64,13 @@ void MeshTracker::pushRGBDFrameToDevice(ColorPixelArray colorArray, DPixelArray 
 void MeshTracker::depthToFloatNoFilter()
 {
 	depthBufferToFloat(dev_depthImageBuffer, dev_depthFilterIntermediateBuffer, mXRes, mYRes);
+}
+
+
+void MeshTracker::assemblePointCloud(float maxDepth)
+{
+	convertToPointCloud(dev_depthFilterIntermediateBuffer, dev_colorImageBuffer, dev_pointCloudBuffer,
+								  mXRes, mYRes, mIntr, maxDepth);
 }
 
 #pragma endregion

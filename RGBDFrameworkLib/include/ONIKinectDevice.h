@@ -104,6 +104,10 @@ namespace rgbd
 			bool getSyncColorAndDepth() override {return mSyncDepthAndColor;}
 			bool setSyncColorAndDepth(bool sync) override { mSyncDepthAndColor = sync; return true;}
 
+			inline virtual Intrinsics getColorIntrinsics() 
+				{return Intrinsics(526.37013657, 526.37013657, 313.68782938, 259.01834898);}
+			inline virtual Intrinsics getDepthIntrinsics() 
+				{return Intrinsics(585.05108211, 585.05108211, 315.83800193, 242.94140713);}
 
 			//Event handlers
 			void onDeviceStateChanged(const DeviceInfo* pInfo, DeviceState state);

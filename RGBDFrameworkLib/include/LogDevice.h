@@ -138,6 +138,13 @@ namespace rgbd
 			bool isDepthStreamValid() override;
 			bool isColorStreamValid() override;
 
+			//TODO: Save and load intrinsics. Default to kinect until logs use the data
+			inline virtual Intrinsics getColorIntrinsics() 
+				{return Intrinsics(526.37013657, 526.37013657, 313.68782938, 259.01834898);}
+
+			inline virtual Intrinsics getDepthIntrinsics() 
+				{return Intrinsics(585.05108211, 585.05108211, 315.83800193, 242.94140713);}
+
 			//If set to true, whenever either stream reaches the end of the loop the playback will restart from the beginning.
 			inline void setLoopStreams(bool loop) {mLoopStreams = loop;}
 			inline bool getLoopStreams(){return mLoopStreams;}

@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\Calibration.h" />
     <ClInclude Include="include\FileUtils.h" />
     <ClInclude Include="include\FrameLogger.h" />
     <ClInclude Include="include\LogDevice.h" />

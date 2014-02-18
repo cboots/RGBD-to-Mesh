@@ -1,11 +1,15 @@
 #pragma once
 
 #include "cuda_runtime.h"
-#include "RGBDFrame.h"
 #include "device_structs.h"
+#include "RGBDFrame.h"
+#include "Calibration.h"
 #include <glm/glm.hpp>
 
-using namespace rgbd::framework;
 
 
-__host__ void depthBufferToFloat(DPixel* dev_depthBuffer, float* dev_depthFloat, int xRes, int yRes);
+__host__ void depthBufferToFloat(rgbd::framework::DPixel* dev_depthBuffer, float* dev_depthFloat, int xRes, int yRes);
+
+__host__ void convertToPointCloud(float* dev_depthBuffer, rgbd::framework::ColorPixel* dev_colorPixels, 
+								  PointCloud* dev_pointCloudBuffer,
+								  int xRes, int yRes, rgbd::framework::Intrinsics intr, float maxDepth);
