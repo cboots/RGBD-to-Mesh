@@ -8,7 +8,6 @@
 #include "FileUtils.h"
 #include "FrameLogger.h"
 #include "device_structs.h"
-#include "kernel.h"
 #include "glslUtility.h"
 #include "LogDevice.h"
 #include "glm/gtc/matrix_transform.hpp"
@@ -104,7 +103,7 @@ protected:
 	void initFBO();
 	void cleanupFBO();
 
-
+	virtual void initRenderingCuda(int xRes, int yRes, int );
 	virtual DeviceStatus initOpenGL(int argc, char **argv);
 	virtual void initTextures();
 	virtual void cleanupTextures();

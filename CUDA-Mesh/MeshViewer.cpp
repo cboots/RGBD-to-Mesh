@@ -78,7 +78,6 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	fpstracker = 0;
 	fps = 0.0;
 
-	mMeshTracker = new MeshTracker(device->getDepthResolutionX(), device->getDepthResolutionY());
 
 	resetCamera();
 }
@@ -144,7 +143,11 @@ DeviceStatus MeshViewer::init(int argc, char **argv)
 
 	//Register frame listener
 	mDevice->addNewRGBDFrameListener(this);
-	initCuda(mXRes, mYRes);
+	
+	//Create mesh tracker
+	mMeshTracker = new MeshTracker(mDevice->getDepthResolutionX(), mDevice->getDepthResolutionY());
+	
+	initRenderingCuda(mXRes, mYRes);
 
 	return initOpenGL(argc, argv);
 
