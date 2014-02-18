@@ -820,7 +820,7 @@ void MeshViewer::display()
 		break;
 	case NO_FILTER:
 	default:
-
+		mMeshTracker->depthToFloatNoFilter();
 		break;
 
 	}
