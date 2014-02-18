@@ -82,6 +82,7 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	fpstracker = 0;
 	fps = 0.0;
 	mLatestTime = 0;
+	mLastSubmittedTime = 0;
 
 	resetCamera();
 }
@@ -784,10 +785,6 @@ void MeshViewer::onNewRGBDFrame(RGBDFramePtr frame)
 
 void MeshViewer::display()
 {
-	//Grab local copy of latest frames
-	ColorPixelArray localColorArray = mColorArray;
-	DPixelArray localDepthArray = mDepthArray;
-
 	//Update frame counter
 	time_t seconds2 = time (NULL);
 
@@ -805,28 +802,48 @@ void MeshViewer::display()
 	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	//=====Tracker Pipeline=====
-	//Push buffers
-	mMeshTracker->pushRGBDFrameToDevice(localColorArray, localDepthArray, mLatestTime);
-
-	cudaDeviceSynchronize();
-
-	switch(mFilterMode)
+	//Check if log playback has restarted (special edge case)
+	if(mLastSubmittedTime > mLatestTime){
+		//Maybe stream has restarted playback?
+		cout << "Reseting tracking, because timestamp" << endl;
+		mMeshTracker->resetTracker();
+		mLastSubmittedTime = 0;
+	}
+	
+	//Check if we have a new frame
+	if(mLatestTime > mLastSubmittedTime)
 	{
-	case BILATERAL_FILTER:
+		//Now we have new data, so run pipeline
+		mLastSubmittedTime = mLatestTime;
 
-		break;
-	case GAUSSIAN_FILTER:
+		//Grab local copy of latest frames
+		ColorPixelArray localColorArray = mColorArray;
+		DPixelArray localDepthArray = mDepthArray;
 
-		break;
-	case NO_FILTER:
-	default:
-		mMeshTracker->depthToFloatNoFilter();
-		break;
 
+		//Push buffers
+		mMeshTracker->pushRGBDFrameToDevice(localColorArray, localDepthArray, mLatestTime);
+
+		cudaDeviceSynchronize();
+
+		switch(mFilterMode)
+		{
+		case BILATERAL_FILTER:
+
+			break;
+		case GAUSSIAN_FILTER:
+
+			break;
+		case NO_FILTER:
+		default:
+			mMeshTracker->depthToFloatNoFilter();
+			break;
+
+		}
 	}
 
-	//=====RENDERING======
 
+	//=====RENDERING======
 	GLuint pcbTextures[] = { positionTexture, colorTexture, normalTexture};
 	switch(mViewState)
 	{

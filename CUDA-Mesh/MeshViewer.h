@@ -96,7 +96,7 @@ private:
 	ColorPixelArray mColorArray;
 	DPixelArray mDepthArray;
 	timestamp mLatestTime;
-
+	timestamp mLastSubmittedTime;
 	//FPS Tracking
 	time_t seconds;
 	int fpstracker;
