@@ -68,6 +68,10 @@ public:
 #pragma region Buffer getters
 	inline ColorPixel* getColorImageDevicePtr() { return dev_colorImageBuffer;}
 	inline DPixel* getDepthImageDevicePtr() { return dev_depthImageBuffer;}
+	inline VMapSOA getVMapPyramid() { return dev_vmapSOA;}
+	inline NMapSOA getNMapPyramid() { return dev_nmapSOA;}
+	inline RGBMapSOA getRGBMapSOA() { return dev_rgbSOA;}
+
 #pragma endregion
 };
 
