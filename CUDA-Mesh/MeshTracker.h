@@ -6,8 +6,6 @@
 
 using namespace rgbd::framework;
 
-#define NUM_PYRAMID_LEVELS 3
-
 
 enum FilterMode
 {
@@ -59,9 +57,12 @@ public:
 
 	void pushRGBDFrameToDevice(ColorPixelArray colorArray, DPixelArray depthArray, timestamp time);
 
-	void depthToFloatNoFilter();
+	void buildRGBSOA();
 
-	void assemblePointCloud(float maxDepth);
+	void buildVMapNoFilter(float maxDepth);
+	void buildVMapGaussianFilter(float maxDepth, float sigma);
+	void buildVMapBilateralFilter(float maxDepth, float sigma_s, float sigma_t);
+
 #pragma endregion
 
 #pragma region Buffer getters

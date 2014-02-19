@@ -8,7 +8,12 @@
 
 
 
-__host__ void depthBufferToFloat(rgbd::framework::DPixel* dev_depthBuffer, float* dev_depthFloat, int xRes, int yRes);
+__host__ void buildVMapNoFilterCUDA(rgbd::framework::DPixel* dev_depthBuffer, VMapSOA vmapSOA, int xRes, int yRes, 
+									rgbd::framework::Intrinsics intr, float maxDepth);
 
-__host__ void rgbAOSToSOA(rgbd::framework::ColorPixel* dev_colorPixels, 
+
+__host__ void rgbAOSToSOACUDA(rgbd::framework::ColorPixel* dev_colorPixels, 
 						  RGBMapSOA rgbSOA, int xRes, int yRes);
+
+
+__host__ void buildVMapPyramidCUDA(VMapSOA dev_vmapSOA, int xRes, int yRes, int numLevels);

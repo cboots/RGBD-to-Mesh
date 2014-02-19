@@ -36,28 +36,28 @@ void MeshTracker::initCudaBuffers(int xRes, int yRes)
 
 
 	//Vertex Map Pyramid SOA. 
-	cudaMalloc((void**) &dev_vmapSOA.x[0], sizeof(float)*3*(pixCount + pixCount>>2 + pixCount>>4));
+	cudaMalloc((void**) &dev_vmapSOA.x[0], sizeof(float)*3*(pixCount + (pixCount>>2) + (pixCount>>4)));
 	//Get convenience pointer offsets
 	dev_vmapSOA.x[1] = dev_vmapSOA.x[0] + pixCount;
-	dev_vmapSOA.x[2] = dev_vmapSOA.x[1] + pixCount >> 2;
-	dev_vmapSOA.y[0] = dev_vmapSOA.x[2] + pixCount >> 4;
+	dev_vmapSOA.x[2] = dev_vmapSOA.x[1] + (pixCount >> 2);
+	dev_vmapSOA.y[0] = dev_vmapSOA.x[2] + (pixCount >> 4);
 	dev_vmapSOA.y[1] = dev_vmapSOA.x[0] + pixCount;
-	dev_vmapSOA.y[2] = dev_vmapSOA.y[1] + pixCount >> 2;
-	dev_vmapSOA.z[0] = dev_vmapSOA.y[2] + pixCount >> 4;
+	dev_vmapSOA.y[2] = dev_vmapSOA.y[1] + (pixCount >> 2);
+	dev_vmapSOA.z[0] = dev_vmapSOA.y[2] + (pixCount >> 4);
 	dev_vmapSOA.z[1] = dev_vmapSOA.z[0] + pixCount;
-	dev_vmapSOA.z[2] = dev_vmapSOA.z[1] + pixCount >> 2;
+	dev_vmapSOA.z[2] = dev_vmapSOA.z[1] + (pixCount >> 2);
 
 	//Normal Map Pyramid SOA. 
-	cudaMalloc((void**) &dev_nmapSOA.x[0], sizeof(float)*3*(pixCount + pixCount>>2 + pixCount>>4));
+	cudaMalloc((void**) &dev_nmapSOA.x[0], sizeof(float)*3*(pixCount + (pixCount>>2) + (pixCount>>4)));
 	//Get convenience pointer offsets
 	dev_nmapSOA.x[1] = dev_nmapSOA.x[0] + pixCount;
-	dev_nmapSOA.x[2] = dev_nmapSOA.x[1] + pixCount >> 2;
-	dev_nmapSOA.y[0] = dev_nmapSOA.x[2] + pixCount >> 4;
+	dev_nmapSOA.x[2] = dev_nmapSOA.x[1] + (pixCount >> 2);
+	dev_nmapSOA.y[0] = dev_nmapSOA.x[2] + (pixCount >> 4);
 	dev_nmapSOA.y[1] = dev_nmapSOA.x[0] + pixCount;
-	dev_nmapSOA.y[2] = dev_nmapSOA.y[1] + pixCount >> 2;
-	dev_nmapSOA.z[0] = dev_nmapSOA.y[2] + pixCount >> 4;
+	dev_nmapSOA.y[2] = dev_nmapSOA.y[1] + (pixCount >> 2);
+	dev_nmapSOA.z[0] = dev_nmapSOA.y[2] + (pixCount >> 4);
 	dev_nmapSOA.z[1] = dev_nmapSOA.z[0] + pixCount;
-	dev_nmapSOA.z[2] = dev_nmapSOA.z[1] + pixCount >> 2;
+	dev_nmapSOA.z[2] = dev_nmapSOA.z[1] + (pixCount >> 2);
 
 
 
@@ -67,9 +67,9 @@ void MeshTracker::cleanupCuda()
 {
 	cudaFree(dev_colorImageBuffer);
 	cudaFree(dev_depthImageBuffer);
-	cudaFree(dev_rgbmapSOA);
-	cudaFree(dev_vmapSOA);
-	cudaFree(dev_nmapSOA);
+	cudaFree(dev_rgbSOA.r);
+	cudaFree(dev_vmapSOA.x[0]);
+	cudaFree(dev_nmapSOA.x[0]);
 }
 #pragma endregion
 
@@ -83,7 +83,7 @@ void MeshTracker::resetTracker()
 
 }
 
-
+#pragma region Preprocessing
 void MeshTracker::pushRGBDFrameToDevice(ColorPixelArray colorArray, DPixelArray depthArray, timestamp time)
 {
 	lastFrameTime = currentFrameTime;
@@ -95,16 +95,30 @@ void MeshTracker::pushRGBDFrameToDevice(ColorPixelArray colorArray, DPixelArray 
 }
 
 
-void MeshTracker::depthToFloatNoFilter()
+
+void MeshTracker::buildRGBSOA()
 {
-	depthBufferToFloat(dev_depthImageBuffer, dev_depthFilterIntermediateBuffer, mXRes, mYRes);
+	rgbAOSToSOACUDA(dev_colorImageBuffer, dev_rgbSOA, mXRes, mYRes);
 }
 
-
-void MeshTracker::assemblePointCloud(float maxDepth)
+void MeshTracker::buildVMapNoFilter(float maxDepth)
 {
-	convertToPointCloud(dev_depthFilterIntermediateBuffer, dev_colorImageBuffer, dev_pointCloudBuffer,
-								  mXRes, mYRes, mIntr, maxDepth);
+	buildVMapNoFilterCUDA(dev_depthImageBuffer, dev_vmapSOA, mXRes, mYRes, mIntr, maxDepth);
+
+	buildVMapPyramidCUDA(dev_vmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
 }
+
+void MeshTracker::buildVMapGaussianFilter(float maxDepth, float sigma)
+{
+	//TODO: Implement
+	
+}
+
+void MeshTracker::buildVMapBilateralFilter(float maxDepth, float sigma_s, float sigma_t)
+{
+	//TODO: Implement
+}
+
+#pragma endregion
 
 #pragma endregion

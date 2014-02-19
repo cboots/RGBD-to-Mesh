@@ -6,6 +6,8 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/constants.hpp"
 
+#define NUM_PYRAMID_LEVELS 3
+
 struct RGBMapSOA{
 	float* r;
 	float* g;

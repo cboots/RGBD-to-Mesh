@@ -506,7 +506,7 @@ void MeshViewer::initPointCloudVBO()
 
 	//Max num elements
 	int max_elements = mWidth*mHeight;
-	int size_buf_data = sizeof(PointCloud) * max_elements;
+	int size_buf_data = sizeof(float) * 9 * max_elements;
 
 	//Fill with data
 	GLfloat *bodies    = new GLfloat[size_buf_data];
@@ -717,12 +717,12 @@ void MeshViewer::drawPCBtoTextures(GLuint posTexture, GLuint colTexture, GLuint 
 	cudaGLMapBufferObject((void**)&dptrColor, imagePBO1);
 	cudaGLMapBufferObject((void**)&dptrNormal, imagePBO2);
 
-	drawPCBToPBO(dptrPosition, dptrColor, dptrNormal, mMeshTracker->getPCBDevicePtr(), mXRes, mYRes);
+	//drawPCBToPBO(dptrPosition, dptrColor, dptrNormal, mMeshTracker->getPCBDevicePtr(), mXRes, mYRes);
 
 	cudaGLUnmapBufferObject(imagePBO0);
 	cudaGLUnmapBufferObject(imagePBO1);
 	cudaGLUnmapBufferObject(imagePBO2);
-
+	/*
 	//Unpack to textures
 	glActiveTexture(GL_TEXTURE12);
 	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO2);
@@ -747,7 +747,7 @@ void MeshViewer::drawPCBtoTextures(GLuint posTexture, GLuint colTexture, GLuint 
 	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glActiveTexture(GL_TEXTURE0);
-
+	*/
 }
 
 void MeshViewer::resetCamera()
@@ -826,6 +826,8 @@ void MeshViewer::display()
 
 		cudaDeviceSynchronize();
 
+		mMeshTracker->buildRGBSOA();
+
 		switch(mFilterMode)
 		{
 		case BILATERAL_FILTER:
@@ -836,12 +838,11 @@ void MeshViewer::display()
 			break;
 		case NO_FILTER:
 		default:
-			mMeshTracker->depthToFloatNoFilter();
+			mMeshTracker->buildVMapNoFilter(10.0f);
 			break;
 
 		}
 
-		mMeshTracker->assemblePointCloud(10.0f);
 		
 	}
 

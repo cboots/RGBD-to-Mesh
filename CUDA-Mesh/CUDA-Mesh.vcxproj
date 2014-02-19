@@ -168,7 +168,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cuda\debug_rendering.h" />
-    <ClInclude Include="cuda\filtering.h" />
+    <ClInclude Include="cuda\preprocessing.h" />
     <ClInclude Include="cuda\normal_estimates.h" />
     <ClInclude Include="device_structs.h" />
     <ClInclude Include="glslUtility.h" />
@@ -184,7 +184,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="cuda\debug_rendering.cu" />
-    <CudaCompile Include="cuda\filtering.cu" />
+    <CudaCompile Include="cuda\preprocessing.cu" />
     <CudaCompile Include="cuda\normal_estimates.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
