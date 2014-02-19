@@ -2,9 +2,12 @@
 #include "RGBDFrame.h"
 #include "device_structs.h"
 #include "cuda_runtime.h"
-#include "filtering.h"
+#include "preprocessing.h"
 
 using namespace rgbd::framework;
+
+#define NUM_PYRAMID_LEVELS 3
+
 
 enum FilterMode
 {
@@ -32,9 +35,10 @@ private:
 	//PIPELINE BUFFERS
 	ColorPixel* dev_colorImageBuffer;
 	DPixel* dev_depthImageBuffer;
-	float* dev_depthFilterIntermediateBuffer;
 
-	PointCloud* dev_pointCloudBuffer;
+	RGBMapSOA dev_rgbSOA;
+	VMapSOA dev_vmapSOA;
+	NMapSOA dev_nmapSOA;
 #pragma region
 	
 #pragma region Private Methods
@@ -61,7 +65,6 @@ public:
 #pragma endregion
 
 #pragma region Buffer getters
-	inline PointCloud* getPCBDevicePtr() { return dev_pointCloudBuffer;}
 	inline ColorPixel* getColorImageDevicePtr() { return dev_colorImageBuffer;}
 	inline DPixel* getDepthImageDevicePtr() { return dev_depthImageBuffer;}
 #pragma endregion

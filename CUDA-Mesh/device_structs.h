@@ -6,17 +6,24 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/constants.hpp"
 
+struct RGBMapSOA{
+	float* r;
+	float* g;
+	float* b;
+};
 
-typedef struct PointCloud
-{
-	// Point location
-	glm::vec3 pos;
-	// RGB point color
-	glm::vec3 color;
-	// Normalized point normal vector
-	glm::vec3 normal;
-	
-} PointCloud;
+
+struct VMapSOA{
+	float* x[NUM_PYRAMID_LEVELS];
+	float* y[NUM_PYRAMID_LEVELS];
+	float* z[NUM_PYRAMID_LEVELS];
+};
+
+struct NMapSOA{
+	float* x[NUM_PYRAMID_LEVELS];
+	float* y[NUM_PYRAMID_LEVELS];
+	float* z[NUM_PYRAMID_LEVELS];
+};
 
 
 typedef struct

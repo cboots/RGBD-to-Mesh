@@ -10,6 +10,5 @@
 
 __host__ void depthBufferToFloat(rgbd::framework::DPixel* dev_depthBuffer, float* dev_depthFloat, int xRes, int yRes);
 
-__host__ void convertToPointCloud(float* dev_depthBuffer, rgbd::framework::ColorPixel* dev_colorPixels, 
-								  PointCloud* dev_pointCloudBuffer,
-								  int xRes, int yRes, rgbd::framework::Intrinsics intr, float maxDepth);
+__host__ void rgbAOSToSOA(rgbd::framework::ColorPixel* dev_colorPixels, 
+						  RGBMapSOA rgbSOA, int xRes, int yRes);
