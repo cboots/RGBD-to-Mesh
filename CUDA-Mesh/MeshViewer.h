@@ -147,11 +147,7 @@ private:
 	//Shader programs
 	GLuint depth_prog;
 	GLuint color_prog;
-	GLuint abs_prog;
-	GLuint pcbdebug_prog;
-	GLuint pcvbo_prog;
-	GLuint pcvbohairy_prog;
-	GLuint triangle_prog;
+	GLuint abs_prog;//Useful for debuging normals or world space coords
 #pragma endregion
 
 #pragma region Buffer Object Indecies
@@ -162,10 +158,6 @@ private:
 
 	GLuint fullscreenPBO;
 
-	//PC VBO
-	GLuint pointCloudVBO; 
-	GLuint triangleIBO;
-
 	//FBO
 	GLuint fullscreenFBO;
 #pragma endregion
@@ -173,14 +165,14 @@ private:
 #pragma region Textures
 	//Textures
 	//Image space textures
-	GLuint colorTexture;
-	GLuint depthTexture;
-	GLuint positionTexture;
-	GLuint normalTexture;
+	GLuint texture0;
+	GLuint texture1;
+	GLuint texture2;
+	GLuint texture3;
 
 	//Screen space textures
-	GLuint FBOColorTexture;
 	GLuint FBODepthTexture;
+	GLuint FBOColorTexture;
 #pragma endregion
 
 #pragma endregion
@@ -219,7 +211,6 @@ private:
 	void initQuad();
 	void initPBO();
 	void initFullScreenPBO();
-	void initPointCloudVBO();
 	void initFBO();
 	void cleanupFBO();
 

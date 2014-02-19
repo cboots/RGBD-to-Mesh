@@ -55,7 +55,7 @@ const GLuint MeshViewer::PCVBOPositionLocation = 0;//vec3
 const GLuint MeshViewer::PCVBOColorLocation = 1;//vec3
 const GLuint MeshViewer::PCVBONormalLocation = 2;//vec3
 
-const GLuint MeshViewer::PCVBOStride = 9;//3*vec3
+const GLuint MeshViewer::PCVBOStride = 9;//3*float3
 const GLuint MeshViewer::PCVBO_PositionOffset = 0;
 const GLuint MeshViewer::PCVBO_ColorOffset = 3;
 const GLuint MeshViewer::PCVBO_NormalOffset = 6;
@@ -234,7 +234,6 @@ DeviceStatus MeshViewer::initOpenGL(int argc, char **argv)
 	initQuad();
 	initPBO();
 	initFullScreenPBO();
-	initPointCloudVBO();
 	initFBO();
 
 	return DEVICESTATUS_OK;
@@ -257,13 +256,6 @@ void MeshViewer::initShader()
 	const char * color_frag = "shaders/colorFS.glsl";
 	const char * abs_frag = "shaders/absFS.glsl";
 	const char * depth_frag = "shaders/depthFS.glsl";
-	const char * pcbdebug_frag = "shaders/pointCloudBufferDebugFS.glsl";
-	const char * pcvbo_vert = "shaders/pointCloudVBO_VS.glsl";
-	const char * pcvbo_geom = "shaders/pointCloudVBO_GS.glsl";
-	const char * pcvbo_geom_hairy = "shaders/pointCloudVBOHairy_GS.glsl";
-	const char * pcvbo_frag = "shaders/pointCloudVBO_FS.glsl";
-	const char * triangle_vert = "shaders/triangle_VS.glsl";
-	const char * triangle_frag = "shaders/triangle_FS.glsl";
 
 	//Color image shader
 	color_prog = glslUtility::createProgram(pass_vert, NULL, color_frag, quadAttributeLocations, 2);
@@ -274,42 +266,34 @@ void MeshViewer::initShader()
 	//DEPTH image shader
 	depth_prog = glslUtility::createProgram(pass_vert, NULL, depth_frag, quadAttributeLocations, 2);
 
-	//Point Cloud Buffer Debug Shader
-	pcbdebug_prog = glslUtility::createProgram(pass_vert, NULL, pcbdebug_frag, quadAttributeLocations, 2);
 
-	//Point cloud VBO renderer
-	pcvbo_prog = glslUtility::createProgram(pcvbo_vert, pcvbo_geom, pcvbo_frag, vboAttributeLocations, 3);
-	pcvbohairy_prog = glslUtility::createProgram(pcvbo_vert, pcvbo_geom_hairy, pcvbo_frag, vboAttributeLocations, 3);
-
-	triangle_prog = glslUtility::createProgram(triangle_vert, NULL, triangle_frag, vboAttributeLocations, 3);
 }
 
 void MeshViewer::initTextures()
 {
 	//Clear textures
-	if (depthTexture != 0 || colorTexture != 0 ||  positionTexture != 0 || normalTexture != 0) {
+	if (texture0 != 0 || texture1 != 0 ||  texture2 != 0 || texture3 != 0) {
 		cleanupTextures();
 	}
 
-	glGenTextures(1, &depthTexture);
-	glGenTextures(1, &colorTexture);
-	glGenTextures(1, &normalTexture);
-	glGenTextures(1, &positionTexture);
+	glGenTextures(1, &texture0);
+	glGenTextures(1, &texture1);
+	glGenTextures(1, &texture2);
+	glGenTextures(1, &texture3);
 
-	//Setup depth texture
-	glBindTexture(GL_TEXTURE_2D, depthTexture);
+	//Setup Texture 0
+	glBindTexture(GL_TEXTURE_2D, texture0);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-	glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_INTENSITY);
 
 	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F, mXRes, mYRes, 0, GL_RGBA, GL_FLOAT, 0);
 
-	//Setup color texture
-	glBindTexture(GL_TEXTURE_2D, colorTexture);
+	//Setup Texture 1
+	glBindTexture(GL_TEXTURE_2D, texture1);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -319,8 +303,8 @@ void MeshViewer::initTextures()
 
 	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F , mXRes, mYRes, 0, GL_RGBA, GL_FLOAT,0);
 
-	//Setup position texture
-	glBindTexture(GL_TEXTURE_2D, positionTexture);
+	//Setup Texture 2
+	glBindTexture(GL_TEXTURE_2D, texture2);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -330,8 +314,8 @@ void MeshViewer::initTextures()
 
 	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F , mXRes, mYRes, 0, GL_RGBA, GL_FLOAT,0);
 
-	//Setup normals texture
-	glBindTexture(GL_TEXTURE_2D, normalTexture);
+	//Setup Texture 3
+	glBindTexture(GL_TEXTURE_2D, texture3);
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -348,10 +332,10 @@ void MeshViewer::initTextures()
 void MeshViewer::cleanupTextures()
 {
 	//Image space textures
-	glDeleteTextures(1, &colorTexture);
-	glDeleteTextures(1, &depthTexture);
-	glDeleteTextures(1, &positionTexture);
-	glDeleteTextures(1, &normalTexture);
+	glDeleteTextures(1, &texture0);
+	glDeleteTextures(1, &texture1);
+	glDeleteTextures(1, &texture2);
+	glDeleteTextures(1, &texture3);
 
 }
 
@@ -395,19 +379,20 @@ void MeshViewer::initFBO()
 	glBindFramebuffer(GL_FRAMEBUFFER, fullscreenFBO);
 	glViewport(0,0,(GLsizei)mWidth, (GLsizei)mHeight);
 
-	//Bind FBO
+	//TODO: Bind FBO to programs
+	/*
 	glReadBuffer(GL_NONE);
 	GLint color_loc = glGetFragDataLocation(pcvbo_prog,"out_Color");
 	GLenum draws [1];
 	draws[color_loc] = GL_COLOR_ATTACHMENT0;
 	glDrawBuffers(1, draws);
 
-
 	glBindTexture(GL_TEXTURE_2D, FBODepthTexture);
 	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, FBODepthTexture, 0);
 	glBindTexture(GL_TEXTURE_2D, FBOColorTexture);    
 	glFramebufferTexture(GL_FRAMEBUFFER, draws[color_loc], FBOColorTexture, 0);
-
+	
+	*/
 	FBOstatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if(FBOstatus != GL_FRAMEBUFFER_COMPLETE) {
 		printf("GL_FRAMEBUFFER_COMPLETE failed, CANNOT use FBO[0]\n");
@@ -492,69 +477,6 @@ void MeshViewer::initFullScreenPBO()
 	// Allocate data for the buffer. 4-channel float image
 	glBufferData(GL_PIXEL_UNPACK_BUFFER, size_tex_data, NULL, GL_DYNAMIC_COPY);
 	cudaGLRegisterBufferObject( fullscreenPBO);
-}
-
-void MeshViewer::initPointCloudVBO()
-{
-	// Generate a buffer ID called a PBO (Pixel Buffer Object)
-	if(pointCloudVBO){
-		glDeleteBuffers(1, &pointCloudVBO);
-	}
-	if(triangleIBO){
-		glDeleteBuffers(1, &triangleIBO);
-	}
-
-	//Max num elements
-	int max_elements = mWidth*mHeight;
-	int size_buf_data = sizeof(float) * 9 * max_elements;
-
-	//Fill with data
-	GLfloat *bodies    = new GLfloat[size_buf_data];
-	GLuint *indices   = new GLuint[max_elements*3*2];//3 indecies per triangle, 2 tris per pixel(overshoot, but makes initialization simpler)
-	for(int i = 0; i < max_elements; i++)
-	{
-		//Position
-		bodies[i*PCVBOStride+0] = 0.0;
-		bodies[i*PCVBOStride+1] = 0.0;
-		bodies[i*PCVBOStride+2] = -10.0;
-
-		//Color
-		bodies[i*PCVBOStride+3] = 1.0;
-		bodies[i*PCVBOStride+4] = 1.0;
-		bodies[i*PCVBOStride+5] = 0.0;
-
-		//Normal
-		bodies[i*PCVBOStride+6] = 0.0;
-		bodies[i*PCVBOStride+7] = 0.0;
-		bodies[i*PCVBOStride+8] = 0.0;
-
-		indices[i*6+0] = 0;
-		indices[i*6+1] = 0;
-		indices[i*6+2] = 0;
-		indices[i*6+3] = 0;
-		indices[i*6+4] = 0;
-		indices[i*6+5] = 0;
-	}
-
-	glGenBuffers(1,&pointCloudVBO);
-	glGenBuffers(1,&triangleIBO);
-
-	glBindBuffer(GL_ARRAY_BUFFER, pointCloudVBO);
-	glBufferData(GL_ARRAY_BUFFER, size_buf_data, bodies, GL_DYNAMIC_DRAW);//Initialize
-
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, triangleIBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2*3*max_elements*sizeof(GLuint), indices, GL_DYNAMIC_DRAW);
-
-	//Unbind buffers
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-	cudaGLRegisterBufferObject( pointCloudVBO);
-	cudaGLRegisterBufferObject( triangleIBO);
-
-	delete[] indices;
-	delete[] bodies;
 }
 
 void MeshViewer::initQuad() {
@@ -728,20 +650,20 @@ void MeshViewer::drawPCBtoTextures(GLuint posTexture, GLuint colTexture, GLuint 
 	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO2);
 	glBindTexture(GL_TEXTURE_2D, normalTexture);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
-		GL_RGBA, GL_FLOAT, NULL);
+	GL_RGBA, GL_FLOAT, NULL);
 
 
 	glActiveTexture(GL_TEXTURE11);
 	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO1);
 	glBindTexture(GL_TEXTURE_2D, colorTexture);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
-		GL_RGBA, GL_FLOAT, NULL);
+	GL_RGBA, GL_FLOAT, NULL);
 
 	glActiveTexture(GL_TEXTURE10);
 	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
 	glBindTexture(GL_TEXTURE_2D, positionTexture);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
-		GL_RGBA, GL_FLOAT, NULL);
+	GL_RGBA, GL_FLOAT, NULL);
 
 
 	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
@@ -809,7 +731,7 @@ void MeshViewer::display()
 		mMeshTracker->resetTracker();
 		mLastSubmittedTime = 0;
 	}
-	
+
 	//Check if we have a new frame
 	if(mLatestTime > mLastSubmittedTime)
 	{
@@ -843,46 +765,45 @@ void MeshViewer::display()
 
 		}
 
-		
+
 	}
 
 
 	//=====RENDERING======
-	GLuint pcbTextures[] = { positionTexture, colorTexture, normalTexture};
 	switch(mViewState)
 	{
 	case DISPLAY_MODE_DEPTH:
-		drawDepthImageBufferToTexture(depthTexture);
+		drawDepthImageBufferToTexture(texture0);
 
-		drawQuad(depth_prog, 0, 0, 1, 1, &depthTexture, 1);
+		drawQuad(depth_prog, 0, 0, 1, 1, &texture0, 1);
 		break;
 	case DISPLAY_MODE_IMAGE:
-		drawColorImageBufferToTexture(colorTexture);
+		drawColorImageBufferToTexture(texture1);
 
-		drawQuad(color_prog, 0, 0, 1, 1, &colorTexture, 1);
+		drawQuad(color_prog, 0, 0, 1, 1, &texture1, 1);
 		break;
 	case DISPLAY_MODE_OVERLAY:
-		drawDepthImageBufferToTexture(depthTexture);
-		drawColorImageBufferToTexture(colorTexture);
+		drawDepthImageBufferToTexture(texture0);
+		drawColorImageBufferToTexture(texture1);
 
 
-		drawQuad(color_prog, 0, 0, 1, 1, &colorTexture, 1);
+		drawQuad(color_prog, 0, 0, 1, 1, &texture1, 1);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);//Alpha blending
-		drawQuad(depth_prog, 0, 0, 1, 1, &depthTexture, 1);
+		drawQuad(depth_prog, 0, 0, 1, 1, &texture0, 1);
 		glDisable(GL_BLEND);
 		break;
 	case DISPLAY_MODE_3WAY_DEPTH_IMAGE_OVERLAY:
-		drawDepthImageBufferToTexture(depthTexture);
-		drawColorImageBufferToTexture(colorTexture);
+		drawDepthImageBufferToTexture(texture0);
+		drawColorImageBufferToTexture(texture1);
 
-		drawQuad(color_prog, -0.5, -0.5, 0.5, 0.5, &colorTexture, 1);
-		drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, &depthTexture, 1);
+		drawQuad(color_prog, -0.5, -0.5, 0.5, 0.5, &texture1, 1);
+		drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, &texture0, 1);
 
-		drawQuad(color_prog, 0.5, 0, 0.5, 1, &colorTexture, 1);
+		drawQuad(color_prog, 0.5, 0, 0.5, 1, &texture1, 1);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);//Alpha blending
-		drawQuad(depth_prog, 0.5, 0, 0.5, 1, &depthTexture, 1);
+		drawQuad(depth_prog, 0.5, 0, 0.5, 1, &texture0, 1);
 		glDisable(GL_BLEND);
 		break;
 	}
