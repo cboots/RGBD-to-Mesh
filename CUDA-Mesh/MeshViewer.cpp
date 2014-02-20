@@ -256,6 +256,7 @@ void MeshViewer::initShader()
 	const char * color_frag = "shaders/colorFS.glsl";
 	const char * abs_frag = "shaders/absFS.glsl";
 	const char * depth_frag = "shaders/depthFS.glsl";
+	const char * vmap_frag = "shaders/vmapFS.glsl";
 
 	//Color image shader
 	color_prog = glslUtility::createProgram(pass_vert, NULL, color_frag, quadAttributeLocations, 2);
@@ -266,7 +267,8 @@ void MeshViewer::initShader()
 	//DEPTH image shader
 	depth_prog = glslUtility::createProgram(pass_vert, NULL, depth_frag, quadAttributeLocations, 2);
 
-
+	//VMap display debug shader
+	vmap_prog = glslUtility::createProgram(pass_vert, NULL, vmap_frag, quadAttributeLocations, 2);
 }
 
 void MeshViewer::initTextures()
@@ -284,8 +286,8 @@ void MeshViewer::initTextures()
 	//Setup Texture 0
 	glBindTexture(GL_TEXTURE_2D, texture0);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
@@ -638,7 +640,8 @@ void MeshViewer::drawVMaptoTexture(GLuint texture, int level)
 {
 	float4* dptrVMap;
 	cudaGLMapBufferObject((void**)&dptrVMap, imagePBO0);
-
+	
+	clearPBO(dptrVMap, mXRes, mYRes, 0.0f);
 	drawVMaptoPBO(dptrVMap, mMeshTracker->getVMapPyramid(), level, mXRes, mYRes);
 
 	cudaGLUnmapBufferObject(imagePBO0);
@@ -791,6 +794,18 @@ void MeshViewer::display()
 		drawQuad(depth_prog, 0.5, 0, 0.5, 1, 1.0, &texture0, 1);
 		glDisable(GL_BLEND);
 		break;
+
+	case DISPLAY_MODE_VMAP_DEBUG:
+		drawVMaptoTexture(texture0, 0);
+		drawVMaptoTexture(texture1, 1);
+		drawVMaptoTexture(texture2, 2);
+		drawDepthImageBufferToTexture(texture3);
+		
+		drawQuad(vmap_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR Level0 VMap
+		drawQuad(vmap_prog,  0.5, -0.5, 0.5, 0.5, 0.5,  &texture1, 1);//LR Level1 VMap
+		drawQuad(vmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 VMap
+		drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL Original depth
+		break;
 	}
 
 	glutSwapBuffers();
@@ -834,6 +849,15 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		break;
 	case '4':
 		mViewState = DISPLAY_MODE_3WAY_DEPTH_IMAGE_OVERLAY;
+		break;
+	case '5':
+		mViewState = DISPLAY_MODE_RGBMAP_DEBUG;
+		break;
+	case '6':
+		mViewState = DISPLAY_MODE_VMAP_DEBUG;
+		break;
+	case '7':
+		mViewState = DISPLAY_MODE_NMAP_DEBUG;
 		break;
 	case('r'):
 		cout << "Reloading Shaders" <<endl;
@@ -934,6 +958,12 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	case 'h':
 		hairyPoints = !hairyPoints;
 		cout << "Toggle normal hairs" << endl;
+		break;
+	case 'l':
+		VMapSOA soa = mMeshTracker->getVMapPyramid();
+		cout << "SOA: x0=" << soa.x[0] << " x1=" << soa.x[1] << " x2=" << soa.x[2] << endl;
+		cout << "SOA: y0=" << soa.y[0] << " y1=" << soa.y[1] << " y2=" << soa.y[2] << endl;
+		cout << "SOA: z0=" << soa.z[0] << " z1=" << soa.z[1] << " z2=" << soa.z[2] << endl;
 		break;
 	}
 

@@ -42,8 +42,10 @@ enum DisplayModes
 	DISPLAY_MODE_OVERLAY,
 	DISPLAY_MODE_DEPTH,
 	DISPLAY_MODE_IMAGE,
-	DISPLAY_MODE_POINT_CLOUD,
-	DISPLAY_MODE_3WAY_DEPTH_IMAGE_OVERLAY
+	DISPLAY_MODE_3WAY_DEPTH_IMAGE_OVERLAY,
+	DISPLAY_MODE_VMAP_DEBUG,
+	DISPLAY_MODE_NMAP_DEBUG,
+	DISPLAY_MODE_RGBMAP_DEBUG
 };
 
 
@@ -148,6 +150,7 @@ private:
 	GLuint depth_prog;
 	GLuint color_prog;
 	GLuint abs_prog;//Useful for debuging normals or world space coords
+	GLuint vmap_prog;
 #pragma endregion
 
 #pragma region Buffer Object Indecies

@@ -41,7 +41,7 @@ void MeshTracker::initCudaBuffers(int xRes, int yRes)
 	dev_vmapSOA.x[1] = dev_vmapSOA.x[0] + pixCount;
 	dev_vmapSOA.x[2] = dev_vmapSOA.x[1] + (pixCount >> 2);
 	dev_vmapSOA.y[0] = dev_vmapSOA.x[2] + (pixCount >> 4);
-	dev_vmapSOA.y[1] = dev_vmapSOA.x[0] + pixCount;
+	dev_vmapSOA.y[1] = dev_vmapSOA.y[0] + pixCount;
 	dev_vmapSOA.y[2] = dev_vmapSOA.y[1] + (pixCount >> 2);
 	dev_vmapSOA.z[0] = dev_vmapSOA.y[2] + (pixCount >> 4);
 	dev_vmapSOA.z[1] = dev_vmapSOA.z[0] + pixCount;
@@ -53,7 +53,7 @@ void MeshTracker::initCudaBuffers(int xRes, int yRes)
 	dev_nmapSOA.x[1] = dev_nmapSOA.x[0] + pixCount;
 	dev_nmapSOA.x[2] = dev_nmapSOA.x[1] + (pixCount >> 2);
 	dev_nmapSOA.y[0] = dev_nmapSOA.x[2] + (pixCount >> 4);
-	dev_nmapSOA.y[1] = dev_nmapSOA.x[0] + pixCount;
+	dev_nmapSOA.y[1] = dev_nmapSOA.y[0] + pixCount;
 	dev_nmapSOA.y[2] = dev_nmapSOA.y[1] + (pixCount >> 2);
 	dev_nmapSOA.z[0] = dev_nmapSOA.y[2] + (pixCount >> 4);
 	dev_nmapSOA.z[1] = dev_nmapSOA.z[0] + pixCount;

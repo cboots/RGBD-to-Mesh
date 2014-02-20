@@ -78,7 +78,25 @@ __host__ void drawColorImageBufferToPBO(float4* dev_PBOpos, ColorPixel* dev_colo
 
 
 __global__ void sendFloat3SOAToPBO(float4* pbo, float* x_src, float* y_src, float* z_src, float w,
-								   int xRes, int yRes)
+								   int xRes, int yRes, int pboXRes, int pboYRes)
+{
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int i = (y * xRes) + x;
+	int pboi = (y * pboXRes) + x;
+
+	if(y < yRes && x < xRes){
+
+		// Each thread writes one pixel location in the texture (textel)
+		pbo[pboi].x = x_src[i];
+		pbo[pboi].y = y_src[i];
+		pbo[pboi].z = z_src[i];
+		pbo[pboi].w = w;
+	}
+}
+
+
+__global__ void clearPBOKernel(float4* pbo, int xRes, int yRes, float clearValue)
 {
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -87,13 +105,28 @@ __global__ void sendFloat3SOAToPBO(float4* pbo, float* x_src, float* y_src, floa
 	if(y < yRes && x < xRes){
 
 		// Each thread writes one pixel location in the texture (textel)
-		pbo[i].x = x_src[i];
-		pbo[i].y = y_src[i];
-		pbo[i].z = z_src[i];
-		pbo[i].w = w;
+		// 
+		float4 clear;
+		clear.x = clearValue;
+		clear.y = clearValue;
+		clear.z = clearValue;
+		clear.w = clearValue;
+		pbo[i] = clear;
 	}
 }
 
+
+__host__ void clearPBO(float4* pbo, int xRes, int yRes, float clearValue)
+{
+	int tileSize = 16;
+
+	dim3 threadsPerBlock(tileSize, tileSize);
+	dim3 fullBlocksPerGrid((int)ceil(float(xRes)/float(tileSize)), 
+		(int)ceil(float(yRes)/float(tileSize)));
+
+	clearPBOKernel<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo, xRes, yRes, clearValue);
+
+}
 
 __host__ void drawVMaptoPBO(float4* pbo, VMapSOA vmap, int level, int xRes, int yRes)
 {
@@ -108,8 +141,8 @@ __host__ void drawVMaptoPBO(float4* pbo, VMapSOA vmap, int level, int xRes, int 
 		dim3 fullBlocksPerGrid((int)ceil(float(scaledXRes)/float(tileSize)), 
 			(int)ceil(float(scaledYRes)/float(tileSize)));
 
-
+		
 		sendFloat3SOAToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo, vmap.x[level], vmap.y[level], vmap.z[level],  1.0,
-			scaledXRes, scaledYRes);
+			scaledXRes, scaledYRes, xRes, yRes);
 	}
 }
