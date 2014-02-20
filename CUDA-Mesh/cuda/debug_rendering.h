@@ -21,3 +21,9 @@ __host__ void drawColorImageBufferToPBO(float4* dev_PBOpos, ColorPixel* dev_colo
 __host__ void clearPBO(float4* pbo, int xRes, int yRes, float clearValue);
 
 __host__ void drawVMaptoPBO(float4* pbo, VMapSOA vmap, int level, int xRes, int yRes);
+
+
+__host__ void drawNMaptoPBO(float4* pbo, NMapSOA nmap, int level, int xRes, int yRes);
+
+
+__host__ void drawRGBMaptoPBO(float4* pbo, RGBMapSOA rgbMap, int xRes, int yRes);

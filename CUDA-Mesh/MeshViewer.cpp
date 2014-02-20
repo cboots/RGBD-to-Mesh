@@ -640,24 +640,73 @@ void MeshViewer::drawVMaptoTexture(GLuint texture, int level)
 {
 	float4* dptrVMap;
 	cudaGLMapBufferObject((void**)&dptrVMap, imagePBO0);
-	
+
 	clearPBO(dptrVMap, mXRes, mYRes, 0.0f);
 	drawVMaptoPBO(dptrVMap, mMeshTracker->getVMapPyramid(), level, mXRes, mYRes);
 
 	cudaGLUnmapBufferObject(imagePBO0);
-	
+
 	//Unpack to textures
 	glActiveTexture(GL_TEXTURE12);
 	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
 	glBindTexture(GL_TEXTURE_2D, texture);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
-	GL_RGBA, GL_FLOAT, NULL);
+		GL_RGBA, GL_FLOAT, NULL);
 
 	//Unbind buffers
 	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glActiveTexture(GL_TEXTURE0);
-	
+
+}
+
+
+void MeshViewer::drawNMaptoTexture(GLuint texture, int level)
+{
+	float4* dptrNMap;
+	cudaGLMapBufferObject((void**)&dptrNMap, imagePBO0);
+
+	clearPBO(dptrNMap, mXRes, mYRes, 0.0f);
+	drawNMaptoPBO(dptrNMap, mMeshTracker->getNMapPyramid(), level, mXRes, mYRes);
+
+	cudaGLUnmapBufferObject(imagePBO0);
+
+	//Unpack to textures
+	glActiveTexture(GL_TEXTURE12);
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+		GL_RGBA, GL_FLOAT, NULL);
+
+	//Unbind buffers
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glActiveTexture(GL_TEXTURE0);
+
+}
+
+
+void MeshViewer::drawRGBMaptoTexture(GLuint texture)
+{
+	float4* dptrRGBMap;
+	cudaGLMapBufferObject((void**)&dptrRGBMap, imagePBO0);
+
+	clearPBO(dptrRGBMap, mXRes, mYRes, 0.0f);
+	drawRGBMaptoPBO(dptrRGBMap, mMeshTracker->getRGBMapSOA(), mXRes, mYRes);
+
+	cudaGLUnmapBufferObject(imagePBO0);
+
+	//Unpack to textures
+	glActiveTexture(GL_TEXTURE12);
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+		GL_RGBA, GL_FLOAT, NULL);
+
+	//Unbind buffers
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glActiveTexture(GL_TEXTURE0);
 }
 
 void MeshViewer::resetCamera()
@@ -794,13 +843,31 @@ void MeshViewer::display()
 		drawQuad(depth_prog, 0.5, 0, 0.5, 1, 1.0, &texture0, 1);
 		glDisable(GL_BLEND);
 		break;
+	case DISPLAY_MODE_RGBMAP_DEBUG:
+		drawRGBMaptoTexture(texture0);
+		drawColorImageBufferToTexture(texture1);
+		
+		drawQuad(color_prog, -0.5, 0, 0.5, 1, 1.0, &texture0, 1);
+		drawQuad(color_prog, 0.5, 0, 0.5, 1, 1.0, &texture1, 1);
+		break;
+	case DISPLAY_MODE_NMAP_DEBUG:
+		drawNMaptoTexture(texture0, 0);
+		drawNMaptoTexture(texture1, 1);
+		drawNMaptoTexture(texture2, 2);
+		drawDepthImageBufferToTexture(texture3);
+
+		drawQuad(abs_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR Level0 NMap
+		drawQuad(abs_prog,  0.5, -0.5, 0.5, 0.5, 0.5,  &texture1, 1);//LR Level1 NMap
+		drawQuad(abs_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 NMap
+		drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL Original depth
+		break;
 
 	case DISPLAY_MODE_VMAP_DEBUG:
 		drawVMaptoTexture(texture0, 0);
 		drawVMaptoTexture(texture1, 1);
 		drawVMaptoTexture(texture2, 2);
 		drawDepthImageBufferToTexture(texture3);
-		
+
 		drawQuad(vmap_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR Level0 VMap
 		drawQuad(vmap_prog,  0.5, -0.5, 0.5, 0.5, 0.5,  &texture1, 1);//LR Level1 VMap
 		drawQuad(vmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 VMap
@@ -958,12 +1025,6 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	case 'h':
 		hairyPoints = !hairyPoints;
 		cout << "Toggle normal hairs" << endl;
-		break;
-	case 'l':
-		VMapSOA soa = mMeshTracker->getVMapPyramid();
-		cout << "SOA: x0=" << soa.x[0] << " x1=" << soa.x[1] << " x2=" << soa.x[2] << endl;
-		cout << "SOA: y0=" << soa.y[0] << " y1=" << soa.y[1] << " y2=" << soa.y[2] << endl;
-		cout << "SOA: z0=" << soa.z[0] << " z1=" << soa.z[1] << " z2=" << soa.z[2] << endl;
 		break;
 	}
 
