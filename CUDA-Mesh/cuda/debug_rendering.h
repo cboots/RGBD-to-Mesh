@@ -16,3 +16,6 @@ __host__ void drawDepthImageBufferToPBO(float4* dev_PBOpos, DPixel* dev_colorIma
 // Returns false if width or height does not match, true otherwise
 // dev_PBOpos must be a CUDA device pointer
 __host__ void drawColorImageBufferToPBO(float4* dev_PBOpos, ColorPixel* dev_colorImageBuffer,  int texWidth, int texHeight);
+
+
+__host__ void drawVMaptoPBO(float4* pbo, VMapSOA vmap, int level, int xRes, int yRes);

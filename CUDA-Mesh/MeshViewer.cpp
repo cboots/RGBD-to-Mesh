@@ -634,46 +634,27 @@ bool MeshViewer::drawDepthImageBufferToTexture(GLuint texture)
 	return true;
 }
 
-void MeshViewer::drawPCBtoTextures(GLuint posTexture, GLuint colTexture, GLuint normTexture)
+void MeshViewer::drawVMaptoTexture(GLuint texture, int level)
 {
-	float4* dptrPosition;
-	float4* dptrColor;
-	float4* dptrNormal;
-	cudaGLMapBufferObject((void**)&dptrPosition, imagePBO0);
-	cudaGLMapBufferObject((void**)&dptrColor, imagePBO1);
-	cudaGLMapBufferObject((void**)&dptrNormal, imagePBO2);
+	float4* dptrVMap;
+	cudaGLMapBufferObject((void**)&dptrVMap, imagePBO0);
 
-	//drawPCBToPBO(dptrPosition, dptrColor, dptrNormal, mMeshTracker->getPCBDevicePtr(), mXRes, mYRes);
+	drawVMaptoPBO(dptrVMap, mMeshTracker->getVMapPyramid(), level, mXRes, mYRes);
 
 	cudaGLUnmapBufferObject(imagePBO0);
-	cudaGLUnmapBufferObject(imagePBO1);
-	cudaGLUnmapBufferObject(imagePBO2);
-	/*
+	
 	//Unpack to textures
 	glActiveTexture(GL_TEXTURE12);
-	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO2);
-	glBindTexture(GL_TEXTURE_2D, normalTexture);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
-	GL_RGBA, GL_FLOAT, NULL);
-
-
-	glActiveTexture(GL_TEXTURE11);
-	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO1);
-	glBindTexture(GL_TEXTURE_2D, colorTexture);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
-	GL_RGBA, GL_FLOAT, NULL);
-
-	glActiveTexture(GL_TEXTURE10);
 	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
-	glBindTexture(GL_TEXTURE_2D, positionTexture);
+	glBindTexture(GL_TEXTURE_2D, texture);
 	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
 	GL_RGBA, GL_FLOAT, NULL);
 
-
+	//Unbind buffers
 	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glActiveTexture(GL_TEXTURE0);
-	*/
+	
 }
 
 void MeshViewer::resetCamera()

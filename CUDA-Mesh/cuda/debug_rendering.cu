@@ -75,3 +75,41 @@ __host__ void drawColorImageBufferToPBO(float4* dev_PBOpos, ColorPixel* dev_colo
 	sendColorImageBufferToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(dev_PBOpos, glm::vec2(texWidth, texHeight), dev_colorImageBuffer);
 
 }
+
+
+__global__ void sendFloat3SOAToPBO(float4* pbo, float* x_src, float* y_src, float* z_src, float w,
+								   int xRes, int yRes)
+{
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int i = (y * xRes) + x;
+
+	if(y < yRes && x < xRes){
+
+		// Each thread writes one pixel location in the texture (textel)
+		pbo[i].x = x_src[i];
+		pbo[i].y = y_src[i];
+		pbo[i].z = z_src[i];
+		pbo[i].w = w;
+	}
+}
+
+
+__host__ void drawVMaptoPBO(float4* pbo, VMapSOA vmap, int level, int xRes, int yRes)
+{
+	int tileSize = 16;
+
+	if(level < NUM_PYRAMID_LEVELS)
+	{
+		int scaledXRes = xRes >> level;
+		int scaledYRes = yRes >> level;
+
+		dim3 threadsPerBlock(tileSize, tileSize);
+		dim3 fullBlocksPerGrid((int)ceil(float(scaledXRes)/float(tileSize)), 
+			(int)ceil(float(scaledYRes)/float(tileSize)));
+
+
+		sendFloat3SOAToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo, vmap.x[level], vmap.y[level], vmap.z[level],  1.0,
+			scaledXRes, scaledYRes);
+	}
+}
