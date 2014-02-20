@@ -86,76 +86,13 @@ __global__ void subsampleVMAPKernel(float* x_src, float* y_src, float* z_src,
 
 	if(u < xRes_dest  && v < yRes_dest) 
 	{
+		int i_src = (v<<1)*xRes_src+(u<<1);
 		int i_dest = (v * xRes_dest) + u;
-		int i_src_offset = u*xRes_src+v;
 
-		int validCount = 0;
+		x_dest[i_dest] = x_src[i_src];
+		y_dest[i_dest] = y_src[i_src];
+		z_dest[i_dest] = z_src[i_src];
 
-		//Load 4 pixels, UL, UR, LL, LR
-		float x_accum = 0.0f;
-		float y_accum = 0.0f;
-		float z_accum = 0.0f;
-
-		//====Upper left====
-		float z = z_src[i_src_offset];//UL
-		//Depth test
-		if(z > 0.001f)
-		{
-			//Non-zero depth, proceed with other loads
-			++validCount;
-			x_accum += x_src[i_src_offset];
-			y_accum += y_src[i_src_offset];
-			z_accum += z;
-		}
-
-		//====Upper right ====
-		z = z_src[i_src_offset+1];//UR
-		//Depth test
-		if(z > 0.001f)
-		{
-			//Non-zero depth, proceed with other loads
-			++validCount;
-			x_accum += x_src[i_src_offset+1];
-			y_accum += y_src[i_src_offset+1];
-			z_accum += z;
-		}
-
-
-		//====Lower left====
-		z = z_src[i_src_offset+xRes_src];//LL
-		//Depth test
-		if(z > 0.001f)
-		{
-			//Non-zero depth, proceed with other loads
-			++validCount;
-			x_accum += x_src[i_src_offset+xRes_src];
-			y_accum += y_src[i_src_offset+xRes_src];
-			z_accum += z;
-		}
-
-		//====Lower right====
-		z = z_src[i_src_offset+xRes_src + 1];//LR
-		//Depth test
-		if(z > 0.001f)
-		{
-			//Non-zero depth, proceed with other loads
-			++validCount;
-			x_accum += x_src[i_src_offset+xRes_src + 1];
-			y_accum += y_src[i_src_offset+xRes_src + 1];
-			z_accum += z;
-		}
-
-
-		//We have all subpixels accumulated now. Do average if validCount non-zero
-		if(validCount > 0){
-			x_dest[i_dest] = x_accum/validCount;
-			y_dest[i_dest] = y_accum/validCount;
-			z_dest[i_dest] = z_accum/validCount;
-		}else{
-			x_dest[i_dest] = 0.0f;
-			y_dest[i_dest] = 0.0f;
-			z_dest[i_dest] = 0.0f;
-		}
 
 	}
 }
@@ -173,7 +110,7 @@ __host__ void buildVMapPyramidCUDA(VMapSOA dev_vmapSOA, int xRes, int yRes, int 
 
 		subsampleVMAPKernel<<<fullBlocksPerGrid,threadsPerBlock>>>(dev_vmapSOA.x[i], dev_vmapSOA.y[i], dev_vmapSOA.z[i],
 			dev_vmapSOA.x[i+1], dev_vmapSOA.y[i+1], dev_vmapSOA.z[i+1],
-			xRes, yRes);
+			xRes>>i, yRes>>i);
 	}
 
 }
