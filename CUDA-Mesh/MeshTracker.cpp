@@ -112,11 +112,17 @@ void MeshTracker::buildVMapGaussianFilter(float maxDepth, float sigma)
 {
 	//TODO: Implement
 	
+
+	buildVMapPyramidCUDA(dev_vmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
 }
 
 void MeshTracker::buildVMapBilateralFilter(float maxDepth, float sigma_s, float sigma_t)
 {
 	//TODO: Implement
+
+
+
+	buildVMapPyramidCUDA(dev_vmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
 }
 
 #pragma endregion

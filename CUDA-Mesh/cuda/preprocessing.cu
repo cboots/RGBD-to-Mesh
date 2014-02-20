@@ -1,29 +1,31 @@
 #include "preprocessing.h"
 
 __global__ void buildVMapNoFilterKernel(rgbd::framework::DPixel* dev_depthBuffer, VMapSOA vmapSOA, int xRes, int yRes,
-										rgbd::framework::Intrinsics intr, float maxDepth) {
-											int u = (blockIdx.x * blockDim.x) + threadIdx.x;
-											int v = (blockIdx.y * blockDim.y) + threadIdx.y;
+										rgbd::framework::Intrinsics intr, float maxDepth) 
+{
+	int u = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int v = (blockIdx.y * blockDim.y) + threadIdx.y;
 
-											if(u < xRes && v < yRes) 
-											{
-												int i = (v * xRes) + u;
+	if(u < xRes && v < yRes) 
+	{
+		int i = (v * xRes) + u;
 
-												float x = 0.0f;
-												float y = 0.0f;
-												float z = dev_depthBuffer[i].depth * 0.001f;
+		float x = 0.0f;
+		float y = 0.0f;
+		float z = dev_depthBuffer[i].depth * 0.001f;
 
-												if (z > 0.001f && z < maxDepth) {//Exclude zero or negative depths.  
+		if (z > 0.001f && z < maxDepth) {//Exclude zero or negative depths.  
 
-													x = (u - intr.cx) * z / intr.fx;
-													y = (v - intr.cy) * z / intr.fy;
-												} 
+			x = (u - intr.cx) * z / intr.fx;
+			y = (v - intr.cy) * z / intr.fy;
+		} 
 
-												//Write to SOA in memory coallesed way
-												vmapSOA.x[0][i] = x;
-												vmapSOA.y[0][i] = y;
-												vmapSOA.z[0][i] = z;
-											}
+		//Write to SOA in memory coallesed way
+		vmapSOA.x[0][i] = x;
+		vmapSOA.y[0][i] = y;
+		vmapSOA.z[0][i] = z;
+
+	}
 }
 
 __host__ void buildVMapNoFilterCUDA(rgbd::framework::DPixel* dev_depthBuffer, VMapSOA vmapSOA, int xRes, int yRes, 
