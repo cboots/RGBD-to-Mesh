@@ -391,7 +391,7 @@ void MeshViewer::initFBO()
 	glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, FBODepthTexture, 0);
 	glBindTexture(GL_TEXTURE_2D, FBOColorTexture);    
 	glFramebufferTexture(GL_FRAMEBUFFER, draws[color_loc], FBOColorTexture, 0);
-	
+
 	*/
 	FBOstatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if(FBOstatus != GL_FRAMEBUFFER_COMPLETE) {
@@ -520,7 +520,7 @@ void MeshViewer::initQuad() {
 
 #pragma region Rendering Helper Functions
 //Normalized device coordinates (-1 : 1, -1 : 1) center of viewport, and scale being 
-void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale, float heightScale, GLuint* textures, int numTextures)
+void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale, float heightScale, float textureScale, GLuint* textures, int numTextures)
 {
 	//Setup program and uniforms
 	glUseProgram(prog);
@@ -581,7 +581,11 @@ void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale,
 			glUniform1i(location,0);
 		}
 	}
-
+	if ((location = glGetUniformLocation(prog, "u_TextureScale")) != -1)
+	{
+		//has texture scale parameter
+		glUniform1f(location,textureScale);
+	}
 
 	//Draw quad
 	glBindVertexArray(device_quad.vertex_array);
@@ -775,35 +779,35 @@ void MeshViewer::display()
 	case DISPLAY_MODE_DEPTH:
 		drawDepthImageBufferToTexture(texture0);
 
-		drawQuad(depth_prog, 0, 0, 1, 1, &texture0, 1);
+		drawQuad(depth_prog, 0, 0, 1, 1, 1.0, &texture0, 1);
 		break;
 	case DISPLAY_MODE_IMAGE:
 		drawColorImageBufferToTexture(texture1);
 
-		drawQuad(color_prog, 0, 0, 1, 1, &texture1, 1);
+		drawQuad(color_prog, 0, 0, 1, 1, 1.0, &texture1, 1);
 		break;
 	case DISPLAY_MODE_OVERLAY:
 		drawDepthImageBufferToTexture(texture0);
 		drawColorImageBufferToTexture(texture1);
 
 
-		drawQuad(color_prog, 0, 0, 1, 1, &texture1, 1);
+		drawQuad(color_prog, 0, 0, 1, 1, 1.0, &texture1, 1);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);//Alpha blending
-		drawQuad(depth_prog, 0, 0, 1, 1, &texture0, 1);
+		drawQuad(depth_prog, 0, 0, 1, 1, 1.0, &texture0, 1);
 		glDisable(GL_BLEND);
 		break;
 	case DISPLAY_MODE_3WAY_DEPTH_IMAGE_OVERLAY:
 		drawDepthImageBufferToTexture(texture0);
 		drawColorImageBufferToTexture(texture1);
 
-		drawQuad(color_prog, -0.5, -0.5, 0.5, 0.5, &texture1, 1);
-		drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, &texture0, 1);
+		drawQuad(color_prog, -0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);
+		drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);
 
-		drawQuad(color_prog, 0.5, 0, 0.5, 1, &texture1, 1);
+		drawQuad(color_prog, 0.5, 0, 0.5, 1, 1.0, &texture1, 1);
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);//Alpha blending
-		drawQuad(depth_prog, 0.5, 0, 0.5, 1, &texture0, 1);
+		drawQuad(depth_prog, 0.5, 0, 0.5, 1, 1.0, &texture0, 1);
 		glDisable(GL_BLEND);
 		break;
 	}

@@ -228,7 +228,8 @@ private:
 #pragma endregion
 
 #pragma region Rendering Functions
-	void drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale, float heightScale, GLuint* textures, int numTextures);
+	void drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale, float heightScale, float textureScale, 
+		GLuint* textures, int numTextures);
 
 
 	//Draws depth image buffer to the texture.
