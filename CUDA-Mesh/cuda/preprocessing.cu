@@ -53,7 +53,7 @@ __constant__ float cGaussianSpatialKernel[GAUSSIAN_SPATIAL_KERNEL_SIZE];
 
 //Block width and height. 16 is convenient for memory alignment (4*16==64Bytes)
 #define		ROWS_BLOCKDIM_X		16
-#define		ROWS_BLOCKDIM_Y		4
+#define		ROWS_BLOCKDIM_Y		12
 
 //Number of pixels processed per thread
 #define		ROWS_RESULT_STEPS	4
