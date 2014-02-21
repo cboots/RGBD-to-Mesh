@@ -56,7 +56,7 @@ __host__ void simpleNormals(VMapSOA vmap, NMapSOA nmap, int numLevels, int xRes,
 {
 	int tileSize = 16;
 
-	for(int i = 0; i < numLevels - 1; ++i)
+	for(int i = 0; i < numLevels; ++i)
 	{
 		dim3 threadsPerBlock(tileSize, tileSize);
 		dim3 fullBlocksPerGrid((int)ceil(float(xRes>>i)/float(tileSize)), 
