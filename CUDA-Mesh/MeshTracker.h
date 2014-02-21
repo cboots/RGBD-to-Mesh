@@ -60,8 +60,9 @@ public:
 
 	void buildRGBSOA();
 
+	void setGaussianSpatialSigma(float sigma);
 	void buildVMapNoFilter(float maxDepth);
-	void buildVMapGaussianFilter(float maxDepth, float sigma, int window);
+	void buildVMapGaussianFilter(float maxDepth);
 	void buildVMapBilateralFilter(float maxDepth, float sigma_s, float sigma_t);
 
 	void buildNMapSimple();

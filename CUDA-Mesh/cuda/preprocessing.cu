@@ -44,79 +44,128 @@ __host__ void buildVMapNoFilterCUDA(rgbd::framework::DPixel* dev_depthBuffer, VM
 
 }
 
-struct KernelWindow
+
+//========Simple Gaussian Kernel Rows=========
+
+__constant__ float cGaussianSpatialKernel[GAUSSIAN_SPATIAL_KERNEL_SIZE];
+
+
+
+//Block width and height. 16 is convenient for memory alignment (4*16==64Bytes)
+#define		ROWS_BLOCKDIM_X		16
+#define		ROWS_BLOCKDIM_Y		4
+
+//Number of pixels processed per thread
+#define		ROWS_RESULT_STEPS	4
+//Number of blocks in region. ROWS_HALO_STEPS*ROWS_BLOCKDIM_X must be > KERNEL_RADIUS
+#define		ROWS_HALO_STEPS		1
+
+
+__global__ void gaussianKernelRows(rgbd::framework::DPixel* dev_depthBuffer, VMapSOA vmapSOA, int xRes, int yRes, float maxDepth)
 {
-	float kernel[MAX_FILTER_WINDOW_SIZE];
-};
+	__shared__ float s_Data[ROWS_BLOCKDIM_Y][ROWS_BLOCKDIM_X*(ROWS_RESULT_STEPS+2*ROWS_HALO_STEPS)];
 
-__global__ void gaussianKernel1(rgbd::framework::DPixel* dev_depthBuffer, VMapSOA vmapSOA, int xRes, int yRes,
-								float maxDepth, float sigma, int window, KernelWindow precomputed)
-{
-	extern __shared__ float sharedRow[];
+	//Offset to the left halo edge
+	const int baseX = (blockIdx.x * ROWS_RESULT_STEPS - ROWS_HALO_STEPS) * ROWS_BLOCKDIM_X + threadIdx.x;
+	const int baseY = blockIdx.y * ROWS_BLOCKDIM_Y + threadIdx.y;
 
-	int row = blockIdx.x;
-	int col = threadIdx.x;
-	int i = row*xRes + col;
 
-	if(col < xRes)
+	//Align source pointer
+	dev_depthBuffer += baseY*xRes + baseX;//Align source pointer with this thread for convenience
+
+	//Align output pointer
+	float* d_Dest = vmapSOA.z[0] + baseY*xRes + baseX;
+
+
+	//Main data
+#pragma unroll
+	for(int i = ROWS_HALO_STEPS; i < ROWS_HALO_STEPS + ROWS_RESULT_STEPS; ++i)
 	{
-		sharedRow[col] = dev_depthBuffer[i].depth*0.001f;
+		float depth = dev_depthBuffer[i * ROWS_BLOCKDIM_X].depth*0.001f;
+		if(depth > maxDepth)
+			depth = 0.0f;
+
+		s_Data[threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X] = depth;
 	}
 
+	//Left halo
+	for(int i = 0; i < ROWS_HALO_STEPS; ++i)
+	{
+		//Bounds check on source array. Fill with zeros if out of bounds.
+		float depth = (baseX >= -i*ROWS_BLOCKDIM_X)? dev_depthBuffer[i * ROWS_BLOCKDIM_X].depth*0.001f : 0.0f;
+
+		//Max depth test
+		if(depth > maxDepth)
+			depth = 0.0f;
+
+		s_Data[threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X] = depth;
+
+	}
+
+	//Right halo
+	for(int i = ROWS_HALO_STEPS + ROWS_RESULT_STEPS; i < ROWS_HALO_STEPS + ROWS_RESULT_STEPS + ROWS_HALO_STEPS; ++i)
+	{
+		//Bounds check on source array. Fill with zeros if out of bounds.
+		float depth = (xRes - baseX > i*ROWS_BLOCKDIM_X)? dev_depthBuffer[i * ROWS_BLOCKDIM_X].depth*0.001f : 0.0f;
+
+		//Max depth test
+		if(depth > maxDepth)
+			depth = 0.0f;
+
+		s_Data[threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X] = depth;
+	}
 	__syncthreads();
 
-	//Row loaded in shared memory.
+	
+	//=======END OF LOADING STAGE======
 
-	float weightSum = 0.0f;
-	float accum = 0.0f;
-	int leftEdge = MAX(0,(col - (window>>1)));
-	int rightEdge = MIN((xRes-1), (col + (window>>1)));
-	for(int x = leftEdge, int i = 0; x <= rightEdge; ++x, ++i)
-	{
-		accum += sharedRow[x]*precomputed.kernel[i];
-		weightSum += precomputed.kernel[i];
-	}
+	//=======BEGIN COMPURE STAGE=======
+	 #pragma unroll
+    for(int i = ROWS_HALO_STEPS; i < ROWS_HALO_STEPS + ROWS_RESULT_STEPS; i++){//For each result block
+        float sum = 0;
+		float weightAccum = 0;
 
-	if(weightSum > 0.0){
-		accum /= weightSum;//Normalize
-		vmapSOA.z[0][i] = accum;
-	}else{
-		vmapSOA.z[0][i] = CUDART_NAN_F;
-	}
+        #pragma unroll
+        for(int j = -GAUSSIAN_SPATIAL_FILTER_RADIUS; j <= GAUSSIAN_SPATIAL_FILTER_RADIUS; j++)
+		{
+			float depth = s_Data[threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X + j];
+			if(depth > 0.001f)
+			{
+				sum +=	cGaussianSpatialKernel[GAUSSIAN_SPATIAL_FILTER_RADIUS - j] * depth;
+				weightAccum += cGaussianSpatialKernel[GAUSSIAN_SPATIAL_FILTER_RADIUS - j];
+			}
+		}
+		d_Dest[i * ROWS_BLOCKDIM_X] = sum/weightAccum;//Normalize
+    }
 }
 
 
+__host__ void setGaussianSpatialKernel(float sigma)
+{
+	float kernel[GAUSSIAN_SPATIAL_KERNEL_SIZE];
+
+	for(int i = -GAUSSIAN_SPATIAL_FILTER_RADIUS; i <= GAUSSIAN_SPATIAL_FILTER_RADIUS; ++i)
+	{
+		kernel[i+GAUSSIAN_SPATIAL_FILTER_RADIUS] = expf(-i*i/(2*sigma));
+	}
+
+	cudaMemcpyToSymbol(cGaussianSpatialKernel, kernel, GAUSSIAN_SPATIAL_KERNEL_SIZE*sizeof(float));
+}
+
 
 __host__ void buildVMapGaussianFilterCUDA(rgbd::framework::DPixel* dev_depthBuffer, VMapSOA vmapSOA, int xRes, int yRes, 
-										  rgbd::framework::Intrinsics intr, float maxDepth, float sigma, int window)
+										  rgbd::framework::Intrinsics intr, float maxDepth)
 {
-	//Seperable kernel. Rows first. For simplicity and efficiency, assume sensor resolution less than 1080p. 
-	//A reasonable assumption for current state of technology
-	if(xRes < 1024 && yRes < 1024)
-	{
-		if(window > MAX_FILTER_WINDOW_SIZE)
-		{
-			throw new std::exception("Error: Filter window too big");
-		}
+	//Assert that kernel parameters are properly memory aligned. Otherwise, kernel will either fail or be inefficient
+	assert(GAUSSIAN_SPATIAL_FILTER_RADIUS <= ROWS_BLOCKDIM_X*ROWS_HALO_STEPS);
+	assert( xRes % (ROWS_RESULT_STEPS * ROWS_BLOCKDIM_X) == 0 );
+	assert( yRes % ROWS_BLOCKDIM_Y == 0 );
 
-		dim3 threadsPerBlock(xRes);
-		dim3 fullBlocksPerGrid(yRes);
-		int sharedMemSize = sizeof(float)*xRes;
+	dim3 blocks(xRes / (ROWS_RESULT_STEPS * ROWS_BLOCKDIM_X), yRes / ROWS_BLOCKDIM_Y);
+	dim3 threads(ROWS_BLOCKDIM_X, ROWS_BLOCKDIM_Y);
 
-		KernelWindow precomputedWindow;
-		int center = window >> 1;
-		for(int i = 0; i < window; i++)
-		{
-			float dist = center - i;
+	gaussianKernelRows<<<blocks, threads>>>(dev_depthBuffer, vmapSOA, xRes, yRes, maxDepth);
 
-			precomputedWindow.kernel[i] = expf(-dist*dist/(2*sigma));
-		}
-
-		gaussianKernel1<<<fullBlocksPerGrid, threadsPerBlock, sharedMemSize>>>(dev_depthBuffer, vmapSOA, xRes, yRes, maxDepth, sigma, window, precomputedWindow);
-
-	}else{
-		throw new std::exception("Error: Input image exceeds maximum dimension.");
-	}
 }
 
 

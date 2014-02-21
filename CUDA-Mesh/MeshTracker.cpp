@@ -59,8 +59,8 @@ void MeshTracker::initCudaBuffers(int xRes, int yRes)
 	dev_nmapSOA.z[1] = dev_nmapSOA.z[0] + pixCount;
 	dev_nmapSOA.z[2] = dev_nmapSOA.z[1] + (pixCount >> 2);
 
-
-
+	//Initialize gaussian spatial kernel
+	setGaussianSpatialSigma(1.0f);
 }
 
 void MeshTracker::cleanupCuda()
@@ -108,9 +108,9 @@ void MeshTracker::buildVMapNoFilter(float maxDepth)
 	buildVMapPyramidCUDA(dev_vmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
 }
 
-void MeshTracker::buildVMapGaussianFilter(float maxDepth, float sigma, int window)
+void MeshTracker::buildVMapGaussianFilter(float maxDepth)
 {
-	buildVMapGaussianFilterCUDA(dev_depthImageBuffer, dev_vmapSOA, mXRes, mYRes, mIntr, maxDepth, sigma, window);
+	buildVMapGaussianFilterCUDA(dev_depthImageBuffer, dev_vmapSOA, mXRes, mYRes, mIntr, maxDepth);
 
 	buildVMapPyramidCUDA(dev_vmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
 }
@@ -122,6 +122,12 @@ void MeshTracker::buildVMapBilateralFilter(float maxDepth, float sigma_s, float 
 
 
 	buildVMapPyramidCUDA(dev_vmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
+}
+
+
+void MeshTracker::setGaussianSpatialSigma(float sigma)
+{
+	setGaussianSpatialKernel(sigma);
 }
 
 

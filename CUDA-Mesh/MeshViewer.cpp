@@ -74,7 +74,7 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	mHeight = screenheight;
 
 	//Setup default rendering/pipeline settings
-	mFilterMode = NO_FILTER;
+	mFilterMode = GAUSSIAN_FILTER;
 	mNormalMode = SIMPLE_NORMALS;
 	mViewState = DISPLAY_MODE_OVERLAY;
 	hairyPoints = false;
@@ -190,6 +190,8 @@ DeviceStatus MeshViewer::init(int argc, char **argv)
 
 	//Create mesh tracker
 	mMeshTracker = new MeshTracker(mXRes, mYRes, mDevice->getColorIntrinsics());
+	mMeshTracker->setGaussianSpatialSigma(1.0f);
+
 
 	//Init rendering cuda code
 	initRenderingCuda();
@@ -798,7 +800,7 @@ void MeshViewer::display()
 
 			break;
 		case GAUSSIAN_FILTER:
-			mMeshTracker->buildVMapGaussianFilter(10.0f, 1.0f, 7);
+			mMeshTracker->buildVMapGaussianFilter(10.0f);
 			break;
 		case NO_FILTER:
 		default:
