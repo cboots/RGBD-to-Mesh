@@ -18,4 +18,8 @@ void main()
 	
 	FragColor = step(0.0001, depth)*vec4(shade, 1.0-step(0.0001,shade), 1.0-shade, 0.7);
 	
+	if(isnan(depth))
+	{
+		FragColor = vec4(1.0, 1.0, 0.0, 1.0);
+	}
 }

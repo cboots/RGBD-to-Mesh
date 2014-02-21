@@ -3,6 +3,7 @@
 #include "device_structs.h"
 #include "cuda_runtime.h"
 #include "preprocessing.h"
+#include "normal_estimates.h"
 
 using namespace rgbd::framework;
 
@@ -62,6 +63,10 @@ public:
 	void buildVMapNoFilter(float maxDepth);
 	void buildVMapGaussianFilter(float maxDepth, float sigma);
 	void buildVMapBilateralFilter(float maxDepth, float sigma_s, float sigma_t);
+
+	void buildNMapSimple();
+	void buildNMapEigen(int pixelWindow, float );
+
 
 #pragma endregion
 

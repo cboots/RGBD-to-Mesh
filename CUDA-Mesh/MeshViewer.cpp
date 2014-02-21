@@ -75,6 +75,7 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 
 	//Setup default rendering/pipeline settings
 	mFilterMode = NO_FILTER;
+	mNormalMode = SIMPLE_NORMALS;
 	mViewState = DISPLAY_MODE_OVERLAY;
 	hairyPoints = false;
 
@@ -257,6 +258,7 @@ void MeshViewer::initShader()
 	const char * abs_frag = "shaders/absFS.glsl";
 	const char * depth_frag = "shaders/depthFS.glsl";
 	const char * vmap_frag = "shaders/vmapFS.glsl";
+	const char * nmap_frag = "shaders/nmapFS.glsl";
 
 	//Color image shader
 	color_prog = glslUtility::createProgram(pass_vert, NULL, color_frag, quadAttributeLocations, 2);
@@ -269,6 +271,9 @@ void MeshViewer::initShader()
 
 	//VMap display debug shader
 	vmap_prog = glslUtility::createProgram(pass_vert, NULL, vmap_frag, quadAttributeLocations, 2);
+
+	//NMap display debug shader
+	nmap_prog = glslUtility::createProgram(pass_vert, NULL, nmap_frag, quadAttributeLocations, 2);
 }
 
 void MeshViewer::initTextures()
@@ -802,8 +807,17 @@ void MeshViewer::display()
 
 		}
 
+		switch(mNormalMode)
+		{
+		case SIMPLE_NORMALS:
+			mMeshTracker->buildNMapSimple();
+			break;
+		case EIGEN_NORMALS:
+			//mMeshTracker->buildNMapEigen();
+			break;
+		}
 
-	}
+	}//=====End of pipeline code=====
 
 
 	//=====RENDERING======
@@ -846,7 +860,7 @@ void MeshViewer::display()
 	case DISPLAY_MODE_RGBMAP_DEBUG:
 		drawRGBMaptoTexture(texture0);
 		drawColorImageBufferToTexture(texture1);
-		
+
 		drawQuad(color_prog, -0.5, 0, 0.5, 1, 1.0, &texture0, 1);
 		drawQuad(color_prog, 0.5, 0, 0.5, 1, 1.0, &texture1, 1);
 		break;

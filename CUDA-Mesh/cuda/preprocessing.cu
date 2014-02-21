@@ -10,15 +10,17 @@ __global__ void buildVMapNoFilterKernel(rgbd::framework::DPixel* dev_depthBuffer
 	{
 		int i = (v * xRes) + u;
 
-		float x = 0.0f;
-		float y = 0.0f;
+		float x = CUDART_NAN_F;
+		float y = CUDART_NAN_F;
 		float z = dev_depthBuffer[i].depth * 0.001f;
 
 		if (z > 0.001f && z < maxDepth) {//Exclude zero or negative depths.  
 
 			x = (u - intr.cx) * z / intr.fx;
 			y = (v - intr.cy) * z / intr.fy;
-		} 
+		} else{
+			z = CUDART_NAN_F;
+		}
 
 		//Write to SOA in memory coallesed way
 		vmapSOA.x[0][i] = x;

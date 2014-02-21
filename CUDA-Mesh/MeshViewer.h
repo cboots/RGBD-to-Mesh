@@ -48,6 +48,11 @@ enum DisplayModes
 	DISPLAY_MODE_RGBMAP_DEBUG
 };
 
+enum NormalMode
+{
+	SIMPLE_NORMALS,
+	EIGEN_NORMALS
+};
 
 class MeshViewer : public RGBDDevice::NewRGBDFrameListener
 {
@@ -107,7 +112,7 @@ private:
 
 #pragma region Pipeline Options
 	FilterMode mFilterMode;
-
+	NormalMode mNormalMode;
 #pragma endregion
 
 	//======Rendering options=======
@@ -151,6 +156,7 @@ private:
 	GLuint color_prog;
 	GLuint abs_prog;//Useful for debuging normals or world space coords
 	GLuint vmap_prog;
+	GLuint nmap_prog;
 #pragma endregion
 
 #pragma region Buffer Object Indecies
