@@ -862,7 +862,7 @@ void MeshViewer::display()
 		drawColorImageBufferToTexture(texture1);
 
 		drawQuad(color_prog, -0.5, 0, 0.5, 1, 1.0, &texture0, 1);
-		drawQuad(color_prog, 0.5, 0, 0.5, 1, 1.0, &texture1, 1);
+		drawQuad(color_prog, 0.5, 0, -0.5, 1, 1.0, &texture1, 1);
 		break;
 	case DISPLAY_MODE_NMAP_DEBUG:
 		drawNMaptoTexture(texture0, 0);
@@ -870,9 +870,9 @@ void MeshViewer::display()
 		drawNMaptoTexture(texture2, 2);
 		drawDepthImageBufferToTexture(texture3);
 
-		drawQuad(abs_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR Level0 NMap
-		drawQuad(abs_prog,  0.5, -0.5, 0.5, 0.5, 0.5,  &texture1, 1);//LR Level1 NMap
-		drawQuad(abs_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 NMap
+		drawQuad(nmap_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR Level0 NMap
+		drawQuad(nmap_prog,  0.5, -0.5, 0.5, 0.5, 0.5,  &texture1, 1);//LR Level1 NMap
+		drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 NMap
 		drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL Original depth
 		break;
 
