@@ -797,7 +797,7 @@ void MeshViewer::display()
 		switch(mFilterMode)
 		{
 		case BILATERAL_FILTER:
-
+			mMeshTracker->buildVMapBilateralFilter(10.0f, 1.0f);
 			break;
 		case GAUSSIAN_FILTER:
 			mMeshTracker->buildVMapGaussianFilter(10.0f);

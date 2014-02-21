@@ -329,7 +329,7 @@ __global__ void bilateralFilterKernelRows(rgbd::framework::DPixel* dev_depthBuff
 			float depth = s_Data[threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X + j];
 			if(depth > 0.001f)
 			{
-				float spatialWeight = expf(-(centerDepth-depth)*(centerDepth-depth)*inv2sig_t);
+				float spatialWeight = __expf(-(centerDepth-depth)*(centerDepth-depth)*inv2sig_t);
 				sum +=	spatialWeight*cGaussianSpatialKernel[GAUSSIAN_SPATIAL_FILTER_RADIUS - j] * depth;
 				weightAccum += spatialWeight*cGaussianSpatialKernel[GAUSSIAN_SPATIAL_FILTER_RADIUS - j];
 			}
@@ -382,7 +382,7 @@ __global__ void bilateralFilterKernelCols(VMapSOA vmapSOA, int xRes, int yRes, r
 			float depth = s_Data[threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y + j];
 			if(depth > 0.001f){
 				//Compute bilateral filter weight
-				float spatialWeight = expf(-(centerDepth-depth)*(centerDepth-depth)*inv2sig_t);
+				float spatialWeight = __expf(-(centerDepth-depth)*(centerDepth-depth)*inv2sig_t);
 
 				sum += spatialWeight * cGaussianSpatialKernel[GAUSSIAN_SPATIAL_FILTER_RADIUS - j] * depth;
 				weightAccum += spatialWeight * cGaussianSpatialKernel[GAUSSIAN_SPATIAL_FILTER_RADIUS - j];

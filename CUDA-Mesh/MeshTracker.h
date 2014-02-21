@@ -63,7 +63,7 @@ public:
 	void setGaussianSpatialSigma(float sigma);
 	void buildVMapNoFilter(float maxDepth);
 	void buildVMapGaussianFilter(float maxDepth);
-	void buildVMapBilateralFilter(float maxDepth, float sigma_s, float sigma_t);
+	void buildVMapBilateralFilter(float maxDepth, float sigma_t);
 
 	void buildNMapSimple();
 	void buildNMapEigen(int pixelWindow, float );
