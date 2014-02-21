@@ -798,7 +798,7 @@ void MeshViewer::display()
 
 			break;
 		case GAUSSIAN_FILTER:
-
+			mMeshTracker->buildVMapGaussianFilter(10.0f, 1.0f, 7);
 			break;
 		case NO_FILTER:
 		default:
@@ -1039,6 +1039,18 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	case 'h':
 		hairyPoints = !hairyPoints;
 		cout << "Toggle normal hairs" << endl;
+		break;
+	case 'g':
+		mFilterMode = GAUSSIAN_FILTER;
+		cout << "Gaussian Filter" << endl;
+		break;
+	case 'b':
+		mFilterMode = BILATERAL_FILTER;
+		cout << "Bilateral Filter" << endl;
+		break;
+	case 'n':
+		mFilterMode = NO_FILTER;
+		cout << "No Filter" << endl;
 		break;
 	}
 

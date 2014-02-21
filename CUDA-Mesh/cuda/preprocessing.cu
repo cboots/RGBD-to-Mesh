@@ -44,6 +44,81 @@ __host__ void buildVMapNoFilterCUDA(rgbd::framework::DPixel* dev_depthBuffer, VM
 
 }
 
+struct KernelWindow
+{
+	float kernel[MAX_FILTER_WINDOW_SIZE];
+};
+
+__global__ void gaussianKernel1(rgbd::framework::DPixel* dev_depthBuffer, VMapSOA vmapSOA, int xRes, int yRes,
+								float maxDepth, float sigma, int window, KernelWindow precomputed)
+{
+	extern __shared__ float sharedRow[];
+
+	int row = blockIdx.x;
+	int col = threadIdx.x;
+	int i = row*xRes + col;
+
+	if(col < xRes)
+	{
+		sharedRow[col] = dev_depthBuffer[i].depth*0.001f;
+	}
+
+	__syncthreads();
+
+	//Row loaded in shared memory.
+
+	float weightSum = 0.0f;
+	float accum = 0.0f;
+	int leftEdge = MAX(0,(col - (window>>1)));
+	int rightEdge = MIN((xRes-1), (col + (window>>1)));
+	for(int x = leftEdge, int i = 0; x <= rightEdge; ++x, ++i)
+	{
+		accum += sharedRow[x]*precomputed.kernel[i];
+		weightSum += precomputed.kernel[i];
+	}
+
+	if(weightSum > 0.0){
+		accum /= weightSum;//Normalize
+		vmapSOA.z[0][i] = accum;
+	}else{
+		vmapSOA.z[0][i] = CUDART_NAN_F;
+	}
+}
+
+
+
+__host__ void buildVMapGaussianFilterCUDA(rgbd::framework::DPixel* dev_depthBuffer, VMapSOA vmapSOA, int xRes, int yRes, 
+										  rgbd::framework::Intrinsics intr, float maxDepth, float sigma, int window)
+{
+	//Seperable kernel. Rows first. For simplicity and efficiency, assume sensor resolution less than 1080p. 
+	//A reasonable assumption for current state of technology
+	if(xRes < 1024 && yRes < 1024)
+	{
+		if(window > MAX_FILTER_WINDOW_SIZE)
+		{
+			throw new std::exception("Error: Filter window too big");
+		}
+
+		dim3 threadsPerBlock(xRes);
+		dim3 fullBlocksPerGrid(yRes);
+		int sharedMemSize = sizeof(float)*xRes;
+
+		KernelWindow precomputedWindow;
+		int center = window >> 1;
+		for(int i = 0; i < window; i++)
+		{
+			float dist = center - i;
+
+			precomputedWindow.kernel[i] = expf(-dist*dist/(2*sigma));
+		}
+
+		gaussianKernel1<<<fullBlocksPerGrid, threadsPerBlock, sharedMemSize>>>(dev_depthBuffer, vmapSOA, xRes, yRes, maxDepth, sigma, window, precomputedWindow);
+
+	}else{
+		throw new std::exception("Error: Input image exceeds maximum dimension.");
+	}
+}
+
 
 
 __global__ void rgbAOSToSOAKernel(rgbd::framework::ColorPixel* dev_colorPixels, 

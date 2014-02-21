@@ -108,10 +108,9 @@ void MeshTracker::buildVMapNoFilter(float maxDepth)
 	buildVMapPyramidCUDA(dev_vmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
 }
 
-void MeshTracker::buildVMapGaussianFilter(float maxDepth, float sigma)
+void MeshTracker::buildVMapGaussianFilter(float maxDepth, float sigma, int window)
 {
-	//TODO: Implement
-
+	buildVMapGaussianFilterCUDA(dev_depthImageBuffer, dev_vmapSOA, mXRes, mYRes, mIntr, maxDepth, sigma, window);
 
 	buildVMapPyramidCUDA(dev_vmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
 }
