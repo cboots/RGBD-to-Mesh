@@ -1,5 +1,7 @@
 #include "normal_estimates.h"
 
+#pragma region Simple Normals Calculation
+
 __global__ void simpleNormalsKernel(float* x_vert, float* y_vert, float* z_vert, 
 									float* x_norm, float* y_norm, float* z_norm,
 									int xRes, int yRes)
@@ -67,5 +69,11 @@ __host__ void simpleNormals(VMapSOA vmap, NMapSOA nmap, int numLevels, int xRes,
 			nmap.x[i], nmap.y[i], nmap.z[i],
 			xRes>>i, yRes>>i);
 	}
-
 }
+
+#pragma endregion
+
+#pragma region Eigen Normal Calculation
+
+
+#pragma endregion

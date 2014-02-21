@@ -113,6 +113,9 @@ private:
 #pragma region Pipeline Options
 	FilterMode mFilterMode;
 	NormalMode mNormalMode;
+	float mSpatialSigma;
+	float mDepthSigma;
+	float mMaxDepth;
 #pragma endregion
 
 	//======Rendering options=======

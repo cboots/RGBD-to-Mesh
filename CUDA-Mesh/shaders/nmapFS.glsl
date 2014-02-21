@@ -15,9 +15,10 @@ void main()
 	vec4 norm = texture(u_Texture0, fs_texCoord*u_TextureScale);
 	FragColor = abs(norm);
 	FragColor.a = 1.0;
-	
+	/*
 	if(isnan(norm.x))
 	{
 		FragColor = vec4(1.0,1.0,0.0,1.0);
 	}
+	*/
 }

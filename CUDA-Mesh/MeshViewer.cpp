@@ -78,6 +78,9 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	mNormalMode = SIMPLE_NORMALS;
 	mViewState = DISPLAY_MODE_OVERLAY;
 	hairyPoints = false;
+	mSpatialSigma = 5.0f;
+	mDepthSigma = 0.005f;
+	mMaxDepth = 10.0f;
 
 	seconds = time (NULL);
 	fpstracker = 0;
@@ -190,7 +193,7 @@ DeviceStatus MeshViewer::init(int argc, char **argv)
 
 	//Create mesh tracker and set default values
 	mMeshTracker = new MeshTracker(mXRes, mYRes, mDevice->getColorIntrinsics());
-	mMeshTracker->setGaussianSpatialSigma(1.0f);
+	mMeshTracker->setGaussianSpatialSigma(mSpatialSigma);
 
 	//Init rendering cuda code
 	initRenderingCuda();
@@ -796,14 +799,14 @@ void MeshViewer::display()
 		switch(mFilterMode)
 		{
 		case BILATERAL_FILTER:
-			mMeshTracker->buildVMapBilateralFilter(10.0f, 0.005f);
+			mMeshTracker->buildVMapBilateralFilter(mMaxDepth, mDepthSigma);
 			break;
 		case GAUSSIAN_FILTER:
-			mMeshTracker->buildVMapGaussianFilter(10.0f);
+			mMeshTracker->buildVMapGaussianFilter(mMaxDepth);
 			break;
 		case NO_FILTER:
 		default:
-			mMeshTracker->buildVMapNoFilter(10.0f);
+			mMeshTracker->buildVMapNoFilter(mMaxDepth);
 			break;
 
 		}
@@ -869,12 +872,12 @@ void MeshViewer::display()
 		drawNMaptoTexture(texture0, 0);
 		drawNMaptoTexture(texture1, 1);
 		drawNMaptoTexture(texture2, 2);
-		drawDepthImageBufferToTexture(texture3);
+		drawColorImageBufferToTexture(texture3);
 
 		drawQuad(nmap_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR Level0 NMap
 		drawQuad(nmap_prog,  0.5, -0.5, 0.5, 0.5, 0.5,  &texture1, 1);//LR Level1 NMap
 		drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 NMap
-		drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL Original depth
+		drawQuad(color_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL Original depth
 		break;
 
 	case DISPLAY_MODE_VMAP_DEBUG:
@@ -1052,6 +1055,32 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	case 'n':
 		mFilterMode = NO_FILTER;
 		cout << "No Filter" << endl;
+		break;
+	case '[':
+		mSpatialSigma -= 0.1f;
+		cout << "Spatial Sigma = " << mSpatialSigma << " Lateral Pixels" << endl;
+		mMeshTracker->setGaussianSpatialSigma(mSpatialSigma);
+		break;
+	case ']':
+		mSpatialSigma += 0.1f;
+		cout << "Spatial Sigma = " << mSpatialSigma << " Lateral Pixels" << endl;
+		mMeshTracker->setGaussianSpatialSigma(mSpatialSigma);
+		break;
+	case '{':
+		mDepthSigma -= 0.0005f;
+		cout << "Depth Sigma = " << mDepthSigma << " (m)" << endl;
+		break;
+	case '}':
+		mDepthSigma += 0.0005f;
+		cout << "Depth Sigma = " << mDepthSigma << " (m)" << endl;
+		break;
+	case '\'':
+		mMaxDepth += 0.25f;
+		cout << "Max Depth: " << mMaxDepth << " (m)" << endl;
+		break;
+	case ';':
+		mMaxDepth -= 0.25f;
+		cout << "Max Depth: " << mMaxDepth << " (m)" << endl;
 		break;
 	}
 
