@@ -27,3 +27,6 @@ __host__ void setGaussianSpatialKernel(float sigma);
 
 __host__ void buildVMapGaussianFilterCUDA(rgbd::framework::DPixel* dev_depthBuffer, VMapSOA vmapSOA, int xRes, int yRes, 
 										  rgbd::framework::Intrinsics intr, float maxDepth);
+
+__host__ void buildVMapBilateralFilterCUDA(rgbd::framework::DPixel* dev_depthBuffer, VMapSOA vmapSOA, int xRes, int yRes, 
+										  rgbd::framework::Intrinsics intr, float maxDepth, float sigma_t);
