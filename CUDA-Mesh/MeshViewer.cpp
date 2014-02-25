@@ -79,7 +79,7 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	mViewState = DISPLAY_MODE_OVERLAY;
 	hairyPoints = false;
 	mSpatialSigma = 2.0f;
-	mDepthSigma = 0.05f;
+	mDepthSigma = 0.005f;
 	mMaxDepth = 10.0f;
 
 	seconds = time (NULL);
