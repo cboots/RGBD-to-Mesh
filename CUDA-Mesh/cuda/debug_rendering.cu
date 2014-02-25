@@ -172,14 +172,19 @@ __host__ void drawNMaptoPBO(float4* pbo, Float3SOAPyramid nmap, int level, int x
 __host__ void drawRGBMaptoPBO(float4* pbo, Float3SOAPyramid rgbMap, int level, int xRes, int yRes)
 {
 	int tileSize = 16;
+	
+	if(level < NUM_PYRAMID_LEVELS)
+	{
+		int scaledXRes = xRes >> level;
+		int scaledYRes = yRes >> level;
+
+		dim3 threadsPerBlock(tileSize, tileSize);
+		dim3 fullBlocksPerGrid((int)ceil(float(scaledXRes)/float(tileSize)), 
+			(int)ceil(float(scaledYRes)/float(tileSize)));
 
 
-	dim3 threadsPerBlock(tileSize, tileSize);
-	dim3 fullBlocksPerGrid((int)ceil(float(xRes)/float(tileSize)), 
-		(int)ceil(float(yRes)/float(tileSize)));
-
-
-	sendFloat3SOAToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo, rgbMap.x[level], rgbMap.y[level], rgbMap.z[level],  1.0,
-		xRes, yRes, xRes, yRes);
+		sendFloat3SOAToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo,  rgbMap.x[level], rgbMap.y[level], rgbMap.z[level],  1.0,
+			scaledXRes, scaledYRes, xRes, yRes);
+	}
 
 }

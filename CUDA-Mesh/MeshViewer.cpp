@@ -862,10 +862,10 @@ void MeshViewer::display()
 		glDisable(GL_BLEND);
 		break;
 	case DISPLAY_MODE_RGBMAP_DEBUG:
-		drawRGBMaptoTexture(texture0, 0);
+		drawRGBMaptoTexture(texture0, 2);
 		drawColorImageBufferToTexture(texture1);
 
-		drawQuad(color_prog, -0.5, 0, 0.5, 1, 1.0, &texture0, 1);
+		drawQuad(color_prog, -0.5, 0, 0.5, 1, 0.25, &texture0, 1);
 		drawQuad(color_prog, 0.5, 0, -0.5, 1, 1.0, &texture1, 1);
 		break;
 	case DISPLAY_MODE_NMAP_DEBUG:
