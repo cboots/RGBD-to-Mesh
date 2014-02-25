@@ -15,21 +15,18 @@ __global__ void simpleNormalsKernel(float* x_vert, float* y_vert, float* z_vert,
 
 		glm::vec3 norm = glm::vec3(CUDART_NAN_F);
 
-		if(u < xRes - 1 && v < yRes - 1)
+		if(u < xRes - 1 && v < yRes - 1 && u > 0 && v > 0)
 		{
-			float xc = x_vert[i];
-			float yc = y_vert[i];
-			float zc = z_vert[i];
 
 			//Diff to right
-			float dx1 = x_vert[i+1] - xc;
-			float dy1 = y_vert[i+1] - yc;
-			float dz1 = z_vert[i+1] - zc;
+			float dx1 = x_vert[i+1] - x_vert[i-1];
+			float dy1 = y_vert[i+1] - y_vert[i-1];
+			float dz1 = z_vert[i+1] - z_vert[i-1];
 
 			//Diff to bottom
-			float dx2 = x_vert[i+xRes] - xc;
-			float dy2 = y_vert[i+xRes] - yc;
-			float dz2 = z_vert[i+xRes] - zc;
+			float dx2 = x_vert[i+xRes] - x_vert[i-xRes];
+			float dy2 = y_vert[i+xRes] - y_vert[i-xRes];
+			float dz2 = z_vert[i+xRes] - z_vert[i-xRes];
 
 			//d1 cross d2
 			norm.x = dy1*dz2-dz1*dy2;
@@ -54,7 +51,7 @@ __global__ void simpleNormalsKernel(float* x_vert, float* y_vert, float* z_vert,
 
 }
 
-__host__ void simpleNormals(VMapSOA vmap, NMapSOA nmap, int numLevels, int xRes, int yRes)
+__host__ void simpleNormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, int numLevels, int xRes, int yRes)
 {
 	int tileSize = 16;
 

@@ -14,14 +14,7 @@ struct RGBMapSOA{
 	float* b;
 };
 
-
-struct VMapSOA{
-	float* x[NUM_PYRAMID_LEVELS];
-	float* y[NUM_PYRAMID_LEVELS];
-	float* z[NUM_PYRAMID_LEVELS];
-};
-
-struct NMapSOA{
+struct Float3SOAPyramid{
 	float* x[NUM_PYRAMID_LEVELS];
 	float* y[NUM_PYRAMID_LEVELS];
 	float* z[NUM_PYRAMID_LEVELS];

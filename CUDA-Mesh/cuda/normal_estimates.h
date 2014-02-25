@@ -7,4 +7,4 @@
 #include <glm/glm.hpp>
 
 
-__host__ void simpleNormals(VMapSOA vmap, NMapSOA nmap, int numLevels, int xRes, int yRes);
+__host__ void simpleNormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, int numLevels, int xRes, int yRes);

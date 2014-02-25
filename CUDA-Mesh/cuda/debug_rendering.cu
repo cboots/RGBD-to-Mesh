@@ -128,7 +128,7 @@ __host__ void clearPBO(float4* pbo, int xRes, int yRes, float clearValue)
 
 }
 
-__host__ void drawVMaptoPBO(float4* pbo, VMapSOA vmap, int level, int xRes, int yRes)
+__host__ void drawVMaptoPBO(float4* pbo, Float3SOAPyramid vmap, int level, int xRes, int yRes)
 {
 	int tileSize = 16;
 
@@ -148,7 +148,7 @@ __host__ void drawVMaptoPBO(float4* pbo, VMapSOA vmap, int level, int xRes, int 
 }
 
 
-__host__ void drawNMaptoPBO(float4* pbo, NMapSOA nmap, int level, int xRes, int yRes)
+__host__ void drawNMaptoPBO(float4* pbo, Float3SOAPyramid nmap, int level, int xRes, int yRes)
 {
 	int tileSize = 16;
 

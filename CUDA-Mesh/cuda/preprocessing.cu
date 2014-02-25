@@ -1,7 +1,7 @@
 #include "preprocessing.h"
 
 #pragma region VMap No Filter
-__global__ void buildVMapNoFilterKernel(rgbd::framework::DPixel* dev_depthBuffer, VMapSOA vmapSOA, int xRes, int yRes,
+__global__ void buildVMapNoFilterKernel(rgbd::framework::DPixel* dev_depthBuffer, Float3SOAPyramid vmapSOA, int xRes, int yRes,
 										rgbd::framework::Intrinsics intr, float maxDepth) 
 {
 	int u = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -31,7 +31,7 @@ __global__ void buildVMapNoFilterKernel(rgbd::framework::DPixel* dev_depthBuffer
 	}
 }
 
-__host__ void buildVMapNoFilterCUDA(rgbd::framework::DPixel* dev_depthBuffer, VMapSOA vmapSOA, int xRes, int yRes, 
+__host__ void buildVMapNoFilterCUDA(rgbd::framework::DPixel* dev_depthBuffer, Float3SOAPyramid vmapSOA, int xRes, int yRes, 
 									rgbd::framework::Intrinsics intr, float maxDepth)
 {
 
@@ -75,7 +75,7 @@ __host__ void setGaussianSpatialKernel(float sigma)
 #define		ROWS_HALO_STEPS		1
 
 
-__global__ void gaussianKernelRows(rgbd::framework::DPixel* dev_depthBuffer, VMapSOA vmapSOA, int xRes, int yRes, float maxDepth)
+__global__ void gaussianKernelRows(rgbd::framework::DPixel* dev_depthBuffer, Float3SOAPyramid vmapSOA, int xRes, int yRes, float maxDepth)
 {
 	__shared__ float s_Data[ROWS_BLOCKDIM_Y][ROWS_BLOCKDIM_X*(ROWS_RESULT_STEPS+2*ROWS_HALO_STEPS)];
 
@@ -160,7 +160,7 @@ __global__ void gaussianKernelRows(rgbd::framework::DPixel* dev_depthBuffer, VMa
 #define COLUMNS_RESULT_STEPS 4
 #define   COLUMNS_HALO_STEPS 1
 
-__global__ void gaussianKernelCols(VMapSOA vmapSOA, int xRes, int yRes, rgbd::framework::Intrinsics intr)
+__global__ void gaussianKernelCols(Float3SOAPyramid vmapSOA, int xRes, int yRes, rgbd::framework::Intrinsics intr)
 {
 	__shared__ float s_Data[COLUMNS_BLOCKDIM_X][(COLUMNS_RESULT_STEPS + 2 * COLUMNS_HALO_STEPS) * COLUMNS_BLOCKDIM_Y + 1];
 
@@ -228,7 +228,7 @@ __global__ void gaussianKernelCols(VMapSOA vmapSOA, int xRes, int yRes, rgbd::fr
 
 
 
-__host__ void buildVMapGaussianFilterCUDA(rgbd::framework::DPixel* dev_depthBuffer, VMapSOA vmapSOA, int xRes, int yRes, 
+__host__ void buildVMapGaussianFilterCUDA(rgbd::framework::DPixel* dev_depthBuffer, Float3SOAPyramid vmapSOA, int xRes, int yRes, 
 										  rgbd::framework::Intrinsics intr, float maxDepth)
 {
 	//=====Row filter and maxdepth thresholding step======
@@ -257,7 +257,7 @@ __host__ void buildVMapGaussianFilterCUDA(rgbd::framework::DPixel* dev_depthBuff
 #pragma endregion
 
 #pragma region VMap Seperable Bilateral Filter
-__global__ void bilateralFilterKernelRows(rgbd::framework::DPixel* dev_depthBuffer, VMapSOA vmapSOA, int xRes, int yRes, float maxDepth, float inv2sig_t)
+__global__ void bilateralFilterKernelRows(rgbd::framework::DPixel* dev_depthBuffer, Float3SOAPyramid vmapSOA, int xRes, int yRes, float maxDepth, float inv2sig_t)
 {
 	__shared__ float s_Data[ROWS_BLOCKDIM_Y][ROWS_BLOCKDIM_X*(ROWS_RESULT_STEPS+2*ROWS_HALO_STEPS)];
 
@@ -338,7 +338,7 @@ __global__ void bilateralFilterKernelRows(rgbd::framework::DPixel* dev_depthBuff
 	}
 }
 
-__global__ void bilateralFilterKernelCols(VMapSOA vmapSOA, int xRes, int yRes, rgbd::framework::Intrinsics intr, float inv2sig_t)
+__global__ void bilateralFilterKernelCols(Float3SOAPyramid vmapSOA, int xRes, int yRes, rgbd::framework::Intrinsics intr, float inv2sig_t)
 {
 	__shared__ float s_Data[COLUMNS_BLOCKDIM_X][(COLUMNS_RESULT_STEPS + 2 * COLUMNS_HALO_STEPS) * COLUMNS_BLOCKDIM_Y + 1];
 
@@ -408,7 +408,7 @@ __global__ void bilateralFilterKernelCols(VMapSOA vmapSOA, int xRes, int yRes, r
 }
 
 
-__host__ void buildVMapBilateralFilterCUDA(rgbd::framework::DPixel* dev_depthBuffer, VMapSOA vmapSOA, int xRes, int yRes, 
+__host__ void buildVMapBilateralFilterCUDA(rgbd::framework::DPixel* dev_depthBuffer, Float3SOAPyramid vmapSOA, int xRes, int yRes, 
 										  rgbd::framework::Intrinsics intr, float maxDepth, float sigma_t)
 {
 	//=====Row filter and maxdepth thresholding step======
@@ -495,7 +495,7 @@ __global__ void subsampleVMAPKernel(float* x_src, float* y_src, float* z_src,
 	}
 }
 
-__host__ void buildVMapPyramidCUDA(VMapSOA dev_vmapSOA, int xRes, int yRes, int numLevels)
+__host__ void buildVMapPyramidCUDA(Float3SOAPyramid dev_vmapSOA, int xRes, int yRes, int numLevels)
 {
 	int tileSize = 16;
 
