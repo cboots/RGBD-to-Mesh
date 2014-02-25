@@ -78,8 +78,8 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	mNormalMode = SIMPLE_NORMALS;
 	mViewState = DISPLAY_MODE_OVERLAY;
 	hairyPoints = false;
-	mSpatialSigma = 5.0f;
-	mDepthSigma = 0.005f;
+	mSpatialSigma = 2.0f;
+	mDepthSigma = 0.05f;
 	mMaxDepth = 10.0f;
 
 	seconds = time (NULL);
@@ -695,13 +695,13 @@ void MeshViewer::drawNMaptoTexture(GLuint texture, int level)
 }
 
 
-void MeshViewer::drawRGBMaptoTexture(GLuint texture)
+void MeshViewer::drawRGBMaptoTexture(GLuint texture, int level)
 {
 	float4* dptrRGBMap;
 	cudaGLMapBufferObject((void**)&dptrRGBMap, imagePBO0);
 
 	clearPBO(dptrRGBMap, mXRes, mYRes, 0.0f);
-	drawRGBMaptoPBO(dptrRGBMap, mMeshTracker->getRGBMapSOA(), mXRes, mYRes);
+	drawRGBMaptoPBO(dptrRGBMap, mMeshTracker->getRGBMapSOA(), level, mXRes, mYRes);
 
 	cudaGLUnmapBufferObject(imagePBO0);
 
@@ -862,7 +862,7 @@ void MeshViewer::display()
 		glDisable(GL_BLEND);
 		break;
 	case DISPLAY_MODE_RGBMAP_DEBUG:
-		drawRGBMaptoTexture(texture0);
+		drawRGBMaptoTexture(texture0, 0);
 		drawColorImageBufferToTexture(texture1);
 
 		drawQuad(color_prog, -0.5, 0, 0.5, 1, 1.0, &texture0, 1);
@@ -1067,11 +1067,11 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		mMeshTracker->setGaussianSpatialSigma(mSpatialSigma);
 		break;
 	case '{':
-		mDepthSigma -= 0.0005f;
+		mDepthSigma -= 0.005f;
 		cout << "Depth Sigma = " << mDepthSigma << " (m)" << endl;
 		break;
 	case '}':
-		mDepthSigma += 0.0005f;
+		mDepthSigma += 0.005f;
 		cout << "Depth Sigma = " << mDepthSigma << " (m)" << endl;
 		break;
 	case '\'':

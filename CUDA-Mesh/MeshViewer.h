@@ -254,7 +254,7 @@ private:
 	//Returns false if width or height does not match, true otherwise
 	bool drawColorImageBufferToTexture(GLuint texture);
 
-	void drawRGBMaptoTexture(GLuint texture);
+	void drawRGBMaptoTexture(GLuint texture, int level);
 
 	void drawVMaptoTexture(GLuint texture, int level);
 	void drawNMaptoTexture(GLuint texture, int level);

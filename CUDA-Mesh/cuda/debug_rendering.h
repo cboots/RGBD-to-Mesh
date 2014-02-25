@@ -26,4 +26,4 @@ __host__ void drawVMaptoPBO(float4* pbo, Float3SOAPyramid vmap, int level, int x
 __host__ void drawNMaptoPBO(float4* pbo, Float3SOAPyramid nmap, int level, int xRes, int yRes);
 
 
-__host__ void drawRGBMaptoPBO(float4* pbo, RGBMapSOA rgbMap, int xRes, int yRes);
+__host__ void drawRGBMaptoPBO(float4* pbo, Float3SOAPyramid rgbMap, int level, int xRes, int yRes);

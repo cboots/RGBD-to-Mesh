@@ -35,7 +35,7 @@ private:
 	ColorPixel* dev_colorImageBuffer;
 	DPixel* dev_depthImageBuffer;
 
-	RGBMapSOA dev_rgbSOA;
+	Float3SOAPyramid dev_rgbSOA;
 	Float3SOAPyramid dev_vmapSOA;
 	Float3SOAPyramid dev_nmapSOA;
 #pragma region
@@ -76,7 +76,7 @@ public:
 	inline DPixel* getDepthImageDevicePtr() { return dev_depthImageBuffer;}
 	inline Float3SOAPyramid getVMapPyramid() { return dev_vmapSOA;}
 	inline Float3SOAPyramid getNMapPyramid() { return dev_nmapSOA;}
-	inline RGBMapSOA getRGBMapSOA() { return dev_rgbSOA;}
+	inline Float3SOAPyramid getRGBMapSOA() { return dev_rgbSOA;}
 
 #pragma endregion
 };

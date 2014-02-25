@@ -18,7 +18,9 @@ __host__ void buildVMapNoFilterCUDA(rgbd::framework::DPixel* dev_depthBuffer, Fl
 
 
 __host__ void rgbAOSToSOACUDA(rgbd::framework::ColorPixel* dev_colorPixels, 
-						  RGBMapSOA rgbSOA, int xRes, int yRes);
+						  Float3SOAPyramid rgbSOA, int xRes, int yRes);
+
+__host__ void buildRGBMapPyramid(Float3SOAPyramid dev_rgbSOA, int xRes, int yRes, int numLevels);
 
 
 __host__ void buildVMapPyramidCUDA(Float3SOAPyramid dev_vmapSOA, int xRes, int yRes, int numLevels);

@@ -30,10 +30,17 @@ void MeshTracker::initCudaBuffers(int xRes, int yRes)
 
 	//Setup SOA buffers, ensuring contiguous memory for pyramids 
 	//RGB SOA
-	cudaMalloc((void**) &dev_rgbSOA.r, sizeof(float)*3*pixCount);//Allocate enough for r,g,b
-	dev_rgbSOA.b = dev_rgbSOA.r + (pixCount);//Offset pointers for convenience
-	dev_rgbSOA.g = dev_rgbSOA.b + (pixCount);//Offset pointers for convenience
-
+	//Vertex Map Pyramid SOA. 
+	cudaMalloc((void**) &dev_rgbSOA.x[0], sizeof(float)*3*(pixCount + (pixCount>>2) + (pixCount>>4)));
+	//Get convenience pointer offsets
+	dev_rgbSOA.x[1] = dev_rgbSOA.x[0] + pixCount;
+	dev_rgbSOA.x[2] = dev_rgbSOA.x[1] + (pixCount >> 2);
+	dev_rgbSOA.y[0] = dev_rgbSOA.x[2] + (pixCount >> 4);
+	dev_rgbSOA.y[1] = dev_rgbSOA.y[0] + pixCount;
+	dev_rgbSOA.y[2] = dev_rgbSOA.y[1] + (pixCount >> 2);
+	dev_rgbSOA.z[0] = dev_rgbSOA.y[2] + (pixCount >> 4);
+	dev_rgbSOA.z[1] = dev_rgbSOA.z[0] + pixCount;
+	dev_rgbSOA.z[2] = dev_rgbSOA.z[1] + (pixCount >> 2);
 
 	//Vertex Map Pyramid SOA. 
 	cudaMalloc((void**) &dev_vmapSOA.x[0], sizeof(float)*3*(pixCount + (pixCount>>2) + (pixCount>>4)));
@@ -67,7 +74,7 @@ void MeshTracker::cleanupCuda()
 {
 	cudaFree(dev_colorImageBuffer);
 	cudaFree(dev_depthImageBuffer);
-	cudaFree(dev_rgbSOA.r);
+	cudaFree(dev_rgbSOA.x[0]);
 	cudaFree(dev_vmapSOA.x[0]);
 	cudaFree(dev_nmapSOA.x[0]);
 }
@@ -99,6 +106,7 @@ void MeshTracker::pushRGBDFrameToDevice(ColorPixelArray colorArray, DPixelArray 
 void MeshTracker::buildRGBSOA()
 {
 	rgbAOSToSOACUDA(dev_colorImageBuffer, dev_rgbSOA, mXRes, mYRes);
+	buildRGBMapPyramid(dev_rgbSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
 }
 
 void MeshTracker::buildVMapNoFilter(float maxDepth)

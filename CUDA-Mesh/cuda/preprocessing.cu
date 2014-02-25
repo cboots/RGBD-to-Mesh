@@ -439,7 +439,7 @@ __host__ void buildVMapBilateralFilterCUDA(rgbd::framework::DPixel* dev_depthBuf
 #pragma region RGB Map Generation
 
 __global__ void rgbAOSToSOAKernel(rgbd::framework::ColorPixel* dev_colorPixels, 
-								  RGBMapSOA rgbSOA, int xRes, int yRes)
+								  Float3SOAPyramid rgbSOA, int xRes, int yRes)
 {
 	int u = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int v = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -449,15 +449,15 @@ __global__ void rgbAOSToSOAKernel(rgbd::framework::ColorPixel* dev_colorPixels,
 		int i = (v * xRes) + u;
 
 		rgbd::framework::ColorPixel color = dev_colorPixels[i];
-		rgbSOA.r[i] = color.r / 255.0f;
-		rgbSOA.g[i] = color.g / 255.0f;
-		rgbSOA.b[i] = color.b / 255.0f;
+		rgbSOA.x[0][i] = color.r / 255.0f;
+		rgbSOA.y[0][i] = color.g / 255.0f;
+		rgbSOA.z[0][i] = color.b / 255.0f;
 	}
 
 }
 
 __host__ void rgbAOSToSOACUDA(rgbd::framework::ColorPixel* dev_colorPixels, 
-							  RGBMapSOA rgbSOA, int xRes, int yRes)
+							  Float3SOAPyramid rgbSOA, int xRes, int yRes)
 {
 	int tileSize = 16;
 
@@ -468,12 +468,14 @@ __host__ void rgbAOSToSOACUDA(rgbd::framework::ColorPixel* dev_colorPixels,
 	rgbAOSToSOAKernel<<<fullBlocksPerGrid, threadsPerBlock>>>(dev_colorPixels, rgbSOA, xRes, yRes);
 }
 
+
+
 #pragma endregion
 
 #pragma region VMap Subsampling
 //Subsamples float3 SOA by 1/2 and stores in dest
 //Threads are parallel by `
-__global__ void subsampleVMAPKernel(float* x_src, float* y_src, float* z_src, 
+__global__ void subsampleFloat3Kernel(float* x_src, float* y_src, float* z_src, 
 									float* x_dest, float* y_dest, float* z_dest,
 									int xRes_src, int yRes_src)
 {
@@ -506,7 +508,7 @@ __host__ void buildVMapPyramidCUDA(Float3SOAPyramid dev_vmapSOA, int xRes, int y
 			(int)ceil(float(yRes>>(1+i))/float(tileSize)));
 
 
-		subsampleVMAPKernel<<<fullBlocksPerGrid,threadsPerBlock>>>(dev_vmapSOA.x[i], dev_vmapSOA.y[i], dev_vmapSOA.z[i],
+		subsampleFloat3Kernel<<<fullBlocksPerGrid,threadsPerBlock>>>(dev_vmapSOA.x[i], dev_vmapSOA.y[i], dev_vmapSOA.z[i],
 			dev_vmapSOA.x[i+1], dev_vmapSOA.y[i+1], dev_vmapSOA.z[i+1],
 			xRes>>i, yRes>>i);
 	}
@@ -514,3 +516,22 @@ __host__ void buildVMapPyramidCUDA(Float3SOAPyramid dev_vmapSOA, int xRes, int y
 }
 
 #pragma endregion
+
+
+__host__ void buildRGBMapPyramid(Float3SOAPyramid dev_rgbSOA, int xRes, int yRes, int numLevels)
+{
+	int tileSize = 16;
+
+	for(int i = 0; i < numLevels - 1; ++i)
+	{
+		dim3 threadsPerBlock(tileSize, tileSize);
+		dim3 fullBlocksPerGrid((int)ceil(float(xRes>>(1+i))/float(tileSize)), 
+			(int)ceil(float(yRes>>(1+i))/float(tileSize)));
+
+
+		subsampleFloat3Kernel<<<fullBlocksPerGrid,threadsPerBlock>>>(dev_rgbSOA.x[i], dev_rgbSOA.y[i], dev_rgbSOA.z[i],
+			dev_rgbSOA.x[i+1], dev_rgbSOA.y[i+1], dev_rgbSOA.z[i+1],
+			xRes>>i, yRes>>i);
+	}
+
+}
