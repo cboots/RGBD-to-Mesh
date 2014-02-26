@@ -106,6 +106,31 @@ int main(int argc, char** argv)
 		return 4;
 	}
 
+
+	//DEBUG CODE FOR CUDA
+	const int testArraySize = 1000;
+
+	float host_onesArray[2][testArraySize];
+	for(int i = 0; i < testArraySize; ++i){
+		host_onesArray[0][i] = 1.0f;	
+		host_onesArray[1][i] = i;	
+	}
+
+	float* dev_testArray;
+
+	cudaMalloc((void**)&dev_testArray, sizeof(float)*2*testArraySize);
+	cudaMemcpy(dev_testArray, host_onesArray, sizeof(float)*2*testArraySize, cudaMemcpyHostToDevice);
+	
+	cudaDeviceSynchronize();
+	exclusiveScanRows(dev_testArray, dev_testArray, testArraySize, 2);
+	cudaDeviceSynchronize();
+	cudaMemcpy(host_onesArray, dev_testArray, sizeof(float)*2*testArraySize, cudaMemcpyDeviceToHost);
+
+	cout << "Sum: " << host_onesArray[0][testArraySize-1] << endl;
+	cout << "Sum: " << host_onesArray[1][testArraySize-1] << endl;
+	
+	pause();
+
 	viewer.run();
 	pause();
 

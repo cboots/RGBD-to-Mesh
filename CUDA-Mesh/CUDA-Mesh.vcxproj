@@ -172,6 +172,8 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <ClInclude Include="cuda\plane_segmentation.h" />
     <ClInclude Include="cuda\preprocessing.h" />
     <ClInclude Include="cuda\normal_estimates.h" />
+    <ClInclude Include="cuda\scan.h" />
+    <ClInclude Include="cuda\transpose.h" />
     <ClInclude Include="device_structs.h" />
     <ClInclude Include="glslUtility.h" />
     <ClInclude Include="MeshTracker.h" />
@@ -190,6 +192,8 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <CudaCompile Include="cuda\plane_segmentation.cu" />
     <CudaCompile Include="cuda\preprocessing.cu" />
     <CudaCompile Include="cuda\normal_estimates.cu" />
+    <CudaCompile Include="cuda\scan.cu" />
+    <CudaCompile Include="cuda\transpose.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

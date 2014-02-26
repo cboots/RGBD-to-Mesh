@@ -36,8 +36,8 @@ __global__ void exclusive_scan_kernel(float* dev_in, float* dev_out, int width, 
 	extern __shared__ float temp[];
 
 	//Offset pointers to this block's row. Avoids the need for more complex indexing
-	dev_in += width*blockIdx.y;
-	dev_out += width*blockIdx.y;
+	dev_in += width*blockIdx.x;
+	dev_out += width*blockIdx.x;
 
 	//Now each row is working with it's own row like a normal exclusive scan of an array length width.
 	int index = threadIdx.x;
@@ -111,12 +111,11 @@ __host__ void exclusiveScanRows(float* dev_in, float* dev_out, int width, int he
 {
 	//Make sure matrix is limits of this kernel.
 	//Other algorithms can get around these limits, but this algorithm is simplified for the expected size of 640*480 
-	assert(width < MAX_BLOCK_SIZE);
-	assert(height < MAX_GRID_SIZE);
+	assert(width <= 1024);
+	assert(height <= MAX_GRID_SIZE);
 
 	//Nearest power of two below width
-	int pow2 = pow2roundup(width);
-	int blockArraySize = 1 << pow2;
+	int blockArraySize = pow2roundup(width);
 	dim3 threads(blockArraySize >> 1);//2 elements per thread
 	dim3 blocks(height);
 	int sharedCount = (2*blockArraySize+2)*sizeof(float);
