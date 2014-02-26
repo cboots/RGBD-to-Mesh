@@ -70,6 +70,7 @@ __host__ void simpleNormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, int nu
 
 #pragma endregion
 
+
 #pragma region Eigen Normal Calculation
 
 
