@@ -29,42 +29,14 @@ void MeshTracker::initCudaBuffers(int xRes, int yRes)
 
 
 	//Setup SOA buffers, ensuring contiguous memory for pyramids 
-	//RGB SOA
-	//Vertex Map Pyramid SOA. 
-	cudaMalloc((void**) &dev_rgbSOA.x[0], sizeof(float)*3*(pixCount + (pixCount>>2) + (pixCount>>4)));
-	//Get convenience pointer offsets
-	dev_rgbSOA.x[1] = dev_rgbSOA.x[0] + pixCount;
-	dev_rgbSOA.x[2] = dev_rgbSOA.x[1] + (pixCount >> 2);
-	dev_rgbSOA.y[0] = dev_rgbSOA.x[2] + (pixCount >> 4);
-	dev_rgbSOA.y[1] = dev_rgbSOA.y[0] + pixCount;
-	dev_rgbSOA.y[2] = dev_rgbSOA.y[1] + (pixCount >> 2);
-	dev_rgbSOA.z[0] = dev_rgbSOA.y[2] + (pixCount >> 4);
-	dev_rgbSOA.z[1] = dev_rgbSOA.z[0] + pixCount;
-	dev_rgbSOA.z[2] = dev_rgbSOA.z[1] + (pixCount >> 2);
+	//RGB Pyramid SOA
+	createFloat3SOAPyramid(dev_rgbSOA, xRes, yRes);
 
 	//Vertex Map Pyramid SOA. 
-	cudaMalloc((void**) &dev_vmapSOA.x[0], sizeof(float)*3*(pixCount + (pixCount>>2) + (pixCount>>4)));
-	//Get convenience pointer offsets
-	dev_vmapSOA.x[1] = dev_vmapSOA.x[0] + pixCount;
-	dev_vmapSOA.x[2] = dev_vmapSOA.x[1] + (pixCount >> 2);
-	dev_vmapSOA.y[0] = dev_vmapSOA.x[2] + (pixCount >> 4);
-	dev_vmapSOA.y[1] = dev_vmapSOA.y[0] + pixCount;
-	dev_vmapSOA.y[2] = dev_vmapSOA.y[1] + (pixCount >> 2);
-	dev_vmapSOA.z[0] = dev_vmapSOA.y[2] + (pixCount >> 4);
-	dev_vmapSOA.z[1] = dev_vmapSOA.z[0] + pixCount;
-	dev_vmapSOA.z[2] = dev_vmapSOA.z[1] + (pixCount >> 2);
+	createFloat3SOAPyramid(dev_vmapSOA, xRes, yRes);
 
 	//Normal Map Pyramid SOA. 
-	cudaMalloc((void**) &dev_nmapSOA.x[0], sizeof(float)*3*(pixCount + (pixCount>>2) + (pixCount>>4)));
-	//Get convenience pointer offsets
-	dev_nmapSOA.x[1] = dev_nmapSOA.x[0] + pixCount;
-	dev_nmapSOA.x[2] = dev_nmapSOA.x[1] + (pixCount >> 2);
-	dev_nmapSOA.y[0] = dev_nmapSOA.x[2] + (pixCount >> 4);
-	dev_nmapSOA.y[1] = dev_nmapSOA.y[0] + pixCount;
-	dev_nmapSOA.y[2] = dev_nmapSOA.y[1] + (pixCount >> 2);
-	dev_nmapSOA.z[0] = dev_nmapSOA.y[2] + (pixCount >> 4);
-	dev_nmapSOA.z[1] = dev_nmapSOA.z[0] + pixCount;
-	dev_nmapSOA.z[2] = dev_nmapSOA.z[1] + (pixCount >> 2);
+	createFloat3SOAPyramid(dev_nmapSOA, xRes, yRes);
 
 	//Initialize gaussian spatial kernel
 	setGaussianSpatialSigma(1.0f);
@@ -74,10 +46,49 @@ void MeshTracker::cleanupCuda()
 {
 	cudaFree(dev_colorImageBuffer);
 	cudaFree(dev_depthImageBuffer);
-	cudaFree(dev_rgbSOA.x[0]);
-	cudaFree(dev_vmapSOA.x[0]);
-	cudaFree(dev_nmapSOA.x[0]);
+	freeFloat3SOAPyramid(dev_rgbSOA);
+	freeFloat3SOAPyramid(dev_vmapSOA);
+	freeFloat3SOAPyramid(dev_nmapSOA);
 }
+
+
+void MeshTracker::createFloat3SOAPyramid(Float3SOAPyramid& dev_pyramid, int xRes, int yRes)
+{
+	int pixCount = xRes*yRes;
+	int pyramidCount = 0;
+
+	for(int i = 0; i < NUM_PYRAMID_LEVELS; ++i)
+	{
+		pyramidCount += (pixCount >> (i*2));
+	}
+
+	cudaMalloc((void**) &dev_pyramid.x[0], sizeof(float)*3*(pyramidCount));
+	//Get convenience pointer offsets
+	for(int i = 0; i < NUM_PYRAMID_LEVELS-1; ++i)
+	{
+		dev_pyramid.x[i+1] = dev_pyramid.x[i] + (pixCount >> (i*2));
+	}
+
+	dev_pyramid.y[0] = dev_pyramid.x[0] + pyramidCount;
+	for(int i = 0; i < NUM_PYRAMID_LEVELS-1; ++i)
+	{
+		dev_pyramid.y[i+1] = dev_pyramid.y[i] + (pixCount >> (i*2));
+	}
+
+	
+	dev_pyramid.z[0] = dev_pyramid.y[0] + pyramidCount;
+	for(int i = 0; i < NUM_PYRAMID_LEVELS-1; ++i)
+	{
+		dev_pyramid.z[i+1] = dev_pyramid.z[i] + (pixCount >> (i*2));
+	}
+
+}
+
+void MeshTracker::freeFloat3SOAPyramid(Float3SOAPyramid dev_pyramid)
+{
+	cudaFree(dev_pyramid.x[0]);
+}
+
 #pragma endregion
 
 #pragma region Pipeline control API
@@ -127,7 +138,7 @@ void MeshTracker::buildVMapBilateralFilter(float maxDepth, float sigma_t)
 {
 
 	buildVMapBilateralFilterCUDA(dev_depthImageBuffer, dev_vmapSOA, mXRes, mYRes, 
-										 mIntr, maxDepth, sigma_t);
+		mIntr, maxDepth, sigma_t);
 
 
 	buildVMapPyramidCUDA(dev_vmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);

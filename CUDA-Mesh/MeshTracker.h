@@ -38,9 +38,12 @@ private:
 	Float3SOAPyramid dev_rgbSOA;
 	Float3SOAPyramid dev_vmapSOA;
 	Float3SOAPyramid dev_nmapSOA;
+
 #pragma region
 	
 #pragma region Private Methods
+	void createFloat3SOAPyramid(Float3SOAPyramid& dev_pyramid, int xRes, int yRes);
+	void freeFloat3SOAPyramid(Float3SOAPyramid dev_pyramid);
 	void initCudaBuffers(int xRes, int yResolution);
 	void cleanupCuda();
 #pragma endregion

@@ -167,7 +167,9 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <ClCompile Include="MeshViewer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="cuda\array_ops.h" />
     <ClInclude Include="cuda\debug_rendering.h" />
+    <ClInclude Include="cuda\plane_segmentation.h" />
     <ClInclude Include="cuda\preprocessing.h" />
     <ClInclude Include="cuda\normal_estimates.h" />
     <ClInclude Include="device_structs.h" />
@@ -183,7 +185,9 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <CudaCompile Include="cuda\array_ops.cu" />
     <CudaCompile Include="cuda\debug_rendering.cu" />
+    <CudaCompile Include="cuda\plane_segmentation.cu" />
     <CudaCompile Include="cuda\preprocessing.cu" />
     <CudaCompile Include="cuda\normal_estimates.cu" />
   </ItemGroup>
