@@ -40,7 +40,7 @@ public:
 
 
 const int testArraySizeX = 640;
-const int testArraySizeY = 480;
+const int testArraySizeY = 2;
 float host_onesArray[testArraySizeY][testArraySizeX];
 
 int main(int argc, char** argv)
@@ -126,7 +126,7 @@ int main(int argc, char** argv)
 	cudaMemcpy(dev_testArray1, host_onesArray, sizeof(float)*testArraySizeX*testArraySizeY, cudaMemcpyHostToDevice);
 
 	cudaDeviceSynchronize();
-	transpose(dev_testArray1, dev_testArray2, testArraySizeX, testArraySizeY);
+	floatArrayAdditionCuda(dev_testArray1, dev_testArray1+testArraySizeX, dev_testArray2, testArraySizeX); 
 	cudaDeviceSynchronize();
 	cudaMemcpy(host_onesArray, dev_testArray2, sizeof(float)*testArraySizeX*testArraySizeY, cudaMemcpyDeviceToHost);
 
