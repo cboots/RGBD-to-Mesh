@@ -6,7 +6,6 @@
 #include "ONIKinectDevice.h"
 #include "LogDevice.h"
 #include "FileUtils.h"
-#include "array_ops.h"
 
 //-------------------------------
 //----------CUDA STUFF-----------

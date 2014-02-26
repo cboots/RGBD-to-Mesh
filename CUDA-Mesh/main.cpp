@@ -111,27 +111,6 @@ int main(int argc, char** argv)
 	}
 
 
-	//DEBUG CODE FOR CUDA
-	for(int i = 0; i < testArraySizeX; ++i){
-		for(int j = 0; j < testArraySizeY; ++j){
-			host_onesArray[j][i] = j*testArraySizeX+i;		
-		}
-	}
-
-	float* dev_testArray1;
-	float* dev_testArray2;
-
-	cudaMalloc((void**)&dev_testArray1, sizeof(float)*testArraySizeX*testArraySizeY);
-	cudaMalloc((void**)&dev_testArray2, sizeof(float)*testArraySizeX*testArraySizeY);
-	cudaMemcpy(dev_testArray1, host_onesArray, sizeof(float)*testArraySizeX*testArraySizeY, cudaMemcpyHostToDevice);
-
-	cudaDeviceSynchronize();
-	floatArrayAdditionCuda(dev_testArray1, dev_testArray1+testArraySizeX, dev_testArray2, testArraySizeX); 
-	cudaDeviceSynchronize();
-	cudaMemcpy(host_onesArray, dev_testArray2, sizeof(float)*testArraySizeX*testArraySizeY, cudaMemcpyDeviceToHost);
-
-	pause();
-
 	viewer.run();
 	pause();
 
