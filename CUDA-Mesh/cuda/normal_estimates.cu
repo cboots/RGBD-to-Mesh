@@ -4,6 +4,7 @@
 
 __global__ void simpleNormalsKernel(float* x_vert, float* y_vert, float* z_vert, 
 									float* x_norm, float* y_norm, float* z_norm,
+									float* curvature,
 									int xRes, int yRes)
 {
 	int u = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -45,13 +46,14 @@ __global__ void simpleNormalsKernel(float* x_vert, float* y_vert, float* z_vert,
 		x_norm[i] = norm.x;
 		y_norm[i] = norm.y;
 		z_norm[i] = norm.z;
+		curvature[i] = 0.0f;//filler. Simple normals has no means of estimating curvature
 
 
 	}
 
 }
 
-__host__ void simpleNormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, int numLevels, int xRes, int yRes)
+__host__ void simpleNormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, Float1SOAPyramid curvaturemap, int numLevels, int xRes, int yRes)
 {
 	int tileSize = 16;
 
@@ -63,7 +65,7 @@ __host__ void simpleNormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, int nu
 
 
 		simpleNormalsKernel<<<fullBlocksPerGrid,threadsPerBlock>>>(vmap.x[i], vmap.y[i], vmap.z[i],
-			nmap.x[i], nmap.y[i], nmap.z[i],
+			nmap.x[i], nmap.y[i], nmap.z[i], curvaturemap.x[i],
 			xRes>>i, yRes>>i);
 	}
 }
