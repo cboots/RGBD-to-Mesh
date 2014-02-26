@@ -6,7 +6,7 @@
 #include "ONIKinectDevice.h"
 #include "LogDevice.h"
 #include "FileUtils.h"
-#include "scan.h"
+#include "transpose.h"
 
 //-------------------------------
 //----------CUDA STUFF-----------

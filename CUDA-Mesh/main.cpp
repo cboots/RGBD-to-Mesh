@@ -39,12 +39,16 @@ public:
 };
 
 
+const int testArraySizeX = 640;
+const int testArraySizeY = 480;
+float host_onesArray[testArraySizeY][testArraySizeX];
+
 int main(int argc, char** argv)
 {
 	boost::filesystem::path full_path( boost::filesystem::current_path() );
 	cout << full_path << endl;
 
-	
+
 	RGBDDevice* devicePtr;
 
 	//Load source argument
@@ -81,7 +85,7 @@ int main(int argc, char** argv)
 		pause();
 		return 2;
 	}
-	
+
 	if(!devicePtr->createColorStream())
 	{
 		printf("Could not create color stream\n");
@@ -89,10 +93,10 @@ int main(int argc, char** argv)
 		pause();
 		return 3;
 	}
-	
+
 	printf("Streams created succesfully\n");
 
-	
+
 	devicePtr->setImageRegistrationMode(REGISTRATION_DEPTH_TO_COLOR);
 	devicePtr->setSyncColorAndDepth(false);
 
@@ -108,27 +112,24 @@ int main(int argc, char** argv)
 
 
 	//DEBUG CODE FOR CUDA
-	const int testArraySize = 1000;
-
-	float host_onesArray[2][testArraySize];
-	for(int i = 0; i < testArraySize; ++i){
-		host_onesArray[0][i] = 1.0f;	
-		host_onesArray[1][i] = i;	
+	for(int i = 0; i < testArraySizeX; ++i){
+		for(int j = 0; j < testArraySizeY; ++j){
+			host_onesArray[j][i] = j*testArraySizeX+i;		
+		}
 	}
 
-	float* dev_testArray;
+	float* dev_testArray1;
+	float* dev_testArray2;
 
-	cudaMalloc((void**)&dev_testArray, sizeof(float)*2*testArraySize);
-	cudaMemcpy(dev_testArray, host_onesArray, sizeof(float)*2*testArraySize, cudaMemcpyHostToDevice);
-	
-	cudaDeviceSynchronize();
-	exclusiveScanRows(dev_testArray, dev_testArray, testArraySize, 2);
-	cudaDeviceSynchronize();
-	cudaMemcpy(host_onesArray, dev_testArray, sizeof(float)*2*testArraySize, cudaMemcpyDeviceToHost);
+	cudaMalloc((void**)&dev_testArray1, sizeof(float)*testArraySizeX*testArraySizeY);
+	cudaMalloc((void**)&dev_testArray2, sizeof(float)*testArraySizeX*testArraySizeY);
+	cudaMemcpy(dev_testArray1, host_onesArray, sizeof(float)*testArraySizeX*testArraySizeY, cudaMemcpyHostToDevice);
 
-	cout << "Sum: " << host_onesArray[0][testArraySize-1] << endl;
-	cout << "Sum: " << host_onesArray[1][testArraySize-1] << endl;
-	
+	cudaDeviceSynchronize();
+	transpose(dev_testArray1, dev_testArray2, testArraySizeX, testArraySizeY);
+	cudaDeviceSynchronize();
+	cudaMemcpy(host_onesArray, dev_testArray2, sizeof(float)*testArraySizeX*testArraySizeY, cudaMemcpyDeviceToHost);
+
 	pause();
 
 	viewer.run();

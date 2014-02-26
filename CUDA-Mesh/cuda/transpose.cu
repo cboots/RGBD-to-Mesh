@@ -6,27 +6,23 @@ __global__ void transposeKernel(float* dev_in, float* dev_out, int xRes_in, int 
 {
 	__shared__ float tile[BLOCK_DIM][BLOCK_DIM+1];
 
-	int xIndex = blockIdx.x*BLOCK_DIM + threadIdx.x;
-	int yIndex = blockIdx.y*BLOCK_DIM + threadIdx.y;
+	int bx = blockIdx.x * BLOCK_DIM;
+	int by = blockIdx.y * BLOCK_DIM;
+
+	int i = by + threadIdx.y;//Row
+	int j = bx + threadIdx.x;//Column
+	int ti = bx + threadIdx.y;//Transposed coallesed writeback location row
+	int tj = by + threadIdx.x;//Transposed coallesed writeback location column
 
 	//Read in
-	if((xIndex < xRes_in) && (yIndex < yRes_in))
-	{
-		tile[threadIdx.y][threadIdx.x] = dev_in[yIndex * xRes_in + xRes_in];
-	}
+	if(i < yRes_in && j < xRes_in)
+		tile[threadIdx.x][threadIdx.y] = dev_in[i * xRes_in + j];
+
 
 	__syncthreads();
 
-	//Transpose
-	xIndex = blockIdx.y*BLOCK_DIM + threadIdx.x;
-	yIndex = blockIdx.x*BLOCK_DIM + threadIdx.y;
-
-	//Write out
-	if((xIndex < yRes_in) && (yIndex < xRes_in))//Ideally this will never be true, but in case matrix dim is not multiple of BLOCK_DIM
-	{
-		dev_out[yIndex*yRes_in + xIndex] = tile[threadIdx.x][threadIdx.y];
-	}
-
+	if(tj < xRes_in && ti < yRes_in)
+		dev_out[ti * yRes_in + tj] = tile[threadIdx.y][threadIdx.x];
 }
 
 
@@ -37,6 +33,6 @@ __host__ void transpose(float* dev_in, float* dev_out, int xRes_in, int yRes_in)
 	dim3 blocks((int)ceil(float(xRes_in)/float(BLOCK_DIM)),
 				(int)ceil(float(yRes_in)/float(BLOCK_DIM)));
 
-	transposeKernel<<<threads,blocks>>>(dev_in, dev_out, xRes_in, yRes_in);
+	transposeKernel<<<blocks,threads>>>(dev_in, dev_out, xRes_in, yRes_in);
 
 }
