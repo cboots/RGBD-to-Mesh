@@ -14,10 +14,10 @@ __host__ void setSeperableKernelGaussian(float sigma)
 		kernel[i+SEPERABLE_KERNEL_RADIUS] = expf(-i*i/(2*sigma));
 	}
 
-	cudaMemcpyToSymbol(cKernel, kernel, SEPERABLE_KERNEL_RADIUS*sizeof(float));
+	cudaMemcpyToSymbol(cKernel, kernel, SEPERABLE_KERNEL_SIZE*sizeof(float));
 }
 
-__host__ void setSeperableUniform()
+__host__ void setSeperableKernelUniform()
 {
 
 	float kernel[SEPERABLE_KERNEL_SIZE];
@@ -27,7 +27,7 @@ __host__ void setSeperableUniform()
 		kernel[i+SEPERABLE_KERNEL_RADIUS] = 1.0f;
 	}
 
-	cudaMemcpyToSymbol(cKernel, kernel, SEPERABLE_KERNEL_RADIUS*sizeof(float));
+	cudaMemcpyToSymbol(cKernel, kernel, SEPERABLE_KERNEL_SIZE*sizeof(float));
 }
 
 #pragma region Seperable Kernel
@@ -121,9 +121,20 @@ __global__ void seperableKernelRows(float* x, float* y, float* z, float* x_out, 
 			float x = s_Data[0][threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X + j];
 			float y = s_Data[1][threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X + j];
 			float z = s_Data[2][threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X + j];
-			sumX +=	weight * x;
-			sumY +=	weight * y;
-			sumZ +=	weight * z;
+
+			if(isnan(x)){
+				if(j == 0){//If this is the center pixel, clear
+					sumX = CUDART_NAN_F;
+					sumY = CUDART_NAN_F;
+					sumZ = CUDART_NAN_F;
+				}
+			}else{
+				weightAccum += weight;
+
+				sumX +=	weight * x;
+				sumY +=	weight * y;
+				sumZ +=	weight * z;
+			}
 		}
 		x_out[i * ROWS_BLOCKDIM_X] = sumX/weightAccum;//Normalize
 		y_out[i * ROWS_BLOCKDIM_X] = sumY/weightAccum;//Normalize
@@ -139,7 +150,7 @@ __global__ void seperableKernelRows(float* x, float* y, float* z, float* x_out, 
 #define   COLUMNS_HALO_STEPS 1
 
 __global__ void seperableKernelCols(float* x, float* y, float* z, float* x_out, float* y_out, float* z_out, 
-								   int xRes, int yRes)
+									int xRes, int yRes)
 {
 	__shared__ float s_Data[3][COLUMNS_BLOCKDIM_X][(COLUMNS_RESULT_STEPS + 2 * COLUMNS_HALO_STEPS) * COLUMNS_BLOCKDIM_Y + 1];
 
@@ -175,12 +186,12 @@ __global__ void seperableKernelCols(float* x, float* y, float* z, float* x_out, 
 		{
 			s_Data[0][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = x[i * COLUMNS_BLOCKDIM_Y * xRes];
 			s_Data[1][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = y[i * COLUMNS_BLOCKDIM_Y * xRes];
-			s_Data[1][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = z[i * COLUMNS_BLOCKDIM_Y * xRes];
+			s_Data[2][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = z[i * COLUMNS_BLOCKDIM_Y * xRes];
 		}else
 		{
 			s_Data[0][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = 0.0f;
 			s_Data[1][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = 0.0f;
-			s_Data[1][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = 0.0f;
+			s_Data[2][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = 0.0f;
 		}
 	}
 
@@ -191,12 +202,12 @@ __global__ void seperableKernelCols(float* x, float* y, float* z, float* x_out, 
 		{
 			s_Data[0][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = x[i * COLUMNS_BLOCKDIM_Y * xRes];
 			s_Data[1][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = y[i * COLUMNS_BLOCKDIM_Y * xRes];
-			s_Data[1][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = z[i * COLUMNS_BLOCKDIM_Y * xRes];
+			s_Data[2][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = z[i * COLUMNS_BLOCKDIM_Y * xRes];
 		}else
 		{
 			s_Data[0][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = 0.0f;
 			s_Data[1][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = 0.0f;
-			s_Data[1][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = 0.0f;
+			s_Data[2][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = 0.0f;
 		}
 	}
 
@@ -207,7 +218,7 @@ __global__ void seperableKernelCols(float* x, float* y, float* z, float* x_out, 
 	//Compute and store results
 #pragma unroll
 	for(int i = COLUMNS_HALO_STEPS; i < COLUMNS_HALO_STEPS + COLUMNS_RESULT_STEPS; i++){
-		
+
 		float sumX = 0;
 		float sumY = 0;
 		float sumZ = 0;
@@ -217,25 +228,32 @@ __global__ void seperableKernelCols(float* x, float* y, float* z, float* x_out, 
 		for(int j = -SEPERABLE_KERNEL_RADIUS; j <= SEPERABLE_KERNEL_RADIUS; j++)
 		{
 			float weight = cKernel[SEPERABLE_KERNEL_RADIUS - j];
-			weightAccum += weight;
 			float x = s_Data[0][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y + j];
 			float y = s_Data[1][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y + j];
 			float z = s_Data[2][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y + j];
-			sumX +=	weight * x;
-			sumY +=	weight * y;
-			sumZ +=	weight * z;
-		}
-		x_out[i * ROWS_BLOCKDIM_X] = sumX/weightAccum;//Normalize
-		y_out[i * ROWS_BLOCKDIM_X] = sumY/weightAccum;//Normalize
-		z_out[i * ROWS_BLOCKDIM_X] = sumZ/weightAccum;//Normalize
-	}
+			if(isnan(x)){
+				if(j == 0){
+					sumX = CUDART_NAN_F;
+					sumY = CUDART_NAN_F;
+					sumZ = CUDART_NAN_F;
+				}
+			}else{
+				weightAccum += weight;
 
+				sumX +=	weight * x;
+				sumY +=	weight * y;
+				sumZ +=	weight * z;
+			}
+		}
+		x_out[i * COLUMNS_BLOCKDIM_Y * xRes] = sumX/weightAccum;//Normalize
+		y_out[i * COLUMNS_BLOCKDIM_Y * xRes] = sumY/weightAccum;//Normalize
+		z_out[i * COLUMNS_BLOCKDIM_Y * xRes] = sumZ/weightAccum;//Normalize
+	}
 }
 
 
-
 __host__ void seperableFilter(float* x, float* y, float* z, float* x_out, float* y_out, float* z_out, 
-								   int xRes, int yRes)
+							  int xRes, int yRes)
 {
 	//=====Row filter step======
 	//Assert that kernel parameters are properly memory aligned. Otherwise, kernel will either fail or be inefficient
@@ -250,11 +268,11 @@ __host__ void seperableFilter(float* x, float* y, float* z, float* x_out, float*
 
 	//======Column filter step======
 	assert( COLUMNS_BLOCKDIM_Y * COLUMNS_HALO_STEPS >= SEPERABLE_KERNEL_RADIUS );
-    assert( xRes % COLUMNS_BLOCKDIM_X == 0 );
-    assert( yRes % (COLUMNS_RESULT_STEPS * COLUMNS_BLOCKDIM_Y) == 0 );
+	assert( xRes % COLUMNS_BLOCKDIM_X == 0 );
+	assert( yRes % (COLUMNS_RESULT_STEPS * COLUMNS_BLOCKDIM_Y) == 0 );
 
-    blocks = dim3(xRes / COLUMNS_BLOCKDIM_X, yRes / (COLUMNS_RESULT_STEPS * COLUMNS_BLOCKDIM_Y));
-    threads = dim3(COLUMNS_BLOCKDIM_X, COLUMNS_BLOCKDIM_Y);
+	blocks = dim3(xRes / COLUMNS_BLOCKDIM_X, yRes / (COLUMNS_RESULT_STEPS * COLUMNS_BLOCKDIM_Y));
+	threads = dim3(COLUMNS_BLOCKDIM_X, COLUMNS_BLOCKDIM_Y);
 
 	seperableKernelCols<<<blocks, threads>>>(x_out,y_out,z_out,x_out, y_out, z_out, xRes, yRes);
 }

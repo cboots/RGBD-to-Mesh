@@ -23,7 +23,7 @@ __host__ void rgbAOSToSOACUDA(rgbd::framework::ColorPixel* dev_colorPixels,
 __host__ void buildRGBMapPyramid(Float3SOAPyramid dev_rgbSOA, int xRes, int yRes, int numLevels);
 
 
-__host__ void buildVMapPyramidCUDA(Float3SOAPyramid dev_vmapSOA, int xRes, int yRes, int numLevels);
+__host__ void subsamplePyramidCUDA(Float3SOAPyramid dev_SOA, int xRes, int yRes, int numLevels);
 
 __host__ void setGaussianSpatialKernel(float sigma);
 

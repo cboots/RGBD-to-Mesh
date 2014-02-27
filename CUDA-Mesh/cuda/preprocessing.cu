@@ -497,7 +497,7 @@ __global__ void subsampleFloat3Kernel(float* x_src, float* y_src, float* z_src,
 	}
 }
 
-__host__ void buildVMapPyramidCUDA(Float3SOAPyramid dev_vmapSOA, int xRes, int yRes, int numLevels)
+__host__ void subsamplePyramidCUDA(Float3SOAPyramid dev_mapSOA, int xRes, int yRes, int numLevels)
 {
 	int tileSize = 16;
 
@@ -508,8 +508,8 @@ __host__ void buildVMapPyramidCUDA(Float3SOAPyramid dev_vmapSOA, int xRes, int y
 			(int)ceil(float(yRes>>(1+i))/float(tileSize)));
 
 
-		subsampleFloat3Kernel<<<fullBlocksPerGrid,threadsPerBlock>>>(dev_vmapSOA.x[i], dev_vmapSOA.y[i], dev_vmapSOA.z[i],
-			dev_vmapSOA.x[i+1], dev_vmapSOA.y[i+1], dev_vmapSOA.z[i+1],
+		subsampleFloat3Kernel<<<fullBlocksPerGrid,threadsPerBlock>>>(dev_mapSOA.x[i], dev_mapSOA.y[i], dev_mapSOA.z[i],
+			dev_mapSOA.x[i+1], dev_mapSOA.y[i+1], dev_mapSOA.z[i+1],
 			xRes>>i, yRes>>i);
 	}
 

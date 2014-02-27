@@ -72,7 +72,8 @@ __host__ void simpleNormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, Float1
 
 #pragma endregion
 
-#pragma region Integral Image Average Gradient
+#pragma region  Filtered Average Gradient
+
 
 __global__ void normalsFromGradientKernel(float* horizontalGradientX, float* horizontalGradientY, float* horizontalGradientZ,
 										  float* vertGradientX, float* vertGradientY, float* vertGradientZ,
@@ -104,27 +105,20 @@ __global__ void normalsFromGradientKernel(float* horizontalGradientX, float* hor
 }
 
 __host__ void computeAverageGradientNormals(Float3SOAPyramid horizontalGradient, Float3SOAPyramid vertGradient, 
-											Float3SOAPyramid nmap, Float1SOAPyramid curvature, int level, int xRes, int yRes)
+											Float3SOAPyramid nmap, Float1SOAPyramid curvature, int xRes, int yRes)
 {
 	int tileSize = 16;
-	int i = level;
 	dim3 threadsPerBlock(tileSize, tileSize);
-	dim3 fullBlocksPerGrid((int)ceil(float(xRes>>i)/float(tileSize)), 
-		(int)ceil(float(yRes>>i)/float(tileSize)));
+	dim3 fullBlocksPerGrid((int)ceil(float(xRes)/float(tileSize)), 
+		(int)ceil(float(yRes)/float(tileSize)));
 
 
-	normalsFromGradientKernel<<<fullBlocksPerGrid,threadsPerBlock>>>(horizontalGradient.x[i], horizontalGradient.y[i], horizontalGradient.z[i],
-		vertGradient.x[i], vertGradient.y[i], vertGradient.z[i],
-		nmap.x[i], nmap.y[i], nmap.z[i], curvature.x[i],
-		xRes>>i, yRes>>i);
+	normalsFromGradientKernel<<<fullBlocksPerGrid,threadsPerBlock>>>(horizontalGradient.x[0], horizontalGradient.y[0], horizontalGradient.z[0],
+		vertGradient.x[0], vertGradient.y[0], vertGradient.z[0],
+		nmap.x[0], nmap.y[0], nmap.z[0], curvature.x[0],
+		xRes, yRes);
 
 }
-
-#pragma endregion
-
-#pragma region Filtered Average Gradient
-
-
 
 #pragma endregion
 
