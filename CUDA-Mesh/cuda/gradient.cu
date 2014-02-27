@@ -18,7 +18,7 @@ __global__ void horizontalGradientKernel(float* image, float* grad,
 			diff = image[i+1] - image[i-1];
 		}
 
-		grad[i] = (diff == CUDART_NAN_F)?0.0f:diff;
+		grad[i] = isnan(diff)?0.0f:diff;
 
 	}
 }
@@ -42,7 +42,7 @@ __global__ void verticalGradientKernel(float* image, float* grad,
 			diff = image[i+xRes] - image[i-xRes];
 		}
 
-		grad[i] = (diff == CUDART_NAN_F)?0.0f:diff;
+		grad[i] = isnan(diff)?0.0f:diff;
 
 	}
 }

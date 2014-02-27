@@ -10,7 +10,7 @@ __host__ void createIntegralImage(float* original, float* tempbuffer, float* int
 	transpose(tempbuffer, integral, height, width);
 }
 
-
+/*
 __device__ float AreaSum(float* integralImage, int imageWidth, int imageHeight, 
 						int kernelLeft, int kernelRight, int kernelTop, int kernelBottom)
 {
@@ -21,3 +21,4 @@ __device__ float AreaSum(float* integralImage, int imageWidth, int imageHeight,
 	int ll = kernelBottom * imageWidth + kernelLeft;
 	return integralImage[ul] + integralImage[lr] + integralImage[ur] + integralImage[ll];
 }
+*/
