@@ -74,22 +74,10 @@ __host__ void simpleNormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, Float1
 
 #pragma region Integral Image Average Gradient
 
-
-__device__ float AreaSum(float* integralImage, int imageWidth, int imageHeight, 
-						int kernelLeft, int kernelRight, int kernelTop, int kernelBottom)
-{
-	//UL + LR - UR - LL
-	int ul = kernelTop * imageWidth + kernelLeft;
-	int lr = kernelBottom * imageWidth + kernelRight;
-	int ur = kernelTop * imageWidth + kernelRight;
-	int ll = kernelBottom * imageWidth + kernelLeft;
-	return integralImage[ul] + integralImage[lr] - integralImage[ur] - integralImage[ll];
-}
-
-__global__ void averageGradientNormalsIIKernel(float* horizontalGradientX, float* horizontalGradientY, float* horizontalGradientZ,
-											   float* vertGradientX, float* vertGradientY, float* vertGradientZ,
-											   float* x_norm, float* y_norm, float* z_norm, float* curvature,
-											   int xRes, int yRes, int radius)
+__global__ void normalsFromGradientKernel(float* horizontalGradientX, float* horizontalGradientY, float* horizontalGradientZ,
+										  float* vertGradientX, float* vertGradientY, float* vertGradientZ,
+										  float* x_norm, float* y_norm, float* z_norm, float* curvature,
+										  int xRes, int yRes)
 {
 	int u = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int v = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -98,34 +86,14 @@ __global__ void averageGradientNormalsIIKernel(float* horizontalGradientX, float
 
 	if(u < xRes && v < yRes){
 
-		glm::vec3 norm = glm::vec3(CUDART_NAN_F);
-		/*
-		int left = max(0, u-radius);
-		int right = min(u+radius, xRes-1);
-		int top = min(0, v-radius);
-		int bottom = max(v+radius, yRes-1);
-
-		glm::vec3 horizontalGrad = glm::vec3(AreaSum(horizontalGradientX, xRes, yRes, left, right, top, bottom),
-			AreaSum(horizontalGradientY, xRes, yRes, left, right, top, bottom),
-			AreaSum(horizontalGradientZ, xRes, yRes, left, right, top, bottom));
-
-
-		glm::vec3 vertGrad = glm::vec3(AreaSum(vertGradientX, xRes, yRes, left, right, top, bottom),
-			AreaSum(vertGradientY, xRes, yRes, left, right, top, bottom),
-			AreaSum(vertGradientZ, xRes, yRes, left, right, top, bottom));
-			*/
-
-
-//		norm = glm::normalize(glm::cross(horizontalGrad, vertGrad));
-		norm = glm::normalize(glm::cross(glm::vec3(vertGradientX[i], vertGradientY[i], vertGradientZ[i]), 
-					glm::vec3(horizontalGradientX[i], horizontalGradientY[i], horizontalGradientZ[i])));
+		glm::vec3 norm = glm::normalize(glm::cross(glm::vec3(vertGradientX[i], vertGradientY[i], vertGradientZ[i]), 
+			glm::vec3(horizontalGradientX[i], horizontalGradientY[i], horizontalGradientZ[i])));
 
 		if(norm.z > 0.0f)
 		{
 			norm.z = -norm.z;
 		}
 
-		//norm = glm::normalize(vertGrad);
 		x_norm[i] = norm.x;
 		y_norm[i] = norm.y;
 		z_norm[i] = norm.z;
@@ -135,7 +103,8 @@ __global__ void averageGradientNormalsIIKernel(float* horizontalGradientX, float
 	}
 }
 
-__host__ void computeAverageGradientNormals(Float3SOAPyramid horizontalGradientII, Float3SOAPyramid vertGradientII, Float3SOAPyramid nmap, Float1SOAPyramid curvature, int level, int xRes, int yRes, int smoothRadius)
+__host__ void computeAverageGradientNormals(Float3SOAPyramid horizontalGradient, Float3SOAPyramid vertGradient, 
+											Float3SOAPyramid nmap, Float1SOAPyramid curvature, int level, int xRes, int yRes)
 {
 	int tileSize = 16;
 	int i = level;
@@ -144,12 +113,18 @@ __host__ void computeAverageGradientNormals(Float3SOAPyramid horizontalGradientI
 		(int)ceil(float(yRes>>i)/float(tileSize)));
 
 
-	averageGradientNormalsIIKernel<<<fullBlocksPerGrid,threadsPerBlock>>>(horizontalGradientII.x[i], horizontalGradientII.y[i], horizontalGradientII.z[i],
-		vertGradientII.x[i], vertGradientII.y[i], vertGradientII.z[i],
+	normalsFromGradientKernel<<<fullBlocksPerGrid,threadsPerBlock>>>(horizontalGradient.x[i], horizontalGradient.y[i], horizontalGradient.z[i],
+		vertGradient.x[i], vertGradient.y[i], vertGradient.z[i],
 		nmap.x[i], nmap.y[i], nmap.z[i], curvature.x[i],
-		xRes>>i, yRes>>i, smoothRadius>>i);
+		xRes>>i, yRes>>i);
 
 }
+
+#pragma endregion
+
+#pragma region Filtered Average Gradient
+
+
 
 #pragma endregion
 
