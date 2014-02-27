@@ -99,7 +99,7 @@ __global__ void averageGradientNormalsIIKernel(float* horizontalGradientX, float
 	if(u < xRes && v < yRes){
 
 		glm::vec3 norm = glm::vec3(CUDART_NAN_F);
-
+		/*
 		int left = max(0, u-radius);
 		int right = min(u+radius, xRes-1);
 		int top = min(0, v-radius);
@@ -113,16 +113,19 @@ __global__ void averageGradientNormalsIIKernel(float* horizontalGradientX, float
 		glm::vec3 vertGrad = glm::vec3(AreaSum(vertGradientX, xRes, yRes, left, right, top, bottom),
 			AreaSum(vertGradientY, xRes, yRes, left, right, top, bottom),
 			AreaSum(vertGradientZ, xRes, yRes, left, right, top, bottom));
+			*/
 
-		norm = glm::normalize(glm::cross(horizontalGrad, vertGrad));
 
+//		norm = glm::normalize(glm::cross(horizontalGrad, vertGrad));
+		norm = glm::normalize(glm::cross(glm::vec3(vertGradientX[i], vertGradientY[i], vertGradientZ[i]), 
+					glm::vec3(horizontalGradientX[i], horizontalGradientY[i], horizontalGradientZ[i])));
 
 		if(norm.z > 0.0f)
 		{
 			norm.z = -norm.z;
 		}
 
-
+		//norm = glm::normalize(vertGrad);
 		x_norm[i] = norm.x;
 		y_norm[i] = norm.y;
 		z_norm[i] = norm.z;
