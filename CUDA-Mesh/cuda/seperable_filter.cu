@@ -42,10 +42,9 @@ __host__ void setSeperableKernelUniform()
 #define		ROWS_HALO_STEPS		1
 
 
-__global__ void seperableKernelRows(float* x, float* y, float* z, float* x_out, float* y_out, float* z_out, 
-									int xRes, int yRes)
+__global__ void seperableKernelRows(float* x,float* x_out, int xRes, int yRes)
 {
-	__shared__ float s_Data[3][ROWS_BLOCKDIM_Y][ROWS_BLOCKDIM_X*(ROWS_RESULT_STEPS+2*ROWS_HALO_STEPS)];
+	__shared__ float s_Data[ROWS_BLOCKDIM_Y][ROWS_BLOCKDIM_X*(ROWS_RESULT_STEPS+2*ROWS_HALO_STEPS)];
 
 	//Offset to the left halo edge
 	const int baseX = (blockIdx.x * ROWS_RESULT_STEPS - ROWS_HALO_STEPS) * ROWS_BLOCKDIM_X + threadIdx.x;
@@ -54,52 +53,25 @@ __global__ void seperableKernelRows(float* x, float* y, float* z, float* x_out, 
 
 	//Align source pointer
 	x += baseY*xRes + baseX;//Align source pointer with this thread for convenience
-	y += baseY*xRes + baseX;//Align source pointer with this thread for convenience
-	z += baseY*xRes + baseX;//Align source pointer with this thread for convenience
 
 	//Align output pointer
 	x_out += baseY*xRes + baseX;//Align dest pointer with this thread for convenience
-	y_out += baseY*xRes + baseX;//Align dest pointer with this thread for convenience
-	z_out += baseY*xRes + baseX;//Align dest pointer with this thread for convenience
 
 
 	//Main data
 #pragma unroll
 	for(int i = ROWS_HALO_STEPS; i < ROWS_HALO_STEPS + ROWS_RESULT_STEPS; ++i)
-	{
-		s_Data[0][threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X] = x[i*ROWS_BLOCKDIM_X];
-		s_Data[1][threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X] = y[i*ROWS_BLOCKDIM_X];
-		s_Data[2][threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X] = z[i*ROWS_BLOCKDIM_X];
-	}
+		s_Data[threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X] = x[i*ROWS_BLOCKDIM_X];
 
 	//Left halo
 	for(int i = 0; i < ROWS_HALO_STEPS; ++i)
-	{
-		if(baseX >= -i*ROWS_BLOCKDIM_X){
-			s_Data[0][threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X] = x[i*ROWS_BLOCKDIM_X];
-			s_Data[1][threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X] = y[i*ROWS_BLOCKDIM_X];
-			s_Data[2][threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X] = z[i*ROWS_BLOCKDIM_X];
-		}else{
-			s_Data[0][threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X] = 0.0f;
-			s_Data[1][threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X] = 0.0f;
-			s_Data[2][threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X] = 0.0f;
-		}
-
-	}
+		s_Data[threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X] = (baseX >= -i*ROWS_BLOCKDIM_X)?x[i*ROWS_BLOCKDIM_X]:0.0f;
 
 	//Right halo
 	for(int i = ROWS_HALO_STEPS + ROWS_RESULT_STEPS; i < ROWS_HALO_STEPS + ROWS_RESULT_STEPS + ROWS_HALO_STEPS; ++i)
-	{
-		if(xRes - baseX > i*ROWS_BLOCKDIM_X){
-			s_Data[0][threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X] = x[i*ROWS_BLOCKDIM_X];
-			s_Data[1][threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X] = y[i*ROWS_BLOCKDIM_X];
-			s_Data[2][threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X] = z[i*ROWS_BLOCKDIM_X];
-		}else{
-			s_Data[0][threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X] = 0.0f;
-			s_Data[1][threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X] = 0.0f;
-			s_Data[2][threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X] = 0.0f;
-		}
-	}
+		s_Data[threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X] = (xRes - baseX > i*ROWS_BLOCKDIM_X)?x[i*ROWS_BLOCKDIM_X]:0.0f;
+
+
 	__syncthreads();
 
 
@@ -108,9 +80,7 @@ __global__ void seperableKernelRows(float* x, float* y, float* z, float* x_out, 
 	//=======BEGIN COMPURE STAGE=======
 #pragma unroll
 	for(int i = ROWS_HALO_STEPS; i < ROWS_HALO_STEPS + ROWS_RESULT_STEPS; i++){//For each result block
-		float sumX = 0;
-		float sumY = 0;
-		float sumZ = 0;
+		float sum = 0;
 		float weightAccum = 0;
 
 #pragma unroll
@@ -118,27 +88,18 @@ __global__ void seperableKernelRows(float* x, float* y, float* z, float* x_out, 
 		{
 			float weight = cKernel[SEPERABLE_KERNEL_RADIUS - j];
 			weightAccum += weight;
-			float x = s_Data[0][threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X + j];
-			float y = s_Data[1][threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X + j];
-			float z = s_Data[2][threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X + j];
+			float x = s_Data[threadIdx.y][threadIdx.x + i * ROWS_BLOCKDIM_X + j];
 
 			if(isnan(x)){
-				if(j == 0){//If this is the center pixel, clear
-					sumX = CUDART_NAN_F;
-					sumY = CUDART_NAN_F;
-					sumZ = CUDART_NAN_F;
+				if(j == 0){//If this is the center pixel, clear. Pixels with invalid vertex data don't filter results
+					sum = CUDART_NAN_F;
 				}
 			}else{
 				weightAccum += weight;
-
-				sumX +=	weight * x;
-				sumY +=	weight * y;
-				sumZ +=	weight * z;
+				sum +=	weight * x;
 			}
 		}
-		x_out[i * ROWS_BLOCKDIM_X] = sumX/weightAccum;//Normalize
-		y_out[i * ROWS_BLOCKDIM_X] = sumY/weightAccum;//Normalize
-		z_out[i * ROWS_BLOCKDIM_X] = sumZ/weightAccum;//Normalize
+		x_out[i * ROWS_BLOCKDIM_X] = sum/weightAccum;//Normalize
 	}
 }
 
@@ -149,10 +110,9 @@ __global__ void seperableKernelRows(float* x, float* y, float* z, float* x_out, 
 #define COLUMNS_RESULT_STEPS 4
 #define   COLUMNS_HALO_STEPS 1
 
-__global__ void seperableKernelCols(float* x, float* y, float* z, float* x_out, float* y_out, float* z_out, 
-									int xRes, int yRes)
+__global__ void seperableKernelCols(float* x, float* x_out, int xRes, int yRes)
 {
-	__shared__ float s_Data[3][COLUMNS_BLOCKDIM_X][(COLUMNS_RESULT_STEPS + 2 * COLUMNS_HALO_STEPS) * COLUMNS_BLOCKDIM_Y + 1];
+	__shared__ float s_Data[COLUMNS_BLOCKDIM_X][(COLUMNS_RESULT_STEPS + 2 * COLUMNS_HALO_STEPS) * COLUMNS_BLOCKDIM_Y + 1];
 
 	//Offset to the upper halo edge
 	const int baseX = blockIdx.x * COLUMNS_BLOCKDIM_X + threadIdx.x;
@@ -160,56 +120,24 @@ __global__ void seperableKernelCols(float* x, float* y, float* z, float* x_out, 
 
 	//Align source pointer
 	x += baseY*xRes + baseX;//Align source pointer with this thread for convenience
-	y += baseY*xRes + baseX;//Align source pointer with this thread for convenience
-	z += baseY*xRes + baseX;//Align source pointer with this thread for convenience
 
 	//Align output pointer
 	x_out += baseY*xRes + baseX;//Align dest pointer with this thread for convenience
-	y_out += baseY*xRes + baseX;//Align dest pointer with this thread for convenience
-	z_out += baseY*xRes + baseX;//Align dest pointer with this thread for convenience
-
-
 
 	//Main data
 #pragma unroll
 	for(int i = COLUMNS_HALO_STEPS; i < COLUMNS_HALO_STEPS + COLUMNS_RESULT_STEPS; i++)
-	{
-		s_Data[0][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = x[i * COLUMNS_BLOCKDIM_Y * xRes];
-		s_Data[1][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = y[i * COLUMNS_BLOCKDIM_Y * xRes];
-		s_Data[2][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = z[i * COLUMNS_BLOCKDIM_Y * xRes];
-	}
+		s_Data[threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = x[i * COLUMNS_BLOCKDIM_Y * xRes];
+
 
 	//Upper halo
 	for(int i = 0; i < COLUMNS_HALO_STEPS; i++)
-	{
-		if(baseY >= -i * COLUMNS_BLOCKDIM_Y)
-		{
-			s_Data[0][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = x[i * COLUMNS_BLOCKDIM_Y * xRes];
-			s_Data[1][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = y[i * COLUMNS_BLOCKDIM_Y * xRes];
-			s_Data[2][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = z[i * COLUMNS_BLOCKDIM_Y * xRes];
-		}else
-		{
-			s_Data[0][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = 0.0f;
-			s_Data[1][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = 0.0f;
-			s_Data[2][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = 0.0f;
-		}
-	}
+		s_Data[threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = (baseY >= -i * COLUMNS_BLOCKDIM_Y)?x[i * COLUMNS_BLOCKDIM_Y * xRes]:0.0f;
+
 
 	//Lower halo
 	for(int i = COLUMNS_HALO_STEPS + COLUMNS_RESULT_STEPS; i < COLUMNS_HALO_STEPS + COLUMNS_RESULT_STEPS + COLUMNS_HALO_STEPS; i++)
-	{
-		if(yRes - baseY > i * COLUMNS_BLOCKDIM_Y)
-		{
-			s_Data[0][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = x[i * COLUMNS_BLOCKDIM_Y * xRes];
-			s_Data[1][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = y[i * COLUMNS_BLOCKDIM_Y * xRes];
-			s_Data[2][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = z[i * COLUMNS_BLOCKDIM_Y * xRes];
-		}else
-		{
-			s_Data[0][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = 0.0f;
-			s_Data[1][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = 0.0f;
-			s_Data[2][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = 0.0f;
-		}
-	}
+		s_Data[threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y] = (yRes - baseY > i * COLUMNS_BLOCKDIM_Y)?x[i * COLUMNS_BLOCKDIM_Y * xRes]:0.0f;
 
 	//End load step
 
@@ -219,35 +147,24 @@ __global__ void seperableKernelCols(float* x, float* y, float* z, float* x_out, 
 #pragma unroll
 	for(int i = COLUMNS_HALO_STEPS; i < COLUMNS_HALO_STEPS + COLUMNS_RESULT_STEPS; i++){
 
-		float sumX = 0;
-		float sumY = 0;
-		float sumZ = 0;
+		float sum = 0;
 		float weightAccum = 0;
 
 #pragma unroll
 		for(int j = -SEPERABLE_KERNEL_RADIUS; j <= SEPERABLE_KERNEL_RADIUS; j++)
 		{
 			float weight = cKernel[SEPERABLE_KERNEL_RADIUS - j];
-			float x = s_Data[0][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y + j];
-			float y = s_Data[1][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y + j];
-			float z = s_Data[2][threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y + j];
+			float x = s_Data[threadIdx.x][threadIdx.y + i * COLUMNS_BLOCKDIM_Y + j];
 			if(isnan(x)){
 				if(j == 0){
-					sumX = CUDART_NAN_F;
-					sumY = CUDART_NAN_F;
-					sumZ = CUDART_NAN_F;
+					sum = CUDART_NAN_F;
 				}
 			}else{
 				weightAccum += weight;
-
-				sumX +=	weight * x;
-				sumY +=	weight * y;
-				sumZ +=	weight * z;
+				sum +=	weight * x;
 			}
 		}
-		x_out[i * COLUMNS_BLOCKDIM_Y * xRes] = sumX/weightAccum;//Normalize
-		y_out[i * COLUMNS_BLOCKDIM_Y * xRes] = sumY/weightAccum;//Normalize
-		z_out[i * COLUMNS_BLOCKDIM_Y * xRes] = sumZ/weightAccum;//Normalize
+		x_out[i * COLUMNS_BLOCKDIM_Y * xRes] = sum/weightAccum;//Normalize
 	}
 }
 
@@ -264,7 +181,9 @@ __host__ void seperableFilter(float* x, float* y, float* z, float* x_out, float*
 	dim3 blocks(xRes / (ROWS_RESULT_STEPS * ROWS_BLOCKDIM_X), yRes / ROWS_BLOCKDIM_Y);
 	dim3 threads(ROWS_BLOCKDIM_X, ROWS_BLOCKDIM_Y);
 
-	seperableKernelRows<<<blocks, threads>>>(x,y,z,x_out, y_out, z_out, xRes, yRes);
+	seperableKernelRows<<<blocks, threads>>>(x,x_out, xRes, yRes);
+	seperableKernelRows<<<blocks, threads>>>(y,y_out, xRes, yRes);
+	seperableKernelRows<<<blocks, threads>>>(z,z_out, xRes, yRes);
 
 	//======Column filter step======
 	assert( COLUMNS_BLOCKDIM_Y * COLUMNS_HALO_STEPS >= SEPERABLE_KERNEL_RADIUS );
@@ -274,5 +193,7 @@ __host__ void seperableFilter(float* x, float* y, float* z, float* x_out, float*
 	blocks = dim3(xRes / COLUMNS_BLOCKDIM_X, yRes / (COLUMNS_RESULT_STEPS * COLUMNS_BLOCKDIM_Y));
 	threads = dim3(COLUMNS_BLOCKDIM_X, COLUMNS_BLOCKDIM_Y);
 
-	seperableKernelCols<<<blocks, threads>>>(x_out,y_out,z_out,x_out, y_out, z_out, xRes, yRes);
+	seperableKernelCols<<<blocks, threads>>>(x_out, x_out, xRes, yRes);
+	seperableKernelCols<<<blocks, threads>>>(y_out, y_out, xRes, yRes);
+	seperableKernelCols<<<blocks, threads>>>(z_out, z_out, xRes, yRes);
 }
