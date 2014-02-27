@@ -22,7 +22,7 @@ void main()
 	float dot1 = dot(normC, texture(u_Texture0, texCoord + vec2(0.0, dxy)));
 	float dot2 = dot(normC, texture(u_Texture0, texCoord + vec2(dxy, 0.0)));
 	
-	float inplane = step(0.95, min(dot1,dot2));
+	float inplane = step(0.99, min(dot1,dot2));
 	FragColor = vec4(inplane, 0.0, min(dot1,dot2), 1.0);
 	
 	
