@@ -36,7 +36,8 @@ __global__ void simpleNormalsKernel(float* x_vert, float* y_vert, float* z_vert,
 
 			if(norm.z > 0.0f)
 			{
-				norm.z = -norm.z;
+				//Flip towards camera
+				norm = -norm;
 			}
 
 			norm = glm::normalize(norm);
@@ -92,7 +93,8 @@ __global__ void normalsFromGradientKernel(float* horizontalGradientX, float* hor
 
 		if(norm.z > 0.0f)
 		{
-			norm.z = -norm.z;
+			//Flip towards camera
+			norm = -norm;
 		}
 
 		x_norm[i] = norm.x;

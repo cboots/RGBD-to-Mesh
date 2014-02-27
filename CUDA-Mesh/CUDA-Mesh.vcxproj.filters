@@ -1,0 +1,84 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CudaCompile Include="cuda\array_ops.cu">
+      <Filter>Cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="cuda\debug_rendering.cu">
+      <Filter>Cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="cuda\integral_image.cu">
+      <Filter>Cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="cuda\normal_estimates.cu">
+      <Filter>Cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="cuda\plane_segmentation.cu">
+      <Filter>Cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="cuda\preprocessing.cu">
+      <Filter>Cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="cuda\scan.cu">
+      <Filter>Cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="cuda\transpose.cu">
+      <Filter>Cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="cuda\gradient.cu">
+      <Filter>Cuda</Filter>
+    </CudaCompile>
+    <CudaCompile Include="cuda\seperable_filter.cu">
+      <Filter>Cuda</Filter>
+    </CudaCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="glslUtility.cpp" />
+    <ClCompile Include="MeshTracker.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="MeshViewer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="device_structs.h" />
+    <ClInclude Include="glslUtility.h" />
+    <ClInclude Include="MeshTracker.h" />
+    <ClInclude Include="main.h" />
+    <ClInclude Include="MeshViewer.h" />
+    <ClInclude Include="Utils.h" />
+    <ClInclude Include="cuda\array_ops.h">
+      <Filter>Cuda</Filter>
+    </ClInclude>
+    <ClInclude Include="cuda\debug_rendering.h">
+      <Filter>Cuda</Filter>
+    </ClInclude>
+    <ClInclude Include="cuda\integral_image.h">
+      <Filter>Cuda</Filter>
+    </ClInclude>
+    <ClInclude Include="cuda\normal_estimates.h">
+      <Filter>Cuda</Filter>
+    </ClInclude>
+    <ClInclude Include="cuda\plane_segmentation.h">
+      <Filter>Cuda</Filter>
+    </ClInclude>
+    <ClInclude Include="cuda\preprocessing.h">
+      <Filter>Cuda</Filter>
+    </ClInclude>
+    <ClInclude Include="cuda\scan.h">
+      <Filter>Cuda</Filter>
+    </ClInclude>
+    <ClInclude Include="cuda\transpose.h">
+      <Filter>Cuda</Filter>
+    </ClInclude>
+    <ClInclude Include="cuda\gradient.h">
+      <Filter>Cuda</Filter>
+    </ClInclude>
+    <ClInclude Include="cuda\seperable_filter.h">
+      <Filter>Cuda</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Cuda">
+      <UniqueIdentifier>{51ba58dc-ecf2-471b-9789-332a83fc26b9}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
