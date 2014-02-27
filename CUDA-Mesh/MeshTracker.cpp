@@ -38,6 +38,24 @@ void MeshTracker::initCudaBuffers(int xRes, int yRes)
 	//Normal Map Pyramid SOA. 
 	createFloat3SOAPyramid(dev_nmapSOA, xRes, yRes);
 
+	//Curvature pyramid SOA
+	createFloat1SOAPyramid(dev_curvature, xRes, yRes);
+
+	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
+	{
+		createFloat1SOAPyramid(dev_float1PyramidBuffers[i], xRes, yRes);
+	}
+
+	for(int i = 0; i < NUM_FLOAT3_PYRAMID_BUFFERS; ++i)
+	{
+		createFloat3SOAPyramid(dev_float3PyramidBuffers[i], xRes, yRes);
+	}
+
+	for(int i = 0; i < NUM_FLOAT1_IMAGE_SIZE_BUFFERS; ++i)
+	{
+		cudaMalloc((void**) &dev_floatImageBuffers[i], xRes*yRes*sizeof(float));
+	}
+
 	//Initialize gaussian spatial kernel
 	setGaussianSpatialSigma(1.0f);
 }
@@ -49,7 +67,53 @@ void MeshTracker::cleanupCuda()
 	freeFloat3SOAPyramid(dev_rgbSOA);
 	freeFloat3SOAPyramid(dev_vmapSOA);
 	freeFloat3SOAPyramid(dev_nmapSOA);
+	freeFloat1SOAPyramid(dev_curvature);
+
+	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
+	{
+		freeFloat1SOAPyramid(dev_float1PyramidBuffers[i]);
+	}
+
+	for(int i = 0; i < NUM_FLOAT3_PYRAMID_BUFFERS; ++i)
+	{
+		freeFloat3SOAPyramid(dev_float3PyramidBuffers[i]);
+	}
+
+	for(int i = 0; i < NUM_FLOAT1_IMAGE_SIZE_BUFFERS; ++i)
+	{
+		cudaFree(dev_floatImageBuffers[i]);
+	}
+
+
 }
+
+
+void MeshTracker::createFloat1SOAPyramid(Float1SOAPyramid& dev_pyramid, int xRes, int yRes)
+{
+	int pixCount = xRes*yRes;
+	int pyramidCount = 0;
+
+	for(int i = 0; i < NUM_PYRAMID_LEVELS; ++i)
+	{
+		pyramidCount += (pixCount >> (i*2));
+	}
+
+	cudaMalloc((void**) &dev_pyramid.x[0], sizeof(float)*(pyramidCount));
+	//Get convenience pointer offsets
+	for(int i = 0; i < NUM_PYRAMID_LEVELS-1; ++i)
+	{
+		dev_pyramid.x[i+1] = dev_pyramid.x[i] + (pixCount >> (i*2));
+	}
+
+
+}
+
+void MeshTracker::freeFloat1SOAPyramid(Float1SOAPyramid dev_pyramid)
+{
+	cudaFree(dev_pyramid.x[0]);
+}
+
+
 
 
 void MeshTracker::createFloat3SOAPyramid(Float3SOAPyramid& dev_pyramid, int xRes, int yRes)
@@ -75,7 +139,7 @@ void MeshTracker::createFloat3SOAPyramid(Float3SOAPyramid& dev_pyramid, int xRes
 		dev_pyramid.y[i+1] = dev_pyramid.y[i] + (pixCount >> (i*2));
 	}
 
-	
+
 	dev_pyramid.z[0] = dev_pyramid.y[0] + pyramidCount;
 	for(int i = 0; i < NUM_PYRAMID_LEVELS-1; ++i)
 	{
@@ -124,14 +188,14 @@ void MeshTracker::buildVMapNoFilter(float maxDepth)
 {
 	buildVMapNoFilterCUDA(dev_depthImageBuffer, dev_vmapSOA, mXRes, mYRes, mIntr, maxDepth);
 
-	buildVMapPyramidCUDA(dev_vmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
+	subsamplePyramidCUDA(dev_vmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
 }
 
 void MeshTracker::buildVMapGaussianFilter(float maxDepth)
 {
 	buildVMapGaussianFilterCUDA(dev_depthImageBuffer, dev_vmapSOA, mXRes, mYRes, mIntr, maxDepth);
 
-	buildVMapPyramidCUDA(dev_vmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
+	subsamplePyramidCUDA(dev_vmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
 }
 
 void MeshTracker::buildVMapBilateralFilter(float maxDepth, float sigma_t)
@@ -141,7 +205,7 @@ void MeshTracker::buildVMapBilateralFilter(float maxDepth, float sigma_t)
 		mIntr, maxDepth, sigma_t);
 
 
-	buildVMapPyramidCUDA(dev_vmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
+	subsamplePyramidCUDA(dev_vmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
 }
 
 
@@ -154,8 +218,40 @@ void MeshTracker::setGaussianSpatialSigma(float sigma)
 void MeshTracker::buildNMapSimple()
 {
 
-	simpleNormals(dev_vmapSOA, dev_nmapSOA, NUM_PYRAMID_LEVELS, mXRes, mYRes);
+	simpleNormals(dev_vmapSOA, dev_nmapSOA, dev_curvature, NUM_PYRAMID_LEVELS, mXRes, mYRes);
 
+}
+
+
+void MeshTracker::buildNMapAverageGradient(int windowRadius)
+{
+	//Assemble gradient images.
+
+	//For each first level of pyramid
+	horizontalGradient(dev_vmapSOA.x[0], dev_float3PyramidBuffers[0].x[0], mXRes, mYRes);
+	verticalGradient(  dev_vmapSOA.x[0], dev_float3PyramidBuffers[1].x[0], mXRes, mYRes);
+
+	horizontalGradient(dev_vmapSOA.y[0], dev_float3PyramidBuffers[0].y[0], mXRes, mYRes);
+	verticalGradient(  dev_vmapSOA.y[0], dev_float3PyramidBuffers[1].y[0], mXRes, mYRes);
+
+	horizontalGradient(dev_vmapSOA.z[0], dev_float3PyramidBuffers[0].z[0], mXRes, mYRes);
+	verticalGradient(  dev_vmapSOA.z[0], dev_float3PyramidBuffers[1].z[0], mXRes, mYRes);
+
+	//Apply filters to float3
+	//setSeperableKernelUniform();
+	setSeperableKernelGaussian(2.0);
+
+	seperableFilter(dev_float3PyramidBuffers[0].x[0], dev_float3PyramidBuffers[0].y[0], dev_float3PyramidBuffers[0].z[0],
+		dev_float3PyramidBuffers[0].x[0], dev_float3PyramidBuffers[0].y[0], dev_float3PyramidBuffers[0].z[0],
+		mXRes, mYRes);
+
+	seperableFilter(dev_float3PyramidBuffers[1].x[0], dev_float3PyramidBuffers[1].y[0], dev_float3PyramidBuffers[1].z[0],
+		dev_float3PyramidBuffers[1].x[0], dev_float3PyramidBuffers[1].y[0], dev_float3PyramidBuffers[1].z[0],
+		mXRes, mYRes);
+
+	computeAverageGradientNormals(dev_float3PyramidBuffers[0], dev_float3PyramidBuffers[1], dev_nmapSOA, dev_curvature, mXRes, mYRes);
+
+	subsamplePyramidCUDA(dev_nmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
 }
 
 #pragma endregion

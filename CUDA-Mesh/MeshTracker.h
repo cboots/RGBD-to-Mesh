@@ -4,9 +4,15 @@
 #include "cuda_runtime.h"
 #include "preprocessing.h"
 #include "normal_estimates.h"
+#include "integral_image.h"
+#include "gradient.h"
+#include "seperable_filter.h"
 
 using namespace rgbd::framework;
 
+#define NUM_FLOAT1_IMAGE_SIZE_BUFFERS 10
+#define NUM_FLOAT1_PYRAMID_BUFFERS 10
+#define NUM_FLOAT3_PYRAMID_BUFFERS 5
 
 enum FilterMode
 {
@@ -38,10 +44,19 @@ private:
 	Float3SOAPyramid dev_rgbSOA;
 	Float3SOAPyramid dev_vmapSOA;
 	Float3SOAPyramid dev_nmapSOA;
+	Float1SOAPyramid dev_curvature;
+	
+	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
+	Float1SOAPyramid dev_float1PyramidBuffers[NUM_FLOAT1_PYRAMID_BUFFERS];
+
+	float* dev_floatImageBuffers[NUM_FLOAT1_IMAGE_SIZE_BUFFERS];
 
 #pragma region
 	
 #pragma region Private Methods
+	void createFloat1SOAPyramid(Float1SOAPyramid& dev_pyramid, int xRes, int yRes);
+	void freeFloat1SOAPyramid(Float1SOAPyramid dev_pyramid);
+
 	void createFloat3SOAPyramid(Float3SOAPyramid& dev_pyramid, int xRes, int yRes);
 	void freeFloat3SOAPyramid(Float3SOAPyramid dev_pyramid);
 	void initCudaBuffers(int xRes, int yResolution);
@@ -69,8 +84,7 @@ public:
 	void buildVMapBilateralFilter(float maxDepth, float sigma_t);
 
 	void buildNMapSimple();
-	void buildNMapEigen(int pixelWindow, float );
-
+	void buildNMapAverageGradient(int windowRadius);
 
 #pragma endregion
 

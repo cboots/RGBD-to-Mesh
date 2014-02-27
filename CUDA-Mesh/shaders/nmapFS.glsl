@@ -26,10 +26,10 @@ void main()
 	FragColor = vec4(inplane, 0.0, min(dot1,dot2), 1.0);
 	
 	
-	/*
+	
 	if(isnan(norm.x))
 	{
 		FragColor = vec4(1.0,1.0,0.0,1.0);
 	}
-	*/
+	
 }

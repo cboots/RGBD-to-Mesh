@@ -16,7 +16,7 @@ struct RGBMapSOA{
 
 
 struct Float1SOAPyramid{
-	float* val[NUM_PYRAMID_LEVELS];
+	float* x[NUM_PYRAMID_LEVELS];
 };
 
 struct Float3SOAPyramid{

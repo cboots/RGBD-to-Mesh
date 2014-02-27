@@ -75,7 +75,7 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 
 	//Setup default rendering/pipeline settings
 	mFilterMode = BILATERAL_FILTER;
-	mNormalMode = SIMPLE_NORMALS;
+	mNormalMode = AVERAGE_GRADIENT_NORMALS;
 	mViewState = DISPLAY_MODE_OVERLAY;
 	hairyPoints = false;
 	mSpatialSigma = 2.0f;
@@ -816,8 +816,8 @@ void MeshViewer::display()
 		case SIMPLE_NORMALS:
 			mMeshTracker->buildNMapSimple();
 			break;
-		case EIGEN_NORMALS:
-			//mMeshTracker->buildNMapEigen();
+		case AVERAGE_GRADIENT_NORMALS:
+			mMeshTracker->buildNMapAverageGradient(4);
 			break;
 		}
 
@@ -1081,6 +1081,14 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	case ';':
 		mMaxDepth -= 0.25f;
 		cout << "Max Depth: " << mMaxDepth << " (m)" << endl;
+		break;
+	case ',':
+		mNormalMode = AVERAGE_GRADIENT_NORMALS;
+		cout << "Average Gradient Normals Mode"<< endl;
+		break;
+	case '.':
+		mNormalMode = SIMPLE_NORMALS;
+		cout << "Simple Normals Mode"<< endl;
 		break;
 	}
 

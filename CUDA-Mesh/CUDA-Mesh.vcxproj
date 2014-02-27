@@ -169,10 +169,13 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
   <ItemGroup>
     <ClInclude Include="cuda\array_ops.h" />
     <ClInclude Include="cuda\debug_rendering.h" />
+    <ClInclude Include="cuda\gradient.h" />
+    <ClInclude Include="cuda\integral_image.h" />
     <ClInclude Include="cuda\plane_segmentation.h" />
     <ClInclude Include="cuda\preprocessing.h" />
     <ClInclude Include="cuda\normal_estimates.h" />
     <ClInclude Include="cuda\scan.h" />
+    <ClInclude Include="cuda\seperable_filter.h" />
     <ClInclude Include="cuda\transpose.h" />
     <ClInclude Include="device_structs.h" />
     <ClInclude Include="glslUtility.h" />
@@ -189,10 +192,13 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
   <ItemGroup>
     <CudaCompile Include="cuda\array_ops.cu" />
     <CudaCompile Include="cuda\debug_rendering.cu" />
+    <CudaCompile Include="cuda\gradient.cu" />
+    <CudaCompile Include="cuda\integral_image.cu" />
     <CudaCompile Include="cuda\plane_segmentation.cu" />
     <CudaCompile Include="cuda\preprocessing.cu" />
     <CudaCompile Include="cuda\normal_estimates.cu" />
     <CudaCompile Include="cuda\scan.cu" />
+    <CudaCompile Include="cuda\seperable_filter.cu" />
     <CudaCompile Include="cuda\transpose.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

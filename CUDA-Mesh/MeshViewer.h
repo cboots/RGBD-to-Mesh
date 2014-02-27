@@ -51,7 +51,7 @@ enum DisplayModes
 enum NormalMode
 {
 	SIMPLE_NORMALS,
-	EIGEN_NORMALS
+	AVERAGE_GRADIENT_NORMALS
 };
 
 class MeshViewer : public RGBDDevice::NewRGBDFrameListener
