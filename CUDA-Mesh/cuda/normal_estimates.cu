@@ -165,6 +165,11 @@ __global__ void pcaNormalsKernel(float* vmapX, float* vmapY, float* vmapZ, float
 	}
 	__syncthreads();
 	
+	nmapX[i] = 0.0f;
+	nmapY[i] = 0.0f;
+	nmapZ[i] = 1.0f;
+	curvature[i] = 0.0f;
+
 }
 
 
