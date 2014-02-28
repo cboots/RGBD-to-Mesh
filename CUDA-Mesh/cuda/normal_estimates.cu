@@ -126,5 +126,68 @@ __host__ void computeAverageGradientNormals(Float3SOAPyramid horizontalGradient,
 
 #pragma region Eigen Normal Calculation
 
+#define PCA_BLOCK_WIDTH 16
+#define PCA_BLOCK_HEIGHT 16
+
+__global__ void pcaNormalsKernel(float* vmapX, float* vmapY, float* vmapZ, float* nmapX, float* nmapY, float* nmapZ, float* curvature,
+								 int xRes, int yRes, float radiusMeters, int radiusPixels, int minNeighbors)
+{
+	extern __shared__ glm::vec3 s_positions[];
+	
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int i = (y * xRes) + x;
+	
+	//First pull everything into shared memory.
+	int linIndexInBlock = (blockDim.x*threadIdx.y)+threadIdx.x;
+	int sharedWidth = radiusPixels*2+blockDim.x;
+	int sharedHeight = radiusPixels*2+blockDim.y;
+	int numThreads = blockDim.x*blockDim.y;
+	
+	
+	//Load shared memory in chunks
+	for(int offset = 0; offset < sharedWidth*sharedHeight; offset+=numThreads)
+	{
+		int sharedIndex = offset+linIndexInBlock;
+		if(sharedIndex < sharedWidth*sharedHeight)
+		{
+			
+			//Tile's upper left x  - RAD_WIN + sharedX
+			int pullX = (blockIdx.x * blockDim.x) - radiusPixels + sharedIndex % sharedWidth;
+			int pullY = (blockIdx.y * blockDim.y) - radiusPixels + sharedIndex / sharedWidth;
+			bool inrange = (pullX >= 0 && pullY >= 0 && pullX < xRes && pullY < yRes);
+
+			s_positions[sharedIndex].x = inrange ? vmapX[pullX + pullY * xRes] : 0.0f;
+			s_positions[sharedIndex].y = inrange ? vmapY[pullX + pullY * xRes] : 0.0f;
+			s_positions[sharedIndex].z = inrange ? vmapZ[pullX + pullY * xRes] : 0.0f;
+			
+		}
+	}
+	__syncthreads();
+	
+}
+
+
+__host__ void computePCANormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, Float1SOAPyramid curvaturemap, 
+								int xRes, int yRes, float radiusMeters, int radiusPixels, int minNeighbors)
+{
+	int pixelWindowSize = 2*radiusPixels + 1;
+
+	assert(pixelWindowSize*pixelWindowSize > minNeighbors);
+	
+	int sharedWidth = radiusPixels*2+PCA_BLOCK_WIDTH;
+	int sharedHeight = radiusPixels*2+PCA_BLOCK_HEIGHT;
+
+	dim3 threads(PCA_BLOCK_WIDTH, PCA_BLOCK_HEIGHT);
+	dim3 blocks((int)ceil(float(xRes)/float(PCA_BLOCK_WIDTH)), 
+		(int)ceil(float(yRes)/float(PCA_BLOCK_HEIGHT)));
+
+	int sharedSize = 3*sharedHeight*sharedWidth*sizeof(float);
+	
+	pcaNormalsKernel<<<blocks,threads, sharedSize>>>(vmap.x[0], vmap.y[0], vmap.z[0], nmap.x[0], nmap.y[0], nmap.z[0], curvaturemap.x[0],
+		xRes, yRes, radiusMeters, radiusPixels, minNeighbors);
+		
+
+}
 
 #pragma endregion

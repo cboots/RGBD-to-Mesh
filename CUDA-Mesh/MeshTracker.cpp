@@ -254,6 +254,13 @@ void MeshTracker::buildNMapAverageGradient(int windowRadius)
 	subsamplePyramidCUDA(dev_nmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
 }
 
+void MeshTracker::buildNMapPCA(float radiusMeters, int radiusPixels, int minNeighbors)
+{
+	computePCANormals(dev_vmapSOA, dev_nmapSOA, dev_curvature, mXRes, mYRes, radiusMeters, radiusPixels, minNeighbors);
+	
+	subsamplePyramidCUDA(dev_nmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
+}
+
 #pragma endregion
 
 #pragma endregion

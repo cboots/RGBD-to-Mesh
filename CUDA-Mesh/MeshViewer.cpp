@@ -75,7 +75,7 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 
 	//Setup default rendering/pipeline settings
 	mFilterMode = BILATERAL_FILTER;
-	mNormalMode = AVERAGE_GRADIENT_NORMALS;
+	mNormalMode = PCA_NORMALS;
 	mViewState = DISPLAY_MODE_OVERLAY;
 	hairyPoints = false;
 	mSpatialSigma = 2.0f;
@@ -819,6 +819,9 @@ void MeshViewer::display()
 		case AVERAGE_GRADIENT_NORMALS:
 			mMeshTracker->buildNMapAverageGradient(4);
 			break;
+		case PCA_NORMALS:
+			mMeshTracker->buildNMapPCA(0.03f, 2, 16); 
+			break;
 		}
 
 	}//=====End of pipeline code=====
@@ -1089,6 +1092,10 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	case '.':
 		mNormalMode = SIMPLE_NORMALS;
 		cout << "Simple Normals Mode"<< endl;
+		break;
+	case '/':
+		mNormalMode = PCA_NORMALS;
+		cout << "PCA Normals Mode" << endl;
 		break;
 	}
 
