@@ -130,19 +130,30 @@ __host__ void computeAverageGradientNormals(Float3SOAPyramid horizontalGradient,
 #define PCA_WINDOW_RADIUS 2
 #define PCA_MIN_NEIGHBORS 16
 
+__device__ float distanceSq(glm::vec3 p1, glm::vec3 p2)
+{
+	float dx = p1.x-p2.x;
+	float dy = p1.y-p2.y;
+	float dz = p1.z-p2.z;
+
+	return dx*dx+dy*dy+dz*dz;
+}
+
 __global__ void pcaNormalsKernel(float* vmapX, float* vmapY, float* vmapZ, float* nmapX, float* nmapY, float* nmapZ, float* curvature,
-								 int xRes, int yRes, float radiusMeters)
+								 int xRes, int yRes, float radiusMetersSq)
 {
 	__shared__ float s_positions[3][PCA_TILE_SIZE+2*PCA_WINDOW_RADIUS][PCA_TILE_SIZE+2*PCA_WINDOW_RADIUS];
 
 
+	//Upper left corner of aligned loading block
+	int loadBx = blockIdx.x*blockDim.x-PCA_TILE_SIZE/2;
+	int loadBy = blockIdx.y*blockDim.y-PCA_TILE_SIZE/2;
+
 	//Index of this thread's work target
-	int loadBx = blockIdx.x*blockDim.x;
-	int loadBy = blockIdx.y*blockDim.y;
-	int resultsX = PCA_TILE_SIZE/2 + loadBx  + threadIdx.x;
-	int resultsY = PCA_TILE_SIZE/2 + loadBy  + threadIdx.y;
+	int resultsX = blockIdx.x*blockDim.x + threadIdx.x;
+	int resultsY = blockIdx.y*blockDim.y + threadIdx.y;
 	int i = resultsX + xRes*resultsY;
-	
+
 	int loadX = threadIdx.x + 16 * (threadIdx.y % 2);
 	//Offset to shared memory is threadIdx.x-PCA_WINDOW_RADIUS, threadIdx.y-PCA_WINDOW_RADIUS
 	if(loadX >= PCA_TILE_SIZE/2 - PCA_WINDOW_RADIUS && loadX < PCA_TILE_SIZE*3/2 + PCA_WINDOW_RADIUS){
@@ -154,20 +165,57 @@ __global__ void pcaNormalsKernel(float* vmapX, float* vmapY, float* vmapZ, float
 			int loadY = istep*PCA_TILE_SIZE/2 + threadIdx.y/2;
 			if(loadY >= PCA_TILE_SIZE/2 - PCA_WINDOW_RADIUS && loadY < PCA_TILE_SIZE*3/2 + PCA_WINDOW_RADIUS)
 			{
+				bool loadIdInRange = (loadBy + loadY) > 0 && (loadBy + loadY) < yRes && (loadBx + loadX) > 0 && (loadBx + loadX) < xRes;
+
 				int loadI = (loadBy + loadY)*xRes + (loadBx + loadX);
+
 				//Tiles garunteed to be in range of original image by block layout
-				s_positions[0][loadY - (PCA_TILE_SIZE/2 - PCA_WINDOW_RADIUS)][loadX - (PCA_TILE_SIZE/2 - PCA_WINDOW_RADIUS)] = vmapX[loadI];
-				s_positions[1][loadY - (PCA_TILE_SIZE/2 - PCA_WINDOW_RADIUS)][loadX - (PCA_TILE_SIZE/2 - PCA_WINDOW_RADIUS)] = vmapY[loadI];
-				s_positions[2][loadY - (PCA_TILE_SIZE/2 - PCA_WINDOW_RADIUS)][loadX - (PCA_TILE_SIZE/2 - PCA_WINDOW_RADIUS)] = vmapZ[loadI];
+				s_positions[0][loadY - (PCA_TILE_SIZE/2 - PCA_WINDOW_RADIUS)][loadX - (PCA_TILE_SIZE/2 - PCA_WINDOW_RADIUS)] = loadIdInRange?vmapX[loadI]:CUDART_NAN_F;
+				s_positions[1][loadY - (PCA_TILE_SIZE/2 - PCA_WINDOW_RADIUS)][loadX - (PCA_TILE_SIZE/2 - PCA_WINDOW_RADIUS)] = loadIdInRange?vmapY[loadI]:CUDART_NAN_F;
+				s_positions[2][loadY - (PCA_TILE_SIZE/2 - PCA_WINDOW_RADIUS)][loadX - (PCA_TILE_SIZE/2 - PCA_WINDOW_RADIUS)] = loadIdInRange?vmapZ[loadI]:CUDART_NAN_F;
 			}
 		}
 	}
 
 	__syncthreads();
 
-	nmapX[i] = s_positions[0][threadIdx.y+PCA_WINDOW_RADIUS][threadIdx.x+PCA_WINDOW_RADIUS];
-	nmapY[i] = s_positions[1][threadIdx.y+PCA_WINDOW_RADIUS][threadIdx.x+PCA_WINDOW_RADIUS];//
-	nmapZ[i] = s_positions[2][threadIdx.y+PCA_WINDOW_RADIUS][threadIdx.x+PCA_WINDOW_RADIUS];//
+	//Load done
+	//Compute centroid. 
+	//Use center point to determine point range
+	int sx = threadIdx.x+PCA_WINDOW_RADIUS;
+	int sy = threadIdx.y+PCA_WINDOW_RADIUS;
+	glm::vec3 centerPos = glm::vec3(s_positions[0][sy][sx],
+		s_positions[1][sy][sx],
+		s_positions[2][sy][sx]);
+
+	int neighborCount = 0;
+	glm::vec3 centroid = glm::vec3();
+#pragma unroll
+	for(int x = -PCA_WINDOW_RADIUS; x <= PCA_WINDOW_RADIUS; ++x)
+	{
+#pragma unroll
+		for(int y = -PCA_WINDOW_RADIUS; y <= PCA_WINDOW_RADIUS; ++y)
+		{
+			glm::vec3 p = glm::vec3(s_positions[0][sy+y][sx+x],
+				s_positions[1][sy+y][sx+x],
+				s_positions[2][sy+y][sx+x]);
+			glm::vec3 diff = p-centerPos;
+			if(glm::dot(diff,diff) <= radiusMetersSq)
+			{
+				//In range
+				neighborCount++;
+				centroid += p;
+			}
+		}
+	}
+	centroid /= neighborCount;
+
+	//At this point, we have a true centroid
+
+
+	nmapX[i] = centroid.x;
+	nmapY[i] = centroid.y;//
+	nmapZ[i] = neighborCount/25.0;//
 	curvature[i] = 0.0f;
 
 }
@@ -176,14 +224,15 @@ __global__ void pcaNormalsKernel(float* vmapX, float* vmapY, float* vmapZ, float
 __host__ void computePCANormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, Float1SOAPyramid curvaturemap, 
 								int xRes, int yRes, float radiusMeters)
 {
+	assert(PCA_WINDOW_RADIUS < PCA_TILE_SIZE / 2);
 
 	dim3 threads(PCA_TILE_SIZE, PCA_TILE_SIZE);
-	dim3 blocks((int)ceil(float(xRes)/float(PCA_TILE_SIZE))-1, 
-		(int)ceil(float(yRes)/float(PCA_TILE_SIZE))-1);
+	dim3 blocks((int)ceil(float(xRes)/float(PCA_TILE_SIZE)), 
+		(int)ceil(float(yRes)/float(PCA_TILE_SIZE)));
 
 
 	pcaNormalsKernel<<<blocks,threads>>>(vmap.x[0], vmap.y[0], vmap.z[0], nmap.x[0], nmap.y[0], nmap.z[0], curvaturemap.x[0],
-		xRes, yRes, radiusMeters);
+		xRes, yRes, radiusMeters*radiusMeters);
 
 
 }
