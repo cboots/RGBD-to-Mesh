@@ -16,7 +16,7 @@ void main()
 	FragColor = abs(norm);
 	FragColor.a = 1.0;
 	
-	
+	/*
 	vec2 texCoord = fs_texCoord*u_TextureScale;
 	float dxy = 0.002;
 	vec4 normC = texture(u_Texture0, texCoord);
@@ -25,8 +25,8 @@ void main()
 	
 	float inplane = step(0.99, min(dot1,dot2));
 	//FragColor = vec4(inplane, 0.0, min(dot1,dot2), 1.0);
-	
-	if(isnan(norm.x) || inplane < 0.5f)
+	*/
+	if(isnan(norm.x))
 	{
 		FragColor = vec4(0.0,0.0,0.0,1.0);
 	}

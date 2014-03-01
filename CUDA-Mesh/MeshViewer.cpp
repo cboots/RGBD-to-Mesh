@@ -820,7 +820,7 @@ void MeshViewer::display()
 			mMeshTracker->buildNMapAverageGradient(4);
 			break;
 		case PCA_NORMALS:
-			mMeshTracker->buildNMapPCA(0.03f, 2, 16); 
+			mMeshTracker->buildNMapPCA(0.03f); 
 			break;
 		}
 
@@ -877,9 +877,9 @@ void MeshViewer::display()
 		drawNMaptoTexture(texture2, 2);
 		drawColorImageBufferToTexture(texture3);
 
-		drawQuad(nmap_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR Level0 NMap
-		drawQuad(nmap_prog,  0.5, -0.5, 0.5, 0.5, 0.5,  &texture1, 1);//LR Level1 NMap
-		drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 NMap
+		drawQuad(vmap_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR Level0 NMap
+		drawQuad(vmap_prog,  0.5, -0.5, 0.5, 0.5, 0.5,  &texture1, 1);//LR Level1 NMap
+		drawQuad(vmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 NMap
 		drawQuad(color_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL Original depth
 		break;
 

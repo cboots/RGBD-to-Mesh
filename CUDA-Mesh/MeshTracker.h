@@ -85,7 +85,7 @@ public:
 
 	void buildNMapSimple();
 	void buildNMapAverageGradient(int windowRadius);
-	void buildNMapPCA(float radiusMeters, int radiusPixels, int minNeighbors);
+	void buildNMapPCA(float radiusMeters);
 #pragma endregion
 
 #pragma region Buffer getters

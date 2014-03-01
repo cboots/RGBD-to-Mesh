@@ -126,72 +126,65 @@ __host__ void computeAverageGradientNormals(Float3SOAPyramid horizontalGradient,
 
 #pragma region Eigen Normal Calculation
 
-#define PCA_BLOCK_WIDTH 16
-#define PCA_BLOCK_HEIGHT 16
+#define PCA_TILE_SIZE 16
+#define PCA_WINDOW_RADIUS 2
+#define PCA_MIN_NEIGHBORS 16
 
 __global__ void pcaNormalsKernel(float* vmapX, float* vmapY, float* vmapZ, float* nmapX, float* nmapY, float* nmapZ, float* curvature,
-								 int xRes, int yRes, float radiusMeters, int radiusPixels, int minNeighbors)
+								 int xRes, int yRes, float radiusMeters)
 {
-	extern __shared__ glm::vec3 s_positions[];
-	
-	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
-	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
-	int i = (y * xRes) + x;
-	
-	//First pull everything into shared memory.
-	int linIndexInBlock = (blockDim.x*threadIdx.y)+threadIdx.x;
-	int sharedWidth = radiusPixels*2+blockDim.x;
-	int sharedHeight = radiusPixels*2+blockDim.y;
-	int numThreads = blockDim.x*blockDim.y;
-	
-	
-	//Load shared memory in chunks
-	for(int offset = 0; offset < sharedWidth*sharedHeight; offset+=numThreads)
-	{
-		int sharedIndex = offset+linIndexInBlock;
-		if(sharedIndex < sharedWidth*sharedHeight)
-		{
-			
-			//Tile's upper left x  - RAD_WIN + sharedX
-			int pullX = (blockIdx.x * blockDim.x) - radiusPixels + sharedIndex % sharedWidth;
-			int pullY = (blockIdx.y * blockDim.y) - radiusPixels + sharedIndex / sharedWidth;
-			bool inrange = (pullX >= 0 && pullY >= 0 && pullX < xRes && pullY < yRes);
+	__shared__ float s_positions[3][PCA_TILE_SIZE+2*PCA_WINDOW_RADIUS][PCA_TILE_SIZE+2*PCA_WINDOW_RADIUS];
 
-			s_positions[sharedIndex].x = inrange ? vmapX[pullX + pullY * xRes] : 0.0f;
-			s_positions[sharedIndex].y = inrange ? vmapY[pullX + pullY * xRes] : 0.0f;
-			s_positions[sharedIndex].z = inrange ? vmapZ[pullX + pullY * xRes] : 0.0f;
-			
+
+	//Index of this thread's work target
+	int loadBx = blockIdx.x*blockDim.x;
+	int loadBy = blockIdx.y*blockDim.y;
+	int resultsX = PCA_TILE_SIZE/2 + loadBx  + threadIdx.x;
+	int resultsY = PCA_TILE_SIZE/2 + loadBy  + threadIdx.y;
+	int i = resultsX + xRes*resultsY;
+	
+	int loadX = threadIdx.x + 16 * (threadIdx.y % 2);
+	//Offset to shared memory is threadIdx.x-PCA_WINDOW_RADIUS, threadIdx.y-PCA_WINDOW_RADIUS
+	if(loadX >= PCA_TILE_SIZE/2 - PCA_WINDOW_RADIUS && loadX < PCA_TILE_SIZE*3/2 + PCA_WINDOW_RADIUS){
+		//Is in horizontal range. Only need to perform vertical check in loop
+
+#pragma unroll
+		for(int istep = 0; istep < 3; ++istep)
+		{
+			int loadY = istep*PCA_TILE_SIZE/2 + threadIdx.y/2;
+			if(loadY >= PCA_TILE_SIZE/2 - PCA_WINDOW_RADIUS && loadY < PCA_TILE_SIZE*3/2 + PCA_WINDOW_RADIUS)
+			{
+				int loadI = (loadBy + loadY)*xRes + (loadBx + loadX);
+				//Tiles garunteed to be in range of original image by block layout
+				s_positions[0][loadY - (PCA_TILE_SIZE/2 - PCA_WINDOW_RADIUS)][loadX - (PCA_TILE_SIZE/2 - PCA_WINDOW_RADIUS)] = vmapX[loadI];
+				s_positions[1][loadY - (PCA_TILE_SIZE/2 - PCA_WINDOW_RADIUS)][loadX - (PCA_TILE_SIZE/2 - PCA_WINDOW_RADIUS)] = vmapY[loadI];
+				s_positions[2][loadY - (PCA_TILE_SIZE/2 - PCA_WINDOW_RADIUS)][loadX - (PCA_TILE_SIZE/2 - PCA_WINDOW_RADIUS)] = vmapZ[loadI];
+			}
 		}
 	}
+
 	__syncthreads();
-	
-	nmapX[i] = 0.0f;
-	nmapY[i] = 0.0f;
-	nmapZ[i] = 1.0f;
+
+	nmapX[i] = s_positions[0][threadIdx.y+PCA_WINDOW_RADIUS][threadIdx.x+PCA_WINDOW_RADIUS];
+	nmapY[i] = s_positions[1][threadIdx.y+PCA_WINDOW_RADIUS][threadIdx.x+PCA_WINDOW_RADIUS];//
+	nmapZ[i] = s_positions[2][threadIdx.y+PCA_WINDOW_RADIUS][threadIdx.x+PCA_WINDOW_RADIUS];//
 	curvature[i] = 0.0f;
 
 }
 
 
 __host__ void computePCANormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, Float1SOAPyramid curvaturemap, 
-								int xRes, int yRes, float radiusMeters, int radiusPixels, int minNeighbors)
+								int xRes, int yRes, float radiusMeters)
 {
-	int pixelWindowSize = 2*radiusPixels + 1;
 
-	assert(pixelWindowSize*pixelWindowSize > minNeighbors);
-	
-	int sharedWidth = radiusPixels*2+PCA_BLOCK_WIDTH;
-	int sharedHeight = radiusPixels*2+PCA_BLOCK_HEIGHT;
+	dim3 threads(PCA_TILE_SIZE, PCA_TILE_SIZE);
+	dim3 blocks((int)ceil(float(xRes)/float(PCA_TILE_SIZE))-1, 
+		(int)ceil(float(yRes)/float(PCA_TILE_SIZE))-1);
 
-	dim3 threads(PCA_BLOCK_WIDTH, PCA_BLOCK_HEIGHT);
-	dim3 blocks((int)ceil(float(xRes)/float(PCA_BLOCK_WIDTH)), 
-		(int)ceil(float(yRes)/float(PCA_BLOCK_HEIGHT)));
 
-	int sharedSize = 3*sharedHeight*sharedWidth*sizeof(float);
-	
-	pcaNormalsKernel<<<blocks,threads, sharedSize>>>(vmap.x[0], vmap.y[0], vmap.z[0], nmap.x[0], nmap.y[0], nmap.z[0], curvaturemap.x[0],
-		xRes, yRes, radiusMeters, radiusPixels, minNeighbors);
-		
+	pcaNormalsKernel<<<blocks,threads>>>(vmap.x[0], vmap.y[0], vmap.z[0], nmap.x[0], nmap.y[0], nmap.z[0], curvaturemap.x[0],
+		xRes, yRes, radiusMeters);
+
 
 }
 

@@ -5,6 +5,7 @@
 #include "device_structs.h"
 #include "RGBDFrame.h"
 #include <glm/glm.hpp>
+#include "math.h"
 
 __host__ void simpleNormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, Float1SOAPyramid curvaturemap, int numLevels, int xRes, int yRes);
 
@@ -13,4 +14,4 @@ __host__ void computeAverageGradientNormals(Float3SOAPyramid horizontalGradient,
 											Float1SOAPyramid curvature, int xRes, int yRes);
 
 __host__ void computePCANormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, Float1SOAPyramid curvaturemap, 
-								int xRes, int yRes, float radiusMeters, int radiusPixels, int minNeighbors);
+								int xRes, int yRes, float radiusMeters);
