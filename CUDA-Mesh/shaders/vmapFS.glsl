@@ -16,12 +16,10 @@ void main()
 	
 	float shade = 1.0-clamp(depth/(10.0), 0.0, 1.0);
 	
-	FragColor = step(10.0/25.0, depth)*vec4(shade, 1.0-step(0.0001,shade), 1.0-shade, 0.7);
+	FragColor = step(0.0001, depth)*vec4(shade, 1.0-step(0.0001,shade), 1.0-shade, 0.7);
 	
 	if(isnan(depth))
 	{
 		FragColor = vec4(1.0, 1.0, 0.0, 1.0);
 	}
-	
-	
 }

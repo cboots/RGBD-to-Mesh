@@ -96,6 +96,25 @@ __global__ void sendFloat3SOAToPBO(float4* pbo, float* x_src, float* y_src, floa
 }
 
 
+__global__ void sendFloat1SOAToPBO(float4* pbo, float* x_src, float w,
+								   int xRes, int yRes, int pboXRes, int pboYRes)
+{
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int i = (y * xRes) + x;
+	int pboi = (y * pboXRes) + x;
+
+	if(y < yRes && x < xRes){
+
+		// Each thread writes one pixel location in the texture (textel)
+		pbo[pboi].x = x_src[i];
+		pbo[pboi].y = w;
+		pbo[pboi].z = w;
+		pbo[pboi].w = w;
+	}
+}
+
+
 __global__ void clearPBOKernel(float4* pbo, int xRes, int yRes, float clearValue)
 {
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -184,6 +203,28 @@ __host__ void drawRGBMaptoPBO(float4* pbo, Float3SOAPyramid rgbMap, int level, i
 
 
 		sendFloat3SOAToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo,  rgbMap.x[level], rgbMap.y[level], rgbMap.z[level],  1.0,
+			scaledXRes, scaledYRes, xRes, yRes);
+	}
+
+}
+
+
+
+__host__ void drawCurvatureMaptoPBO(float4* pbo, Float1SOAPyramid curvatureMap, int level, int xRes, int yRes)
+{
+	int tileSize = 16;
+	
+	if(level < NUM_PYRAMID_LEVELS)
+	{
+		int scaledXRes = xRes >> level;
+		int scaledYRes = yRes >> level;
+
+		dim3 threadsPerBlock(tileSize, tileSize);
+		dim3 fullBlocksPerGrid((int)ceil(float(scaledXRes)/float(tileSize)), 
+			(int)ceil(float(scaledYRes)/float(tileSize)));
+
+
+		sendFloat1SOAToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo,  curvatureMap.x[level],  1.0,
 			scaledXRes, scaledYRes, xRes, yRes);
 	}
 

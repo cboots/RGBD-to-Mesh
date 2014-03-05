@@ -263,6 +263,7 @@ void MeshViewer::initShader()
 	const char * depth_frag = "shaders/depthFS.glsl";
 	const char * vmap_frag = "shaders/vmapFS.glsl";
 	const char * nmap_frag = "shaders/nmapFS.glsl";
+	const char * curvature_frag = "shaders/curvatureFS.glsl";
 
 	//Color image shader
 	color_prog = glslUtility::createProgram(pass_vert, NULL, color_frag, quadAttributeLocations, 2);
@@ -278,6 +279,8 @@ void MeshViewer::initShader()
 
 	//NMap display debug shader
 	nmap_prog = glslUtility::createProgram(pass_vert, NULL, nmap_frag, quadAttributeLocations, 2);
+
+	curvemap_prog = glslUtility::createProgram(pass_vert, NULL, curvature_frag, quadAttributeLocations, 2);
 }
 
 void MeshViewer::initTextures()
@@ -694,6 +697,29 @@ void MeshViewer::drawNMaptoTexture(GLuint texture, int level)
 
 }
 
+void MeshViewer::drawCurvatureMaptoTexture(GLuint texture, int level)
+{
+	float4* dptrNMap;
+	cudaGLMapBufferObject((void**)&dptrNMap, imagePBO0);
+
+	clearPBO(dptrNMap, mXRes, mYRes, 0.0f);
+	drawCurvatureMaptoPBO(dptrNMap, mMeshTracker->getCurvaturePyramid(), level, mXRes, mYRes);
+
+	cudaGLUnmapBufferObject(imagePBO0);
+
+	//Unpack to textures
+	glActiveTexture(GL_TEXTURE12);
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+		GL_RGBA, GL_FLOAT, NULL);
+
+	//Unbind buffers
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glActiveTexture(GL_TEXTURE0);
+}
+
 
 void MeshViewer::drawRGBMaptoTexture(GLuint texture, int level)
 {
@@ -877,9 +903,9 @@ void MeshViewer::display()
 		drawNMaptoTexture(texture2, 2);
 		drawColorImageBufferToTexture(texture3);
 
-		drawQuad(vmap_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR Level0 NMap
-		drawQuad(vmap_prog,  0.5, -0.5, 0.5, 0.5, 0.5,  &texture1, 1);//LR Level1 NMap
-		drawQuad(vmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 NMap
+		drawQuad(nmap_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR Level0 NMap
+		drawQuad(nmap_prog,  0.5, -0.5, 0.5, 0.5, 0.5,  &texture1, 1);//LR Level1 NMap
+		drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 NMap
 		drawQuad(color_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL Original depth
 		break;
 
@@ -893,6 +919,18 @@ void MeshViewer::display()
 		drawQuad(vmap_prog,  0.5, -0.5, 0.5, 0.5, 0.5,  &texture1, 1);//LR Level1 VMap
 		drawQuad(vmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 VMap
 		drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL Original depth
+		break;
+	case DISPLAY_MODE_CURVATURE_DEBUG:
+		
+		drawDepthImageBufferToTexture(texture0);
+		drawColorImageBufferToTexture(texture1);
+		drawNMaptoTexture(texture2, 0);
+		drawCurvatureMaptoTexture(texture3, 0);
+
+		drawQuad(depth_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR depth
+		drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0,  &texture1, 1);//LR color
+		drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL normal 
+		drawQuad(curvemap_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL curvature
 		break;
 	}
 
@@ -946,6 +984,9 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		break;
 	case '7':
 		mViewState = DISPLAY_MODE_NMAP_DEBUG;
+		break;
+	case '8':
+		mViewState = DISPLAY_MODE_CURVATURE_DEBUG;
 		break;
 	case('r'):
 		cout << "Reloading Shaders" <<endl;

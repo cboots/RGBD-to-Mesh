@@ -94,6 +94,7 @@ public:
 	inline Float3SOAPyramid getVMapPyramid() { return dev_vmapSOA;}
 	inline Float3SOAPyramid getNMapPyramid() { return dev_nmapSOA;}
 	inline Float3SOAPyramid getRGBMapSOA() { return dev_rgbSOA;}
+	inline Float1SOAPyramid getCurvaturePyramid() {return dev_curvature;}
 
 #pragma endregion
 };

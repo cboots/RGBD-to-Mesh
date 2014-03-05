@@ -27,3 +27,5 @@ __host__ void drawNMaptoPBO(float4* pbo, Float3SOAPyramid nmap, int level, int x
 
 
 __host__ void drawRGBMaptoPBO(float4* pbo, Float3SOAPyramid rgbMap, int level, int xRes, int yRes);
+
+__host__ void drawCurvatureMaptoPBO(float4* pbo, Float1SOAPyramid curvatureMap, int level, int xRes, int yRes);

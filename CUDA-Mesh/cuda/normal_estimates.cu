@@ -2,9 +2,37 @@
 
 #pragma region Simple Normals Calculation
 
+__global__ void estimateCurvatureKernel(float* x_norm, float* y_norm, float* z_norm,
+										float* curvature,
+										int xRes, int yRes)
+{
+	int u = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int v = (blockIdx.y * blockDim.y) + threadIdx.y;
+
+	int i = v * xRes + u;
+
+	if(u < xRes && v < yRes){
+		//Curvature estimate
+		float curve = CUDART_NAN_F;
+		if(u < xRes - 1 && v < yRes - 1)
+		{
+			glm::vec3 normThis = glm::vec3(x_norm[i], y_norm[i], z_norm[i]);
+			glm::vec3 normRight = glm::vec3(x_norm[i+1], y_norm[i+1], z_norm[i+1]);
+			glm::vec3 normBelow = glm::vec3(x_norm[i+xRes], y_norm[i+xRes], z_norm[i+xRes]);
+
+			float dotProd = glm::max(glm::dot(normRight, normThis),glm::dot(normBelow, normThis));
+			//curve = acosf(dotProd)/sqrtf(dx*dx+dy*dy+dz*dz);
+			curve = acosf(dotProd);
+
+
+		}
+
+		curvature[i] = curve;
+	}
+}
+
 __global__ void simpleNormalsKernel(float* x_vert, float* y_vert, float* z_vert, 
 									float* x_norm, float* y_norm, float* z_norm,
-									float* curvature,
 									int xRes, int yRes)
 {
 	int u = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -15,19 +43,21 @@ __global__ void simpleNormalsKernel(float* x_vert, float* y_vert, float* z_vert,
 	if(u < xRes && v < yRes){
 
 		glm::vec3 norm = glm::vec3(CUDART_NAN_F);
-
+		float dx1, dy1, dz1, dx2, dy2, dz2;
 		if(u < xRes - 1 && v < yRes - 1 && u > 0 && v > 0)
 		{
 
 			//Diff to right
-			float dx1 = x_vert[i+1] - x_vert[i-1];
-			float dy1 = y_vert[i+1] - y_vert[i-1];
-			float dz1 = z_vert[i+1] - z_vert[i-1];
+			dx1 = x_vert[i+1] - x_vert[i-1];
+			dy1 = y_vert[i+1] - y_vert[i-1];
+			dz1 = z_vert[i+1] - z_vert[i-1];
 
 			//Diff to bottom
-			float dx2 = x_vert[i+xRes] - x_vert[i-xRes];
-			float dy2 = y_vert[i+xRes] - y_vert[i-xRes];
-			float dz2 = z_vert[i+xRes] - z_vert[i-xRes];
+			dx2 = x_vert[i+xRes] - x_vert[i-xRes];
+			dy2 = y_vert[i+xRes] - y_vert[i-xRes];
+			dz2 = z_vert[i+xRes] - z_vert[i-xRes];
+
+
 
 			//d1 cross d2
 			norm.x = dy1*dz2-dz1*dy2;
@@ -47,8 +77,6 @@ __global__ void simpleNormalsKernel(float* x_vert, float* y_vert, float* z_vert,
 		x_norm[i] = norm.x;
 		y_norm[i] = norm.y;
 		z_norm[i] = norm.z;
-		curvature[i] = 0.0f;//filler. Simple normals has no means of estimating curvature
-
 
 	}
 
@@ -66,9 +94,16 @@ __host__ void simpleNormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, Float1
 
 
 		simpleNormalsKernel<<<fullBlocksPerGrid,threadsPerBlock>>>(vmap.x[i], vmap.y[i], vmap.z[i],
-			nmap.x[i], nmap.y[i], nmap.z[i], curvaturemap.x[i],
+			nmap.x[i], nmap.y[i], nmap.z[i],
 			xRes>>i, yRes>>i);
+
 	}
+
+	dim3 threadsPerBlock(tileSize, tileSize);
+	dim3 fullBlocksPerGrid((int)ceil(float(xRes)/float(tileSize)), 
+		(int)ceil(float(yRes)/float(tileSize)));
+
+	estimateCurvatureKernel<<<fullBlocksPerGrid,threadsPerBlock>>>(	nmap.x[0], nmap.y[0], nmap.z[0], curvaturemap.x[0],	xRes, yRes);
 }
 
 #pragma endregion
@@ -120,6 +155,10 @@ __host__ void computeAverageGradientNormals(Float3SOAPyramid horizontalGradient,
 		nmap.x[0], nmap.y[0], nmap.z[0], curvature.x[0],
 		xRes, yRes);
 
+	
+	estimateCurvatureKernel<<<fullBlocksPerGrid,threadsPerBlock>>>(nmap.x[0], nmap.y[0], nmap.z[0], curvature.x[0],
+		xRes, yRes);
+
 }
 
 #pragma endregion
@@ -138,6 +177,57 @@ __device__ float distanceSq(glm::vec3 p1, glm::vec3 p2)
 
 	return dx*dx+dy*dy+dz*dz;
 }
+
+#define EPSILON 0.0001f
+#define PI 3.141592653589f
+
+__device__ glm::vec3 normalFrom3x3Covar(glm::mat3 A, float& curvature) {
+	// Given a (real, symmetric) 3x3 covariance matrix A, returns the eigenvector corresponding to the min eigenvalue
+	// (see: http://en.wikipedia.org/wiki/Eigenvalue_algorithm#3.C3.973_matrices)
+	glm::vec3 eigs;
+	glm::vec3 normal = glm::vec3(0.0f);
+
+	float p1 = pow(A[0][1], 2) + pow(A[0][2], 2) + pow(A[1][2], 2);
+	if (abs(p1) < EPSILON) { // A is diagonal
+		eigs = glm::vec3(A[0][0], A[1][1], A[2][2]);
+	} else {
+		float q = (A[0][0] + A[1][1] + A[2][2])/3.0f; // mean(trace(A))
+		float p2 = pow(A[0][0]-q, 2) + pow(A[1][1]-q, 2) + pow(A[2][2]-q, 2) + 2*p1;
+		float p = sqrt(p2/6);
+		glm::mat3 B = (1/p) * (A-q*glm::mat3(1.0f));
+		float r = glm::determinant(B)/2;
+		// theoretically -1 <= r <= 1, but clamp in case of numeric error
+		float phi;
+		if (r <= -1) {
+			phi = PI / 3;
+		} else if (r >= 1) { 
+			phi = 0;
+		} else {
+			phi = glm::acos(r)/3;
+		}
+		eigs[0] = q + 2*p*glm::cos(phi);
+		eigs[2] = q + 2*p*glm::cos(phi + 2*PI/3);
+		eigs[1] = 3*q - eigs[0] - eigs[2];
+
+	}
+	float tmp;
+	int i, eig_i;
+	// sorting: swap first pair if necessary, then second pair, then first pair again
+#pragma unroll
+	for (i=0; i<3; i++) {
+		eig_i = i%2;
+		tmp = eigs[eig_i];
+		eigs[eig_i] = glm::min(tmp, eigs[eig_i+1]);
+		eigs[eig_i+1] = glm::max(tmp, eigs[eig_i+1]);
+	}
+
+	// check if point cloud region is "flat" enough
+	curvature = eigs[0]/(eigs[0]+eigs[1]+eigs[2]);
+	normal = glm::normalize(glm::cross(A[0] - glm::vec3(eigs[0], 0.0f, 0.0f), A[1] - glm::vec3(0.0f, eigs[0], 0.0f)));
+
+	return normal;
+}
+
 
 __global__ void pcaNormalsKernel(float* vmapX, float* vmapY, float* vmapZ, float* nmapX, float* nmapY, float* nmapZ, float* curvature,
 								 int xRes, int yRes, float radiusMetersSq)
@@ -210,13 +300,42 @@ __global__ void pcaNormalsKernel(float* vmapX, float* vmapY, float* vmapZ, float
 	}
 	centroid /= neighborCount;
 
+
+	neighborCount = 0;
+	glm::mat3 covariance = glm::mat3(0.0f);
 	//At this point, we have a true centroid
+#pragma unroll
+	for(int x = -PCA_WINDOW_RADIUS; x <= PCA_WINDOW_RADIUS; ++x)
+	{
+#pragma unroll
+		for(int y = -PCA_WINDOW_RADIUS; y <= PCA_WINDOW_RADIUS; ++y)
+		{
+			glm::vec3 p = glm::vec3(s_positions[0][sy+y][sx+x],
+				s_positions[1][sy+y][sx+x],
+				s_positions[2][sy+y][sx+x]);
+			glm::vec3 diff = p-centroid;
+			if(glm::dot(diff,diff) <= radiusMetersSq)
+			{
+				//In range
+				neighborCount++;
+				covariance[0] += diff.x*diff;
+				covariance[1] += diff.y*diff;
+				covariance[2] += diff.z*diff;
+			}
+		}
+	}
+	covariance /= neighborCount - 1;
+	//Compute eigenvalue
+	float curve = CUDART_NAN_F;
 
-
-	nmapX[i] = centroid.x;
-	nmapY[i] = centroid.y;//
-	nmapZ[i] = neighborCount/25.0;//
-	curvature[i] = 0.0f;
+	glm::vec3 norm = glm::vec3(CUDART_NAN_F);
+	if(neighborCount >= PCA_MIN_NEIGHBORS){
+		norm = normalFrom3x3Covar(covariance, curve);
+	}
+	nmapX[i] = norm.x;
+	nmapY[i] = norm.y;//
+	nmapZ[i] = norm.z;//
+	curvature[i] = curve;
 
 }
 
