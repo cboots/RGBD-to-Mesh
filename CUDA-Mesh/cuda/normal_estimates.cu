@@ -2,34 +2,7 @@
 
 #pragma region Simple Normals Calculation
 
-__global__ void estimateCurvatureKernel(float* x_norm, float* y_norm, float* z_norm,
-										float* curvature,
-										int xRes, int yRes)
-{
-	int u = (blockIdx.x * blockDim.x) + threadIdx.x;
-	int v = (blockIdx.y * blockDim.y) + threadIdx.y;
 
-	int i = v * xRes + u;
-
-	if(u < xRes && v < yRes){
-		//Curvature estimate
-		float curve = CUDART_NAN_F;
-		if(u < xRes - 1 && v < yRes - 1)
-		{
-			glm::vec3 normThis = glm::vec3(x_norm[i], y_norm[i], z_norm[i]);
-			glm::vec3 normRight = glm::vec3(x_norm[i+1], y_norm[i+1], z_norm[i+1]);
-			glm::vec3 normBelow = glm::vec3(x_norm[i+xRes], y_norm[i+xRes], z_norm[i+xRes]);
-
-			float dotProd = glm::max(glm::dot(normRight, normThis),glm::dot(normBelow, normThis));
-			//curve = acosf(dotProd)/sqrtf(dx*dx+dy*dy+dz*dz);
-			curve = acosf(dotProd);
-
-
-		}
-
-		curvature[i] = curve;
-	}
-}
 
 __global__ void simpleNormalsKernel(float* x_vert, float* y_vert, float* z_vert, 
 									float* x_norm, float* y_norm, float* z_norm,
@@ -82,28 +55,18 @@ __global__ void simpleNormalsKernel(float* x_vert, float* y_vert, float* z_vert,
 
 }
 
-__host__ void simpleNormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, Float1SOAPyramid curvaturemap, int numLevels, int xRes, int yRes)
+__host__ void simpleNormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, int numLevels, int xRes, int yRes)
 {
 	int tileSize = 16;
-
-	for(int i = 0; i < numLevels; ++i)
-	{
-		dim3 threadsPerBlock(tileSize, tileSize);
-		dim3 fullBlocksPerGrid((int)ceil(float(xRes>>i)/float(tileSize)), 
-			(int)ceil(float(yRes>>i)/float(tileSize)));
-
-
-		simpleNormalsKernel<<<fullBlocksPerGrid,threadsPerBlock>>>(vmap.x[i], vmap.y[i], vmap.z[i],
-			nmap.x[i], nmap.y[i], nmap.z[i],
-			xRes>>i, yRes>>i);
-
-	}
-
+	
 	dim3 threadsPerBlock(tileSize, tileSize);
 	dim3 fullBlocksPerGrid((int)ceil(float(xRes)/float(tileSize)), 
 		(int)ceil(float(yRes)/float(tileSize)));
 
-	estimateCurvatureKernel<<<fullBlocksPerGrid,threadsPerBlock>>>(	nmap.x[0], nmap.y[0], nmap.z[0], curvaturemap.x[0],	xRes, yRes);
+	simpleNormalsKernel<<<fullBlocksPerGrid,threadsPerBlock>>>(vmap.x[0], vmap.y[0], vmap.z[0],
+		nmap.x[0], nmap.y[0], nmap.z[0],
+		xRes, yRes);
+	
 }
 
 #pragma endregion
@@ -113,7 +76,7 @@ __host__ void simpleNormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, Float1
 
 __global__ void normalsFromGradientKernel(float* horizontalGradientX, float* horizontalGradientY, float* horizontalGradientZ,
 										  float* vertGradientX, float* vertGradientY, float* vertGradientZ,
-										  float* x_norm, float* y_norm, float* z_norm, float* curvature,
+										  float* x_norm, float* y_norm, float* z_norm,
 										  int xRes, int yRes)
 {
 	int u = (blockIdx.x * blockDim.x) + threadIdx.x;
@@ -135,14 +98,13 @@ __global__ void normalsFromGradientKernel(float* horizontalGradientX, float* hor
 		x_norm[i] = norm.x;
 		y_norm[i] = norm.y;
 		z_norm[i] = norm.z;
-		curvature[i] = 0.0f;//filler. Simple normals has no means of estimating curvature
 
 
 	}
 }
 
 __host__ void computeAverageGradientNormals(Float3SOAPyramid horizontalGradient, Float3SOAPyramid vertGradient, 
-											Float3SOAPyramid nmap, Float1SOAPyramid curvature, int xRes, int yRes)
+											Float3SOAPyramid nmap, int xRes, int yRes)
 {
 	int tileSize = 16;
 	dim3 threadsPerBlock(tileSize, tileSize);
@@ -152,13 +114,8 @@ __host__ void computeAverageGradientNormals(Float3SOAPyramid horizontalGradient,
 
 	normalsFromGradientKernel<<<fullBlocksPerGrid,threadsPerBlock>>>(horizontalGradient.x[0], horizontalGradient.y[0], horizontalGradient.z[0],
 		vertGradient.x[0], vertGradient.y[0], vertGradient.z[0],
-		nmap.x[0], nmap.y[0], nmap.z[0], curvature.x[0],
+		nmap.x[0], nmap.y[0], nmap.z[0],
 		xRes, yRes);
-
-	
-	estimateCurvatureKernel<<<fullBlocksPerGrid,threadsPerBlock>>>(nmap.x[0], nmap.y[0], nmap.z[0], curvature.x[0],
-		xRes, yRes);
-
 }
 
 #pragma endregion
@@ -340,7 +297,7 @@ __global__ void pcaNormalsKernel(float* vmapX, float* vmapY, float* vmapZ, float
 }
 
 
-__host__ void computePCANormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, Float1SOAPyramid curvaturemap, 
+__host__ void computePCANormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, float* curvature, 
 								int xRes, int yRes, float radiusMeters)
 {
 	assert(PCA_WINDOW_RADIUS < PCA_TILE_SIZE / 2);
@@ -350,10 +307,87 @@ __host__ void computePCANormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, Fl
 		(int)ceil(float(yRes)/float(PCA_TILE_SIZE)));
 
 
-	pcaNormalsKernel<<<blocks,threads>>>(vmap.x[0], vmap.y[0], vmap.z[0], nmap.x[0], nmap.y[0], nmap.z[0], curvaturemap.x[0],
+	pcaNormalsKernel<<<blocks,threads>>>(vmap.x[0], vmap.y[0], vmap.z[0], nmap.x[0], nmap.y[0], nmap.z[0], curvature,
 		xRes, yRes, radiusMeters*radiusMeters);
 
 
+}
+
+#pragma endregion
+
+
+#pragma region Normal Cartesian-Spherical conversions
+//Assumes normalized vectors
+__global__ void normalsToSpherical(float* normX, float* normY, float* normZ, float* azimuthAngle, float* polarAngle, int arraySize)
+{
+	int i = threadIdx.x + blockIdx.x*blockDim.x;
+
+	if(i < arraySize)
+	{
+		float x = normX[i];
+		float y = normY[i];
+		float z = normZ[i];
+
+		polarAngle[i] = acosf(z);
+		azimuthAngle[i] = atan2f(y,x);
+	}
+}
+
+__host__ void convertNormalToSpherical(float* normX, float* normY, float* normZ, float* azimuthAngle, float* polarAngle, int arraySize)
+{
+	int BLOCK_SIZE = 256;
+
+	dim3 blocks((int)ceil(float(arraySize)/float(BLOCK_SIZE)));
+	dim3 threads(BLOCK_SIZE);
+
+	normalsToSpherical<<<blocks,threads>>>(normX, normY, normZ, azimuthAngle, polarAngle, arraySize);
+}
+
+#pragma endregion
+
+
+#pragma region Curvature
+
+#define PI_INV_F 0.3183098862f
+
+__global__ void estimateCurvatureKernel(float* x_norm, float* y_norm, float* z_norm,
+										float* curvature,
+										int xRes, int yRes)
+{
+	int u = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int v = (blockIdx.y * blockDim.y) + threadIdx.y;
+
+	int i = v * xRes + u;
+
+	if(u < xRes && v < yRes){
+		//Curvature estimate
+		float curve = CUDART_NAN_F;
+		if(u < xRes - 1 && v < yRes - 1)
+		{
+			glm::vec3 normThis = glm::vec3(x_norm[i], y_norm[i], z_norm[i]);
+			glm::vec3 normRight = glm::vec3(x_norm[i+1], y_norm[i+1], z_norm[i+1]);
+			glm::vec3 normBelow = glm::vec3(x_norm[i+xRes], y_norm[i+xRes], z_norm[i+xRes]);
+
+			float dotProd = glm::max(glm::dot(normRight, normThis),glm::dot(normBelow, normThis));
+			//curve = acosf(dotProd)/sqrtf(dx*dx+dy*dy+dz*dz);
+			curve = acosf(dotProd)*PI_INV_F;
+
+
+		}
+
+		curvature[i] = curve;
+	}
+}
+
+
+__host__ void curvatureEstimate(Float3SOAPyramid nmap, float* curvature, int xRes, int yRes)
+{
+	int tileSize = 16;
+
+	dim3 threadsPerBlock(tileSize, tileSize);
+	dim3 fullBlocksPerGrid((int)ceil(float(xRes)/float(tileSize)), 
+		(int)ceil(float(yRes)/float(tileSize)));
+	estimateCurvatureKernel<<<fullBlocksPerGrid,threadsPerBlock>>>(	nmap.x[0], nmap.y[0], nmap.z[0], curvature,	xRes, yRes);
 }
 
 #pragma endregion

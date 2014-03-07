@@ -44,8 +44,18 @@ private:
 	Float3SOAPyramid dev_rgbSOA;
 	Float3SOAPyramid dev_vmapSOA;
 	Float3SOAPyramid dev_nmapSOA;
-	Float1SOAPyramid dev_curvature;
+
+	float* dev_curvature;
+	float* dev_azimuthAngle;
+	float* dev_polarAngle;
+
 	
+	float* host_curvature;
+	float* host_azimuthAngle;
+	float* host_polarAngle;
+
+
+
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
 	Float1SOAPyramid dev_float1PyramidBuffers[NUM_FLOAT1_PYRAMID_BUFFERS];
 
@@ -59,8 +69,8 @@ private:
 
 	void createFloat3SOAPyramid(Float3SOAPyramid& dev_pyramid, int xRes, int yRes);
 	void freeFloat3SOAPyramid(Float3SOAPyramid dev_pyramid);
-	void initCudaBuffers(int xRes, int yResolution);
-	void cleanupCuda();
+	void initBuffers(int xRes, int yResolution);
+	void cleanupBuffers();
 #pragma endregion
 
 public:
@@ -86,6 +96,13 @@ public:
 	void buildNMapSimple();
 	void buildNMapAverageGradient(int windowRadius);
 	void buildNMapPCA(float radiusMeters);
+
+	void CPUSimpleSegmentation();
+	void copySphericalNormalsToHost();
+	void generateSphericalNormals();
+	void subsamplePyramids();
+
+
 #pragma endregion
 
 #pragma region Buffer getters
@@ -94,7 +111,7 @@ public:
 	inline Float3SOAPyramid getVMapPyramid() { return dev_vmapSOA;}
 	inline Float3SOAPyramid getNMapPyramid() { return dev_nmapSOA;}
 	inline Float3SOAPyramid getRGBMapSOA() { return dev_rgbSOA;}
-	inline Float1SOAPyramid getCurvaturePyramid() {return dev_curvature;}
+	inline float* getCurvature() {return dev_curvature;}
 
 #pragma endregion
 };

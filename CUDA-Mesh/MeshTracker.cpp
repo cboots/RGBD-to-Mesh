@@ -8,7 +8,7 @@ MeshTracker::MeshTracker(int xResolution, int yResolution, Intrinsics intr)
 	mYRes = yResolution;
 	mIntr = intr;
 
-	initCudaBuffers(mXRes, mYRes);
+	initBuffers(mXRes, mYRes);
 
 	resetTracker();
 }
@@ -16,12 +16,12 @@ MeshTracker::MeshTracker(int xResolution, int yResolution, Intrinsics intr)
 
 MeshTracker::~MeshTracker(void)
 {
-	cleanupCuda();
+	cleanupBuffers();
 }
 #pragma endregion
 
 #pragma region Setup/Teardown functions
-void MeshTracker::initCudaBuffers(int xRes, int yRes)
+void MeshTracker::initBuffers(int xRes, int yRes)
 {
 	int pixCount = xRes*yRes;
 	cudaMalloc((void**) &dev_colorImageBuffer,				sizeof(ColorPixel)*pixCount);
@@ -38,8 +38,14 @@ void MeshTracker::initCudaBuffers(int xRes, int yRes)
 	//Normal Map Pyramid SOA. 
 	createFloat3SOAPyramid(dev_nmapSOA, xRes, yRes);
 
-	//Curvature pyramid SOA
-	createFloat1SOAPyramid(dev_curvature, xRes, yRes);
+	//Curvature
+	cudaMalloc((void**) &dev_curvature,		xRes*yRes*sizeof(float));
+	cudaMalloc((void**) &dev_azimuthAngle,	xRes*yRes*sizeof(float));
+	cudaMalloc((void**) &dev_polarAngle,	xRes*yRes*sizeof(float));
+
+	host_azimuthAngle = new float[xRes*yRes];
+	host_polarAngle = new float[xRes*yRes];
+
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -60,14 +66,21 @@ void MeshTracker::initCudaBuffers(int xRes, int yRes)
 	setGaussianSpatialSigma(1.0f);
 }
 
-void MeshTracker::cleanupCuda()
+void MeshTracker::cleanupBuffers()
 {
 	cudaFree(dev_colorImageBuffer);
 	cudaFree(dev_depthImageBuffer);
 	freeFloat3SOAPyramid(dev_rgbSOA);
 	freeFloat3SOAPyramid(dev_vmapSOA);
 	freeFloat3SOAPyramid(dev_nmapSOA);
-	freeFloat1SOAPyramid(dev_curvature);
+	
+	cudaFree(dev_curvature);
+	cudaFree(dev_azimuthAngle);
+	cudaFree(dev_polarAngle);
+
+	delete host_azimuthAngle;
+	delete host_polarAngle;
+
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -181,21 +194,18 @@ void MeshTracker::pushRGBDFrameToDevice(ColorPixelArray colorArray, DPixelArray 
 void MeshTracker::buildRGBSOA()
 {
 	rgbAOSToSOACUDA(dev_colorImageBuffer, dev_rgbSOA, mXRes, mYRes);
-	buildRGBMapPyramid(dev_rgbSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
 }
 
 void MeshTracker::buildVMapNoFilter(float maxDepth)
 {
 	buildVMapNoFilterCUDA(dev_depthImageBuffer, dev_vmapSOA, mXRes, mYRes, mIntr, maxDepth);
 
-	subsamplePyramidCUDA(dev_vmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
 }
 
 void MeshTracker::buildVMapGaussianFilter(float maxDepth)
 {
 	buildVMapGaussianFilterCUDA(dev_depthImageBuffer, dev_vmapSOA, mXRes, mYRes, mIntr, maxDepth);
 
-	subsamplePyramidCUDA(dev_vmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
 }
 
 void MeshTracker::buildVMapBilateralFilter(float maxDepth, float sigma_t)
@@ -205,7 +215,6 @@ void MeshTracker::buildVMapBilateralFilter(float maxDepth, float sigma_t)
 		mIntr, maxDepth, sigma_t);
 
 
-	subsamplePyramidCUDA(dev_vmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
 }
 
 
@@ -218,7 +227,7 @@ void MeshTracker::setGaussianSpatialSigma(float sigma)
 void MeshTracker::buildNMapSimple()
 {
 
-	simpleNormals(dev_vmapSOA, dev_nmapSOA, dev_curvature, NUM_PYRAMID_LEVELS, mXRes, mYRes);
+	simpleNormals(dev_vmapSOA, dev_nmapSOA, NUM_PYRAMID_LEVELS, mXRes, mYRes);
 
 }
 
@@ -249,16 +258,14 @@ void MeshTracker::buildNMapAverageGradient(int windowRadius)
 		dev_float3PyramidBuffers[1].x[0], dev_float3PyramidBuffers[1].y[0], dev_float3PyramidBuffers[1].z[0],
 		mXRes, mYRes);
 
-	computeAverageGradientNormals(dev_float3PyramidBuffers[0], dev_float3PyramidBuffers[1], dev_nmapSOA, dev_curvature, mXRes, mYRes);
+	computeAverageGradientNormals(dev_float3PyramidBuffers[0], dev_float3PyramidBuffers[1], dev_nmapSOA, mXRes, mYRes);
 
-	subsamplePyramidCUDA(dev_nmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
 }
 
 void MeshTracker::buildNMapPCA(float radiusMeters)
 {
-	computePCANormals(dev_vmapSOA, dev_nmapSOA, dev_curvature, mXRes, mYRes, radiusMeters);
+	computePCANormals(dev_vmapSOA, dev_nmapSOA, mXRes, mYRes, radiusMeters);
 	
-	subsamplePyramidCUDA(dev_nmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
 }
 
 #pragma endregion

@@ -516,22 +516,3 @@ __host__ void subsamplePyramidCUDA(Float3SOAPyramid dev_mapSOA, int xRes, int yR
 }
 
 #pragma endregion
-
-
-__host__ void buildRGBMapPyramid(Float3SOAPyramid dev_rgbSOA, int xRes, int yRes, int numLevels)
-{
-	int tileSize = 16;
-
-	for(int i = 0; i < numLevels - 1; ++i)
-	{
-		dim3 threadsPerBlock(tileSize, tileSize);
-		dim3 fullBlocksPerGrid((int)ceil(float(xRes>>(1+i))/float(tileSize)), 
-			(int)ceil(float(yRes>>(1+i))/float(tileSize)));
-
-
-		subsampleFloat3Kernel<<<fullBlocksPerGrid,threadsPerBlock>>>(dev_rgbSOA.x[i], dev_rgbSOA.y[i], dev_rgbSOA.z[i],
-			dev_rgbSOA.x[i+1], dev_rgbSOA.y[i+1], dev_rgbSOA.z[i+1],
-			xRes>>i, yRes>>i);
-	}
-
-}

@@ -75,7 +75,7 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 
 	//Setup default rendering/pipeline settings
 	mFilterMode = BILATERAL_FILTER;
-	mNormalMode = PCA_NORMALS;
+	mNormalMode = AVERAGE_GRADIENT_NORMALS;
 	mViewState = DISPLAY_MODE_OVERLAY;
 	hairyPoints = false;
 	mSpatialSigma = 2.0f;
@@ -703,7 +703,7 @@ void MeshViewer::drawCurvatureMaptoTexture(GLuint texture, int level)
 	cudaGLMapBufferObject((void**)&dptrNMap, imagePBO0);
 
 	clearPBO(dptrNMap, mXRes, mYRes, 0.0f);
-	drawCurvatureMaptoPBO(dptrNMap, mMeshTracker->getCurvaturePyramid(), level, mXRes, mYRes);
+	drawCurvatureMaptoPBO(dptrNMap, mMeshTracker->getCurvature(), mXRes, mYRes);
 
 	cudaGLUnmapBufferObject(imagePBO0);
 
@@ -814,7 +814,6 @@ void MeshViewer::display()
 		ColorPixelArray localColorArray = mColorArray;
 		DPixelArray localDepthArray = mDepthArray;
 
-
 		//Push buffers
 		mMeshTracker->pushRGBDFrameToDevice(localColorArray, localDepthArray, mLatestTime);
 
@@ -849,6 +848,19 @@ void MeshViewer::display()
 			mMeshTracker->buildNMapPCA(0.03f); 
 			break;
 		}
+
+		//Also generates 
+		mMeshTracker->generateSphericalNormals();
+		cudaDeviceSynchronize();//Wait for conversion
+		mMeshTracker->copySphericalNormalsToHost();
+		cudaDeviceSynchronize();//Wait for copy to complete
+
+		//Launch kernels for subsampling
+		mMeshTracker->subsamplePyramids();
+
+		//While subsampling happening, work on segmentation
+		mMeshTracker->CPUSimpleSegmentation();
+
 
 	}//=====End of pipeline code=====
 
@@ -921,7 +933,7 @@ void MeshViewer::display()
 		drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL Original depth
 		break;
 	case DISPLAY_MODE_CURVATURE_DEBUG:
-		
+
 		drawDepthImageBufferToTexture(texture0);
 		drawColorImageBufferToTexture(texture1);
 		drawNMaptoTexture(texture2, 0);
