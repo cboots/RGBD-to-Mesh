@@ -80,7 +80,7 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	hairyPoints = false;
 	mSpatialSigma = 2.0f;
 	mDepthSigma = 0.005f;
-	mMaxDepth = 10.0f;
+	mMaxDepth = 6.0f;
 
 	seconds = time (NULL);
 	fpstracker = 0;
@@ -840,9 +840,11 @@ void MeshViewer::display()
 		{
 		case SIMPLE_NORMALS:
 			mMeshTracker->buildNMapSimple();
+			mMeshTracker->estimateCurvatureFromNormals();
 			break;
 		case AVERAGE_GRADIENT_NORMALS:
 			mMeshTracker->buildNMapAverageGradient(4);
+			mMeshTracker->estimateCurvatureFromNormals();
 			break;
 		case PCA_NORMALS:
 			mMeshTracker->buildNMapPCA(0.03f); 

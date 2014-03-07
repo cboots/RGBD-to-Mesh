@@ -97,6 +97,8 @@ public:
 	void buildNMapAverageGradient(int windowRadius);
 	void buildNMapPCA(float radiusMeters);
 
+
+	void estimateCurvatureFromNormals();
 	void CPUSimpleSegmentation();
 	void copySphericalNormalsToHost();
 	void generateSphericalNormals();

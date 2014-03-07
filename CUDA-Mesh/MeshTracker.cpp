@@ -73,7 +73,7 @@ void MeshTracker::cleanupBuffers()
 	freeFloat3SOAPyramid(dev_rgbSOA);
 	freeFloat3SOAPyramid(dev_vmapSOA);
 	freeFloat3SOAPyramid(dev_nmapSOA);
-	
+
 	cudaFree(dev_curvature);
 	cudaFree(dev_azimuthAngle);
 	cudaFree(dev_polarAngle);
@@ -264,9 +264,38 @@ void MeshTracker::buildNMapAverageGradient(int windowRadius)
 
 void MeshTracker::buildNMapPCA(float radiusMeters)
 {
-	computePCANormals(dev_vmapSOA, dev_nmapSOA, dev_curvature, mXRes, mYRes, radiusMeters);
-	
+	computePCANormals(dev_vmapSOA, dev_nmapSOA, dev_curvature, mXRes, mYRes, radiusMeters);	
 }
+
+void MeshTracker::estimateCurvatureFromNormals()
+{
+	curvatureEstimate(dev_nmapSOA, dev_curvature, mXRes, mYRes);
+}
+
+
+void MeshTracker::CPUSimpleSegmentation()
+{
+	//TODO: Implement
+}
+
+void MeshTracker::copySphericalNormalsToHost()
+{
+	cudaMemcpy(host_azimuthAngle, dev_azimuthAngle, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(host_polarAngle,   dev_polarAngle, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+}
+
+void MeshTracker::generateSphericalNormals()
+{
+	convertNormalToSpherical(dev_nmapSOA.x[0], dev_nmapSOA.y[0], dev_nmapSOA.z[0], dev_azimuthAngle, dev_polarAngle, mXRes*mYRes);
+}
+
+void MeshTracker::subsamplePyramids()
+{
+	subsamplePyramidCUDA(dev_vmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
+	subsamplePyramidCUDA(dev_nmapSOA, mXRes, mYRes, NUM_PYRAMID_LEVELS);
+	subsamplePyramidCUDA(dev_rgbSOA,  mXRes, mYRes, NUM_PYRAMID_LEVELS);
+}
+
 
 #pragma endregion
 
