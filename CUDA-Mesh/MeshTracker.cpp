@@ -264,7 +264,7 @@ void MeshTracker::buildNMapAverageGradient(int windowRadius)
 
 void MeshTracker::buildNMapPCA(float radiusMeters)
 {
-	computePCANormals(dev_vmapSOA, dev_nmapSOA, mXRes, mYRes, radiusMeters);
+	computePCANormals(dev_vmapSOA, dev_nmapSOA, dev_curvature, mXRes, mYRes, radiusMeters);
 	
 }
 
