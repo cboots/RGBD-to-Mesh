@@ -16,15 +16,8 @@ using namespace rgbd::framework;
 #define NUM_FLOAT1_PYRAMID_BUFFERS 10
 #define NUM_FLOAT3_PYRAMID_BUFFERS 5
 
-#define NUM_AZIMUTH_SUBDIVISIONS	256
-#define NUM_POLAR_SUBDIVISIONS		128
-
-#define AZIMUTH_SUBDIVISION   (2.0*PI/NUM_AZIMUTH_SUBDIVISIONS)
-#define POLAR_SUBDIVISION	((PI/2.0)/NUM_POLAR_SUBDIVISIONS)
-
-#define AZIMUTH_INDEX(angle) ((int) (angle * (1.0 / AZIMUTH_SUBDIVISION)))
-#define POLAR_INDEX(angle) ((int) (angle * (1.0 / POLAR_SUBDIVISION)))
-
+#define NUM_NORMAL_X_SUBDIVISIONS	256
+#define NUM_NORMAL_Y_SUBDIVISIONS		256
 
 enum FilterMode
 {
@@ -58,13 +51,11 @@ private:
 	Float3SOAPyramid dev_nmapSOA;
 
 	float* dev_curvature;
-	float* dev_azimuthAngle;
-	float* dev_polarAngle;
 
 	
 	float* host_curvature;
-	float* host_azimuthAngle;
-	float* host_polarAngle;
+	float* host_normalX;
+	float* host_normalY;
 
 	int* host_normalVoxels;
 	int* dev_normalVoxels;
@@ -115,9 +106,8 @@ public:
 	void estimateCurvatureFromNormals();
 	void CPUSimpleSegmentation();
 	void GPUSimpleSegmentation();
-	void copySphericalNormalsToHost();
+	void copyXYNormalsToHost();
 	void copyNormalVoxelsToGPU();
-	void generateSphericalNormals();
 	void subsamplePyramids();
 
 
@@ -130,14 +120,12 @@ public:
 	inline Float3SOAPyramid getNMapPyramid() { return dev_nmapSOA;}
 	inline Float3SOAPyramid getRGBMapSOA() { return dev_rgbSOA;}
 	inline float* getCurvature() {return dev_curvature;}
-	inline float* getDeviceAzimuthBuffer() { return dev_azimuthAngle;}
-	inline float* getDevicePolarBuffer() { return dev_polarAngle;}
 	inline int* getDeviceNormalHistogram() { return dev_normalVoxels;}
 #pragma endregion
 
 #pragma region Property Getters
-	inline int getNumAzimuthSubdivisions() { return NUM_AZIMUTH_SUBDIVISIONS; }
-	inline int getNumPolarSubdivisions() { return NUM_POLAR_SUBDIVISIONS; }
+	inline int getNormalXSubdivisions() { return NUM_NORMAL_X_SUBDIVISIONS; }
+	inline int getNormalYSubdivisions() { return NUM_NORMAL_Y_SUBDIVISIONS; }
 #pragma endregion
 };
 

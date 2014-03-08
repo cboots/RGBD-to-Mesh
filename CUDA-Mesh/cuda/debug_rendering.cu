@@ -210,7 +210,7 @@ __host__ void drawRGBMaptoPBO(float4* pbo, Float3SOAPyramid rgbMap, int level, i
 
 
 
-__host__ void drawCurvatureAndSphericalNormalstoPBO(float4* pbo, float* curvature, float* azimuth, float* polar, int xRes, int yRes)
+__host__ void drawCurvaturetoPBO(float4* pbo, float* curvature, int xRes, int yRes)
 {
 	int tileSize = 16;
 
@@ -220,7 +220,7 @@ __host__ void drawCurvatureAndSphericalNormalstoPBO(float4* pbo, float* curvatur
 		(int)ceil(float(yRes)/float(tileSize)));
 
 
-	sendFloat3SOAToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo,  curvature,  azimuth, polar, 0.0,
+	sendFloat1SOAToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo,  curvature, 0.0,
 		xRes, yRes, xRes, yRes);
 
 

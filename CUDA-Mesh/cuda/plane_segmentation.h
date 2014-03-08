@@ -9,6 +9,5 @@
 #include "Utils.h"
 #include "math.h"
 
-__host__ void computeNormalHistogram(float* normAzimuth, float* normPolar, int* histogram, int xRes, int yRes, int azimuthBins, int polarBins);
-
-__host__ void clearHistogram(int* histogram, int azimuthBins, int polarBins);
+__host__ void computeNormalHistogram(float* normX, float* normY, int* histogram, int xRes, int yRes, int xBins, int yBins);
+__host__ void clearHistogram(int* histogram, int xBins, int yBins);

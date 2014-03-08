@@ -262,7 +262,7 @@ private:
 
 	void drawVMaptoTexture(GLuint texture, int level);
 	void drawNMaptoTexture(GLuint texture, int level);
-	void drawCurvatureAndSphericalNormalstoTexture(GLuint texture);
+	void drawCurvaturetoTexture(GLuint texture);
 	void drawNormalHistogramtoTexture(GLuint texture);
 #pragma endregion
 

@@ -699,14 +699,13 @@ void MeshViewer::drawNMaptoTexture(GLuint texture, int level)
 
 }
 
-void MeshViewer::drawCurvatureAndSphericalNormalstoTexture(GLuint texture)
+void MeshViewer::drawCurvaturetoTexture(GLuint texture)
 {
 	float4* dptrNMap;
 	cudaGLMapBufferObject((void**)&dptrNMap, imagePBO0);
 
 	clearPBO(dptrNMap, mXRes, mYRes, 0.0f);
-	drawCurvatureAndSphericalNormalstoPBO(dptrNMap, mMeshTracker->getCurvature(), 
-		mMeshTracker->getDeviceAzimuthBuffer(), mMeshTracker->getDevicePolarBuffer(), mXRes, mYRes);
+	drawCurvaturetoPBO(dptrNMap, mMeshTracker->getCurvature(), mXRes, mYRes);
 
 	cudaGLUnmapBufferObject(imagePBO0);
 
@@ -731,7 +730,7 @@ void MeshViewer::drawNormalHistogramtoTexture(GLuint texture)
 
 	clearPBO(dptrNMap, mXRes, mYRes, 0.0f);
 	drawNormalVoxelsToPBO(dptrNMap, mMeshTracker->getDeviceNormalHistogram(), mXRes, mYRes, 
-		mMeshTracker->getNumAzimuthSubdivisions(), mMeshTracker->getNumPolarSubdivisions());
+		mMeshTracker->getNormalXSubdivisions(), mMeshTracker->getNormalYSubdivisions());
 
 	cudaGLUnmapBufferObject(imagePBO0);
 
@@ -880,17 +879,10 @@ void MeshViewer::display()
 			break;
 		}
 
-		mMeshTracker->generateSphericalNormals();
-		
-
 		//Launch kernels for subsampling
 		mMeshTracker->subsamplePyramids();
-		
-		mMeshTracker->copySphericalNormalsToHost();
-		mMeshTracker->CPUSimpleSegmentation();
-		mMeshTracker->copyNormalVoxelsToGPU();
 
-		//mMeshTracker->GPUSimpleSegmentation();
+		mMeshTracker->GPUSimpleSegmentation();
 
 
 	}//=====End of pipeline code=====
@@ -934,9 +926,15 @@ void MeshViewer::display()
 		glDisable(GL_BLEND);
 		break;
 	case DISPLAY_MODE_HISTOGRAM_DEBUG:
-		drawNormalHistogramtoTexture(texture0);
+		drawDepthImageBufferToTexture(texture0);
+		drawColorImageBufferToTexture(texture1);
+		drawNMaptoTexture(texture2, 0);
+		drawNormalHistogramtoTexture(texture3);
 
-		drawQuad(histogram_prog, 0.0, 0.0, 1.0, 1.0, 1.0, &texture0, 1);
+		drawQuad(depth_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR depth
+		drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0,  &texture1, 1);//LR color
+		drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL normal 
+		drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.6,  &texture3, 1);//UL histogram
 		break;
 	case DISPLAY_MODE_NMAP_DEBUG:
 		drawNMaptoTexture(texture0, 0);
@@ -966,7 +964,7 @@ void MeshViewer::display()
 		drawDepthImageBufferToTexture(texture0);
 		drawColorImageBufferToTexture(texture1);
 		drawNMaptoTexture(texture2, 0);
-		drawCurvatureAndSphericalNormalstoTexture(texture3);
+		drawCurvaturetoTexture(texture3);
 
 		drawQuad(depth_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR depth
 		drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0,  &texture1, 1);//LR color

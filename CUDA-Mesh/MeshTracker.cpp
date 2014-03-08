@@ -40,15 +40,14 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 
 	//Curvature
 	cudaMalloc((void**) &dev_curvature,		xRes*yRes*sizeof(float));
-	cudaMalloc((void**) &dev_azimuthAngle,	xRes*yRes*sizeof(float));
-	cudaMalloc((void**) &dev_polarAngle,	xRes*yRes*sizeof(float));
 
-	host_azimuthAngle = new float[xRes*yRes];
-	host_polarAngle = new float[xRes*yRes];
 
-	cudaMalloc((void**) &dev_normalVoxels,	NUM_AZIMUTH_SUBDIVISIONS*NUM_POLAR_SUBDIVISIONS*sizeof(int));
+	host_normalX = new float[xRes*yRes];
+	host_normalY = new float[xRes*yRes];
 
-	host_normalVoxels = new int[NUM_AZIMUTH_SUBDIVISIONS*NUM_POLAR_SUBDIVISIONS];
+	cudaMalloc((void**) &dev_normalVoxels,	NUM_NORMAL_X_SUBDIVISIONS*NUM_NORMAL_Y_SUBDIVISIONS*sizeof(int));
+
+	host_normalVoxels = new int[NUM_NORMAL_X_SUBDIVISIONS*NUM_NORMAL_Y_SUBDIVISIONS];
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -78,11 +77,9 @@ void MeshTracker::cleanupBuffers()
 	freeFloat3SOAPyramid(dev_nmapSOA);
 
 	cudaFree(dev_curvature);
-	cudaFree(dev_azimuthAngle);
-	cudaFree(dev_polarAngle);
 
-	delete host_azimuthAngle;
-	delete host_polarAngle;
+	delete host_normalX;
+	delete host_normalY;
 
 	cudaFree(dev_normalVoxels);
 	delete host_normalVoxels;
@@ -251,7 +248,7 @@ void MeshTracker::buildNMapAverageGradient(int windowRadius)
 
 	horizontalGradient(dev_vmapSOA.z[0], dev_float3PyramidBuffers[0].z[0], mXRes, mYRes);
 	verticalGradient(  dev_vmapSOA.z[0], dev_float3PyramidBuffers[1].z[0], mXRes, mYRes);
-	
+
 	//Apply filters to float3
 	//setSeperableKernelUniform();
 	setSeperableKernelGaussian(2.0);
@@ -259,13 +256,13 @@ void MeshTracker::buildNMapAverageGradient(int windowRadius)
 	seperableFilter(dev_float3PyramidBuffers[0].x[0], dev_float3PyramidBuffers[0].y[0], dev_float3PyramidBuffers[0].z[0],
 		dev_float3PyramidBuffers[0].x[0], dev_float3PyramidBuffers[0].y[0], dev_float3PyramidBuffers[0].z[0],
 		mXRes, mYRes);
-	
+
 	seperableFilter(dev_float3PyramidBuffers[1].x[0], dev_float3PyramidBuffers[1].y[0], dev_float3PyramidBuffers[1].z[0],
 		dev_float3PyramidBuffers[1].x[0], dev_float3PyramidBuffers[1].y[0], dev_float3PyramidBuffers[1].z[0],
 		mXRes, mYRes);
 
 	computeAverageGradientNormals(dev_float3PyramidBuffers[0], dev_float3PyramidBuffers[1], dev_nmapSOA, mXRes, mYRes);
-	
+
 }
 
 void MeshTracker::buildNMapPCA(float radiusMeters)
@@ -282,41 +279,40 @@ void MeshTracker::estimateCurvatureFromNormals()
 void MeshTracker::CPUSimpleSegmentation()
 {
 	//clear
-	for(int i = 0; i < NUM_AZIMUTH_SUBDIVISIONS*NUM_POLAR_SUBDIVISIONS; ++i)
+	for(int i = 0; i < NUM_NORMAL_X_SUBDIVISIONS*NUM_NORMAL_Y_SUBDIVISIONS; ++i)
 		host_normalVoxels[i] = 0;
 
 
 	int length = mXRes*mYRes;
 	for(int i = 0; i < length; ++i)
 	{
-		float azimuth = host_azimuthAngle[i];
-		float polar = host_polarAngle[i];
-		if(polar == polar && azimuth == azimuth && polar > 0.0f && azimuth > 0.0f)//Will be false if nan
-			host_normalVoxels[POLAR_INDEX(polar)*NUM_AZIMUTH_SUBDIVISIONS + AZIMUTH_INDEX(azimuth)]++;
+		float x = host_normalX[i];
+		float y = host_normalY[i];
+		if(x == x && y == y)//Will be false if NaN
+		{
+			int xI = (x+1.0f)*0.5f*NUM_NORMAL_X_SUBDIVISIONS;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
+			int yI = (y+1.0f)*0.5f*NUM_NORMAL_Y_SUBDIVISIONS;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
+			host_normalVoxels[xI + yI * NUM_NORMAL_X_SUBDIVISIONS]++;
+		}
 	}
 }
 
 void MeshTracker::GPUSimpleSegmentation()
 {
-	clearHistogram(dev_normalVoxels, NUM_AZIMUTH_SUBDIVISIONS, NUM_POLAR_SUBDIVISIONS);
-	computeNormalHistogram(dev_azimuthAngle, dev_polarAngle, dev_normalVoxels, mXRes, mYRes, NUM_AZIMUTH_SUBDIVISIONS, NUM_POLAR_SUBDIVISIONS);
+	clearHistogram(dev_normalVoxels, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS);
+	computeNormalHistogram(dev_nmapSOA.x[0], dev_nmapSOA.y[0], dev_normalVoxels, mXRes, mYRes, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS);
 }
 
-void MeshTracker::copySphericalNormalsToHost()
+void MeshTracker::copyXYNormalsToHost()
 {
-	cudaMemcpy(host_azimuthAngle, dev_azimuthAngle, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
-	cudaMemcpy(host_polarAngle,   dev_polarAngle, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(host_normalX, dev_nmapSOA.x[0], mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(host_normalY, dev_nmapSOA.y[0], mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
 }
 
 
 void MeshTracker::copyNormalVoxelsToGPU()
 {
-	cudaMemcpy(dev_normalVoxels, host_normalVoxels,NUM_AZIMUTH_SUBDIVISIONS*NUM_POLAR_SUBDIVISIONS*sizeof(int), cudaMemcpyHostToDevice);
-}
-
-void MeshTracker::generateSphericalNormals()
-{
-	convertNormalToSpherical(dev_nmapSOA.x[0], dev_nmapSOA.y[0], dev_nmapSOA.z[0], dev_azimuthAngle, dev_polarAngle, mXRes*mYRes);
+	cudaMemcpy(dev_normalVoxels, host_normalVoxels, NUM_NORMAL_X_SUBDIVISIONS*NUM_NORMAL_Y_SUBDIVISIONS*sizeof(int), cudaMemcpyHostToDevice);
 }
 
 void MeshTracker::subsamplePyramids()

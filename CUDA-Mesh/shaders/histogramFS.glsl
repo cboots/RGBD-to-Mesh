@@ -11,5 +11,5 @@ out vec4 FragColor;
 
 void main()
 {
-	FragColor = vec4(texture(u_Texture0, fs_texCoord*u_TextureScale).x)/100;
+	FragColor = vec4(texture(u_Texture0, fs_texCoord*u_TextureScale).x)/25;
 }
