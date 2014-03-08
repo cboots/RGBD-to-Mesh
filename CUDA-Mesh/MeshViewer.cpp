@@ -880,16 +880,15 @@ void MeshViewer::display()
 			break;
 		}
 
-		//Also generates 
-		//mMeshTracker->generateSphericalNormals();
-		cudaDeviceSynchronize();//Wait for conversion
+		mMeshTracker->generateSphericalNormals();
+		
 
 		//Launch kernels for subsampling
-		//mMeshTracker->subsamplePyramids();
-
-		//mMeshTracker->copySphericalNormalsToHost();
-		//mMeshTracker->CPUSimpleSegmentation();
-		//mMeshTracker->copyNormalVoxelsToGPU();
+		mMeshTracker->subsamplePyramids();
+		
+		mMeshTracker->copySphericalNormalsToHost();
+		mMeshTracker->CPUSimpleSegmentation();
+		mMeshTracker->copyNormalVoxelsToGPU();
 
 		//mMeshTracker->GPUSimpleSegmentation();
 
