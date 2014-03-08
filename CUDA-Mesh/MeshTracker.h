@@ -14,6 +14,10 @@ using namespace rgbd::framework;
 #define NUM_FLOAT1_PYRAMID_BUFFERS 10
 #define NUM_FLOAT3_PYRAMID_BUFFERS 5
 
+#define NUM_AZIMUTH_SUBDIVISIONS	256
+#define NUM_POLAR_SUBDIVISIONS		256
+
+
 enum FilterMode
 {
 	BILATERAL_FILTER,
@@ -114,7 +118,9 @@ public:
 	inline Float3SOAPyramid getNMapPyramid() { return dev_nmapSOA;}
 	inline Float3SOAPyramid getRGBMapSOA() { return dev_rgbSOA;}
 	inline float* getCurvature() {return dev_curvature;}
-
+	inline float* getDeviceAzimuthBuffer() { return dev_azimuthAngle;}
+	inline float* getDevicePolarBuffer() { return dev_polarAngle;}
+	
 #pragma endregion
 };
 

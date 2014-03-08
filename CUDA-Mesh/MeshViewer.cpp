@@ -672,7 +672,6 @@ void MeshViewer::drawVMaptoTexture(GLuint texture, int level)
 
 }
 
-
 void MeshViewer::drawNMaptoTexture(GLuint texture, int level)
 {
 	float4* dptrNMap;
@@ -697,13 +696,14 @@ void MeshViewer::drawNMaptoTexture(GLuint texture, int level)
 
 }
 
-void MeshViewer::drawCurvatureMaptoTexture(GLuint texture, int level)
+void MeshViewer::drawCurvatureAndSphericalNormalstoTexture(GLuint texture)
 {
 	float4* dptrNMap;
 	cudaGLMapBufferObject((void**)&dptrNMap, imagePBO0);
 
 	clearPBO(dptrNMap, mXRes, mYRes, 0.0f);
-	drawCurvatureMaptoPBO(dptrNMap, mMeshTracker->getCurvature(), mXRes, mYRes);
+	drawCurvatureAndSphericalNormalstoPBO(dptrNMap, mMeshTracker->getCurvature(), 
+		mMeshTracker->getDeviceAzimuthBuffer(), mMeshTracker->getDevicePolarBuffer(), mXRes, mYRes);
 
 	cudaGLUnmapBufferObject(imagePBO0);
 
@@ -939,7 +939,7 @@ void MeshViewer::display()
 		drawDepthImageBufferToTexture(texture0);
 		drawColorImageBufferToTexture(texture1);
 		drawNMaptoTexture(texture2, 0);
-		drawCurvatureMaptoTexture(texture3, 0);
+		drawCurvatureAndSphericalNormalstoTexture(texture3);
 
 		drawQuad(depth_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR depth
 		drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0,  &texture1, 1);//LR color
