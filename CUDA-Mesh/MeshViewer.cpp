@@ -264,6 +264,7 @@ void MeshViewer::initShader()
 	const char * vmap_frag = "shaders/vmapFS.glsl";
 	const char * nmap_frag = "shaders/nmapFS.glsl";
 	const char * curvature_frag = "shaders/curvatureFS.glsl";
+	const char * histogram_frag = "shaders/histogramFS.glsl";
 
 	//Color image shader
 	color_prog = glslUtility::createProgram(pass_vert, NULL, color_frag, quadAttributeLocations, 2);
@@ -281,6 +282,8 @@ void MeshViewer::initShader()
 	nmap_prog = glslUtility::createProgram(pass_vert, NULL, nmap_frag, quadAttributeLocations, 2);
 
 	curvemap_prog = glslUtility::createProgram(pass_vert, NULL, curvature_frag, quadAttributeLocations, 2);
+
+	histogram_prog = glslUtility::createProgram(pass_vert, NULL, histogram_frag, quadAttributeLocations, 2);
 }
 
 void MeshViewer::initTextures()
@@ -721,6 +724,32 @@ void MeshViewer::drawCurvatureAndSphericalNormalstoTexture(GLuint texture)
 }
 
 
+void MeshViewer::drawNormalHistogramtoTexture(GLuint texture)
+{
+	float4* dptrNMap;
+	cudaGLMapBufferObject((void**)&dptrNMap, imagePBO0);
+
+	clearPBO(dptrNMap, mXRes, mYRes, 0.0f);
+	drawNormalVoxelsToPBO(dptrNMap, mMeshTracker->getDeviceNormalHistogram(), mXRes, mYRes, 
+		mMeshTracker->getNumAzimuthSubdivisions(), mMeshTracker->getNumPolarSubdivisions());
+
+	cudaGLUnmapBufferObject(imagePBO0);
+
+	//Unpack to textures
+	glActiveTexture(GL_TEXTURE12);
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+		GL_RGBA, GL_FLOAT, NULL);
+
+	//Unbind buffers
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glActiveTexture(GL_TEXTURE0);
+
+}
+
+
 void MeshViewer::drawRGBMaptoTexture(GLuint texture, int level)
 {
 	float4* dptrRGBMap;
@@ -852,16 +881,17 @@ void MeshViewer::display()
 		}
 
 		//Also generates 
-		mMeshTracker->generateSphericalNormals();
+		//mMeshTracker->generateSphericalNormals();
 		cudaDeviceSynchronize();//Wait for conversion
-		mMeshTracker->copySphericalNormalsToHostASync();
-		cudaDeviceSynchronize();//Wait for copy to complete
 
 		//Launch kernels for subsampling
-		mMeshTracker->subsamplePyramids();
-		
-		//While subsampling happening, work on segmentation
-		mMeshTracker->CPUSimpleSegmentation();
+		//mMeshTracker->subsamplePyramids();
+
+		//mMeshTracker->copySphericalNormalsToHost();
+		//mMeshTracker->CPUSimpleSegmentation();
+		//mMeshTracker->copyNormalVoxelsToGPU();
+
+		//mMeshTracker->GPUSimpleSegmentation();
 
 
 	}//=====End of pipeline code=====
@@ -904,12 +934,10 @@ void MeshViewer::display()
 		drawQuad(depth_prog, 0.5, 0, 0.5, 1, 1.0, &texture0, 1);
 		glDisable(GL_BLEND);
 		break;
-	case DISPLAY_MODE_RGBMAP_DEBUG:
-		drawRGBMaptoTexture(texture0, 2);
-		drawColorImageBufferToTexture(texture1);
+	case DISPLAY_MODE_HISTOGRAM_DEBUG:
+		drawNormalHistogramtoTexture(texture0);
 
-		drawQuad(color_prog, -0.5, 0, 0.5, 1, 0.25, &texture0, 1);
-		drawQuad(color_prog, 0.5, 0, -0.5, 1, 1.0, &texture1, 1);
+		drawQuad(histogram_prog, 0.0, 0.0, 1.0, 1.0, 1.0, &texture0, 1);
 		break;
 	case DISPLAY_MODE_NMAP_DEBUG:
 		drawNMaptoTexture(texture0, 0);
@@ -991,7 +1019,7 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		mViewState = DISPLAY_MODE_3WAY_DEPTH_IMAGE_OVERLAY;
 		break;
 	case '5':
-		mViewState = DISPLAY_MODE_RGBMAP_DEBUG;
+		mViewState = DISPLAY_MODE_HISTOGRAM_DEBUG;
 		break;
 	case '6':
 		mViewState = DISPLAY_MODE_VMAP_DEBUG;

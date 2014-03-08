@@ -45,8 +45,8 @@ enum DisplayModes
 	DISPLAY_MODE_3WAY_DEPTH_IMAGE_OVERLAY,
 	DISPLAY_MODE_VMAP_DEBUG,
 	DISPLAY_MODE_NMAP_DEBUG,
-	DISPLAY_MODE_RGBMAP_DEBUG,
-	DISPLAY_MODE_CURVATURE_DEBUG
+	DISPLAY_MODE_CURVATURE_DEBUG,
+	DISPLAY_MODE_HISTOGRAM_DEBUG
 };
 
 enum NormalMode
@@ -163,6 +163,7 @@ private:
 	GLuint vmap_prog;
 	GLuint nmap_prog;
 	GLuint curvemap_prog;
+	GLuint histogram_prog;
 #pragma endregion
 
 #pragma region Buffer Object Indecies
@@ -262,6 +263,7 @@ private:
 	void drawVMaptoTexture(GLuint texture, int level);
 	void drawNMaptoTexture(GLuint texture, int level);
 	void drawCurvatureAndSphericalNormalstoTexture(GLuint texture);
+	void drawNormalHistogramtoTexture(GLuint texture);
 #pragma endregion
 
 

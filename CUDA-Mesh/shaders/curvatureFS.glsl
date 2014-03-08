@@ -11,18 +11,6 @@ out vec4 FragColor;
 
 void main()
 {
-	/*
-	float curvature = texture(u_Texture0, fs_texCoord*u_TextureScale).x;
-	FragColor = vec4(1.0-step(0.03,curvature),0.0,0.0,1.0);
-	
-	if(isnan(curvature))
-	{
-		FragColor = vec4(1.0,1.0,0.0,1.0);
-	}
-	*/
-	
-	//FragColor = vec4(texture(u_Texture0, fs_texCoord*u_TextureScale).y)/6.28;
-	FragColor = vec4(texture(u_Texture0, fs_texCoord*u_TextureScale).z)/1.57;
-	
+	FragColor = vec4(texture(u_Texture0, fs_texCoord*u_TextureScale).x);
 	
 }

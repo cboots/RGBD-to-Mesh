@@ -8,6 +8,7 @@
 #include "gradient.h"
 #include "seperable_filter.h"
 #include "Utils.h"
+#include "plane_segmentation.h"
 
 using namespace rgbd::framework;
 
@@ -113,8 +114,9 @@ public:
 
 	void estimateCurvatureFromNormals();
 	void CPUSimpleSegmentation();
-	void copySphericalNormalsToHostASync();
-	void copyNormalVoxelsToGPUASync();
+	void GPUSimpleSegmentation();
+	void copySphericalNormalsToHost();
+	void copyNormalVoxelsToGPU();
 	void generateSphericalNormals();
 	void subsamplePyramids();
 
@@ -130,7 +132,12 @@ public:
 	inline float* getCurvature() {return dev_curvature;}
 	inline float* getDeviceAzimuthBuffer() { return dev_azimuthAngle;}
 	inline float* getDevicePolarBuffer() { return dev_polarAngle;}
-	
+	inline int* getDeviceNormalHistogram() { return dev_normalVoxels;}
+#pragma endregion
+
+#pragma region Property Getters
+	inline int getNumAzimuthSubdivisions() { return NUM_AZIMUTH_SUBDIVISIONS; }
+	inline int getNumPolarSubdivisions() { return NUM_POLAR_SUBDIVISIONS; }
 #pragma endregion
 };
 

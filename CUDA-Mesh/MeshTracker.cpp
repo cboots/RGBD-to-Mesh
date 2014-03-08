@@ -251,7 +251,7 @@ void MeshTracker::buildNMapAverageGradient(int windowRadius)
 
 	horizontalGradient(dev_vmapSOA.z[0], dev_float3PyramidBuffers[0].z[0], mXRes, mYRes);
 	verticalGradient(  dev_vmapSOA.z[0], dev_float3PyramidBuffers[1].z[0], mXRes, mYRes);
-
+	
 	//Apply filters to float3
 	//setSeperableKernelUniform();
 	setSeperableKernelGaussian(2.0);
@@ -259,13 +259,13 @@ void MeshTracker::buildNMapAverageGradient(int windowRadius)
 	seperableFilter(dev_float3PyramidBuffers[0].x[0], dev_float3PyramidBuffers[0].y[0], dev_float3PyramidBuffers[0].z[0],
 		dev_float3PyramidBuffers[0].x[0], dev_float3PyramidBuffers[0].y[0], dev_float3PyramidBuffers[0].z[0],
 		mXRes, mYRes);
-
+	
 	seperableFilter(dev_float3PyramidBuffers[1].x[0], dev_float3PyramidBuffers[1].y[0], dev_float3PyramidBuffers[1].z[0],
 		dev_float3PyramidBuffers[1].x[0], dev_float3PyramidBuffers[1].y[0], dev_float3PyramidBuffers[1].z[0],
 		mXRes, mYRes);
 
 	computeAverageGradientNormals(dev_float3PyramidBuffers[0], dev_float3PyramidBuffers[1], dev_nmapSOA, mXRes, mYRes);
-
+	
 }
 
 void MeshTracker::buildNMapPCA(float radiusMeters)
@@ -291,21 +291,27 @@ void MeshTracker::CPUSimpleSegmentation()
 	{
 		float azimuth = host_azimuthAngle[i];
 		float polar = host_polarAngle[i];
-		if(polar == polar && azimuth == azimuth)//Will be false if nan
+		if(polar == polar && azimuth == azimuth && polar > 0.0f && azimuth > 0.0f)//Will be false if nan
 			host_normalVoxels[POLAR_INDEX(polar)*NUM_AZIMUTH_SUBDIVISIONS + AZIMUTH_INDEX(azimuth)]++;
 	}
 }
 
-void MeshTracker::copySphericalNormalsToHostASync()
+void MeshTracker::GPUSimpleSegmentation()
 {
-	cudaMemcpyAsync(host_azimuthAngle, dev_azimuthAngle, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
-	cudaMemcpyAsync(host_polarAngle,   dev_polarAngle, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+	clearHistogram(dev_normalVoxels, NUM_AZIMUTH_SUBDIVISIONS, NUM_POLAR_SUBDIVISIONS);
+	computeNormalHistogram(dev_azimuthAngle, dev_polarAngle, dev_normalVoxels, mXRes, mYRes, NUM_AZIMUTH_SUBDIVISIONS, NUM_POLAR_SUBDIVISIONS);
+}
+
+void MeshTracker::copySphericalNormalsToHost()
+{
+	cudaMemcpy(host_azimuthAngle, dev_azimuthAngle, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(host_polarAngle,   dev_polarAngle, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
 }
 
 
-void MeshTracker::copyNormalVoxelsToGPUASync()
+void MeshTracker::copyNormalVoxelsToGPU()
 {
-	cudaMemcpyAsync(dev_normalVoxels, host_normalVoxels,NUM_AZIMUTH_SUBDIVISIONS*NUM_POLAR_SUBDIVISIONS*sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy(dev_normalVoxels, host_normalVoxels,NUM_AZIMUTH_SUBDIVISIONS*NUM_POLAR_SUBDIVISIONS*sizeof(int), cudaMemcpyHostToDevice);
 }
 
 void MeshTracker::generateSphericalNormals()

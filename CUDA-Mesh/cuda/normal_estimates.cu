@@ -43,7 +43,8 @@ __global__ void simpleNormalsKernel(float* x_vert, float* y_vert, float* z_vert,
 				norm = -norm;
 			}
 
-			norm = glm::normalize(norm);
+			float length = glm::length(norm);
+			norm /= length;
 
 		}
 
@@ -85,15 +86,22 @@ __global__ void normalsFromGradientKernel(float* horizontalGradientX, float* hor
 	int i = v * xRes + u;
 
 	if(u < xRes && v < yRes){
+		glm::vec3 vertGradient =  glm::vec3(vertGradientX[i], vertGradientY[i], vertGradientZ[i]);
+		glm::vec3 horGradient = glm::vec3(horizontalGradientX[i], horizontalGradientY[i], horizontalGradientZ[i]);
 
-		glm::vec3 norm = glm::normalize(glm::cross(glm::vec3(vertGradientX[i], vertGradientY[i], vertGradientZ[i]), 
-			glm::vec3(horizontalGradientX[i], horizontalGradientY[i], horizontalGradientZ[i])));
+		
+		glm::vec3 norm = glm::cross(vertGradient, horGradient);
 
 		if(norm.z > 0.0f)
 		{
 			//Flip towards camera
 			norm = -norm;
 		}
+
+		float length = glm::length(norm);
+		norm /= length;
+
+		
 
 		x_norm[i] = norm.x;
 		y_norm[i] = norm.y;
@@ -180,8 +188,9 @@ __device__ glm::vec3 normalFrom3x3Covar(glm::mat3 A, float& curvature) {
 
 	// check if point cloud region is "flat" enough
 	curvature = eigs[0]/(eigs[0]+eigs[1]+eigs[2]);
-	normal = glm::normalize(glm::cross(A[0] - glm::vec3(eigs[0], 0.0f, 0.0f), A[1] - glm::vec3(0.0f, eigs[0], 0.0f)));
-
+	normal = glm::cross(A[0] - glm::vec3(eigs[0], 0.0f, 0.0f), A[1] - glm::vec3(0.0f, eigs[0], 0.0f));
+	float length = glm::length(normal);
+	normal /= length;
 	return normal;
 }
 

@@ -7,9 +7,8 @@
 #include "Calibration.h"
 #include <glm/glm.hpp>
 #include "Utils.h"
-#include <math.h>
+#include "math.h"
 
-/*
-__host__ void buildVMapGaussianFilterCUDA(rgbd::framework::DPixel* dev_depthBuffer, Float3SOAPyramid vmapSOA, int xRes, int yRes, 
-										  rgbd::framework::Intrinsics intr, float maxDepth);
-										  */
+__host__ void computeNormalHistogram(float* normAzimuth, float* normPolar, int* histogram, int xRes, int yRes, int azimuthBins, int polarBins);
+
+__host__ void clearHistogram(int* histogram, int azimuthBins, int polarBins);

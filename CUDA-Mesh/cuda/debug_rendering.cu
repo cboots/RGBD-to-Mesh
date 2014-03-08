@@ -225,3 +225,36 @@ __host__ void drawCurvatureAndSphericalNormalstoPBO(float4* pbo, float* curvatur
 
 
 }
+
+
+__global__ void sendInt1SOAToPBO(float4* pbo, int* x_src, int xRes, int yRes, int pboXRes, int pboYRes)
+{
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int i = (y * xRes) + x;
+	int pboi = (y * pboXRes) + x;
+
+	if(y < yRes && x < xRes){
+
+		// Each thread writes one pixel location in the texture (textel)
+		pbo[pboi].x = x_src[i];
+		pbo[pboi].y = 0.0;
+		pbo[pboi].z = 0.0;
+		pbo[pboi].w = 0.0;
+	}
+}
+
+
+
+__host__ void drawNormalVoxelsToPBO(float4* pbo, int* voxels, int pboXRes, int pboYRes, int voxelAzimuthBins, int voxelPolarBins)
+{
+	int tileSize = 16;
+
+	dim3 threadsPerBlock(tileSize, tileSize);
+	dim3 fullBlocksPerGrid((int)ceil(float(voxelAzimuthBins)/float(tileSize)), 
+		(int)ceil(float(voxelPolarBins)/float(tileSize)));
+
+
+	sendInt1SOAToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo,  voxels, voxelAzimuthBins, voxelPolarBins, pboXRes, pboYRes);
+
+}
