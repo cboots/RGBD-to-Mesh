@@ -328,8 +328,9 @@ __global__ void normalsToSpherical(float* normX, float* normY, float* normZ, flo
 		float y = normY[i];
 		float z = normZ[i];
 
-		polarAngle[i] = acosf(z);
-		azimuthAngle[i] = atan2f(y,x);
+		polarAngle[i] = acosf(-z);
+		float azimuth = atan2f(y,x);
+		azimuthAngle[i] = (azimuth < 0.0f)?(azimuth + 2.0*PI):azimuth;//Unwrap azimuth angle
 	}
 }
 

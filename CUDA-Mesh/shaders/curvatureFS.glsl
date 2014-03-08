@@ -21,7 +21,8 @@ void main()
 	}
 	*/
 	
-	FragColor = vec4(texture(u_Texture0, fs_texCoord*u_TextureScale).z)/3.14;
+	//FragColor = vec4(texture(u_Texture0, fs_texCoord*u_TextureScale).y)/6.28;
+	FragColor = vec4(texture(u_Texture0, fs_texCoord*u_TextureScale).z)/1.57;
 	
 	
 }

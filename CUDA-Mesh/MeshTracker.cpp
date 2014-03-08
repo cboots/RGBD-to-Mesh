@@ -46,6 +46,9 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 	host_azimuthAngle = new float[xRes*yRes];
 	host_polarAngle = new float[xRes*yRes];
 
+	cudaMalloc((void**) &dev_normalVoxels,	NUM_AZIMUTH_SUBDIVISIONS*NUM_POLAR_SUBDIVISIONS*sizeof(int));
+
+	host_normalVoxels = new int[NUM_AZIMUTH_SUBDIVISIONS*NUM_POLAR_SUBDIVISIONS];
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -80,6 +83,9 @@ void MeshTracker::cleanupBuffers()
 
 	delete host_azimuthAngle;
 	delete host_polarAngle;
+
+	cudaFree(dev_normalVoxels);
+	delete host_normalVoxels;
 
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
@@ -275,13 +281,31 @@ void MeshTracker::estimateCurvatureFromNormals()
 
 void MeshTracker::CPUSimpleSegmentation()
 {
-	//TODO: Implement
+	//clear
+	for(int i = 0; i < NUM_AZIMUTH_SUBDIVISIONS*NUM_POLAR_SUBDIVISIONS; ++i)
+		host_normalVoxels[i] = 0;
+
+
+	int length = mXRes*mYRes;
+	for(int i = 0; i < length; ++i)
+	{
+		float azimuth = host_azimuthAngle[i];
+		float polar = host_polarAngle[i];
+		if(polar == polar && azimuth == azimuth)//Will be false if nan
+			host_normalVoxels[POLAR_INDEX(polar)*NUM_AZIMUTH_SUBDIVISIONS + AZIMUTH_INDEX(azimuth)]++;
+	}
 }
 
-void MeshTracker::copySphericalNormalsToHost()
+void MeshTracker::copySphericalNormalsToHostASync()
 {
-	cudaMemcpy(host_azimuthAngle, dev_azimuthAngle, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
-	cudaMemcpy(host_polarAngle,   dev_polarAngle, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpyAsync(host_azimuthAngle, dev_azimuthAngle, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpyAsync(host_polarAngle,   dev_polarAngle, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+}
+
+
+void MeshTracker::copyNormalVoxelsToGPUASync()
+{
+	cudaMemcpyAsync(dev_normalVoxels, host_normalVoxels,NUM_AZIMUTH_SUBDIVISIONS*NUM_POLAR_SUBDIVISIONS*sizeof(int), cudaMemcpyHostToDevice);
 }
 
 void MeshTracker::generateSphericalNormals()

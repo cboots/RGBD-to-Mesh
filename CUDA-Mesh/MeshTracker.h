@@ -7,6 +7,7 @@
 #include "integral_image.h"
 #include "gradient.h"
 #include "seperable_filter.h"
+#include "Utils.h"
 
 using namespace rgbd::framework;
 
@@ -15,7 +16,13 @@ using namespace rgbd::framework;
 #define NUM_FLOAT3_PYRAMID_BUFFERS 5
 
 #define NUM_AZIMUTH_SUBDIVISIONS	256
-#define NUM_POLAR_SUBDIVISIONS		256
+#define NUM_POLAR_SUBDIVISIONS		128
+
+#define AZIMUTH_SUBDIVISION   (2.0*PI/NUM_AZIMUTH_SUBDIVISIONS)
+#define POLAR_SUBDIVISION	((PI/2.0)/NUM_POLAR_SUBDIVISIONS)
+
+#define AZIMUTH_INDEX(angle) ((int) (angle * (1.0 / AZIMUTH_SUBDIVISION)))
+#define POLAR_INDEX(angle) ((int) (angle * (1.0 / POLAR_SUBDIVISION)))
 
 
 enum FilterMode
@@ -58,6 +65,8 @@ private:
 	float* host_azimuthAngle;
 	float* host_polarAngle;
 
+	int* host_normalVoxels;
+	int* dev_normalVoxels;
 
 
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
@@ -104,7 +113,8 @@ public:
 
 	void estimateCurvatureFromNormals();
 	void CPUSimpleSegmentation();
-	void copySphericalNormalsToHost();
+	void copySphericalNormalsToHostASync();
+	void copyNormalVoxelsToGPUASync();
 	void generateSphericalNormals();
 	void subsamplePyramids();
 

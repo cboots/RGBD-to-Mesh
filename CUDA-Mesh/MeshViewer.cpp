@@ -854,12 +854,12 @@ void MeshViewer::display()
 		//Also generates 
 		mMeshTracker->generateSphericalNormals();
 		cudaDeviceSynchronize();//Wait for conversion
-		mMeshTracker->copySphericalNormalsToHost();
+		mMeshTracker->copySphericalNormalsToHostASync();
 		cudaDeviceSynchronize();//Wait for copy to complete
 
 		//Launch kernels for subsampling
 		mMeshTracker->subsamplePyramids();
-
+		
 		//While subsampling happening, work on segmentation
 		mMeshTracker->CPUSimpleSegmentation();
 
