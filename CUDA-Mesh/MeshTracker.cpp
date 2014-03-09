@@ -49,6 +49,9 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 
 	host_normalVoxels = new int[NUM_NORMAL_X_SUBDIVISIONS*NUM_NORMAL_Y_SUBDIVISIONS];
 
+	//Decoupled voxels:
+	createInt3SOA(dev_normalDecoupledHistogram, NUM_DECOUPLED_HISTOGRAM_BINS);
+
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
 		createFloat1SOAPyramid(dev_float1PyramidBuffers[i], xRes, yRes);
@@ -84,6 +87,7 @@ void MeshTracker::cleanupBuffers()
 	cudaFree(dev_normalVoxels);
 	delete host_normalVoxels;
 
+	freeInt3SOA(dev_normalDecoupledHistogram);
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -129,8 +133,30 @@ void MeshTracker::freeFloat1SOAPyramid(Float1SOAPyramid dev_pyramid)
 	cudaFree(dev_pyramid.x[0]);
 }
 
+void MeshTracker::createInt3SOA(Int3SOA& dev_soa, int length)
+{
+	cudaMalloc((void**) &dev_soa.x, sizeof(int)*3*length);
+	dev_soa.y = dev_soa.x + length;
+	dev_soa.z = dev_soa.y + length;
+}
+
+void MeshTracker::freeInt3SOA(Int3SOA dev_soa)
+{
+	cudaFree(dev_soa.x);
+}
 
 
+void MeshTracker::createFloat3SOA(Float3SOA& dev_soa, int length)
+{
+	cudaMalloc((void**) &dev_soa.x, sizeof(float)*3*length);
+	dev_soa.y = dev_soa.x + length;
+	dev_soa.z = dev_soa.y + length;
+}
+
+void MeshTracker::freeFloat3SOA(Float3SOA dev_soa)
+{
+	cudaFree(dev_soa.x);
+}
 
 void MeshTracker::createFloat3SOAPyramid(Float3SOAPyramid& dev_pyramid, int xRes, int yRes)
 {
@@ -301,6 +327,19 @@ void MeshTracker::GPUSimpleSegmentation()
 {
 	clearHistogram(dev_normalVoxels, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS);
 	computeNormalHistogram(dev_nmapSOA.x[0], dev_nmapSOA.y[0], dev_normalVoxels, mXRes, mYRes, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS);
+}
+
+
+void MeshTracker::GPUDecoupledSegmentation()
+{
+	clearHistogram(dev_normalDecoupledHistogram.x, NUM_DECOUPLED_HISTOGRAM_BINS, 1);
+	clearHistogram(dev_normalDecoupledHistogram.y, NUM_DECOUPLED_HISTOGRAM_BINS, 1);
+	clearHistogram(dev_normalDecoupledHistogram.z, NUM_DECOUPLED_HISTOGRAM_BINS, 1);
+
+	ACosHistogram(dev_nmapSOA.x[0], dev_normalDecoupledHistogram.x, mXRes*mYRes, NUM_DECOUPLED_HISTOGRAM_BINS);
+	ACosHistogram(dev_nmapSOA.y[0], dev_normalDecoupledHistogram.y, mXRes*mYRes, NUM_DECOUPLED_HISTOGRAM_BINS);
+	ACosHistogram(dev_nmapSOA.z[0], dev_normalDecoupledHistogram.z, mXRes*mYRes, NUM_DECOUPLED_HISTOGRAM_BINS);
+
 }
 
 void MeshTracker::copyXYNormalsToHost()

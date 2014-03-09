@@ -1,5 +1,8 @@
 #include "plane_segmentation.h"
 
+
+#pragma region Histogram Two-D
+
 __global__ void normalHistogramKernel(float* normX, float* normY, int* histogram, int xRes, int yRes, int xBins, int yBins)
 {
 	int i = threadIdx.x + blockIdx.x*blockDim.x;
@@ -51,3 +54,36 @@ __host__ void clearHistogram(int* histogram, int xBins, int yBins)
 	clearHistogramKernel<<<blocks,threads>>>(histogram, xBins*yBins);
 
 }
+
+#pragma endregion
+
+
+#pragma region ACos Histogram One-D
+
+//TODO: Shared memory
+__global__ void ACosHistogramKernel(float* cosineValue, int* histogram, int valueCount, int numBins)
+{
+	int valueI = threadIdx.x + blockDim.x * blockIdx.x;
+
+	if(valueI < valueCount)
+	{
+		float angle = acos(cosineValue[valueI]);
+
+		int histIndex = angle*PI_INV_F*numBins;
+		if(histIndex >= 0 && histIndex < numBins)//Sanity check
+			atomicAdd(&histogram[histIndex], 1);
+
+	}
+}
+
+__host__ void ACosHistogram(float* cosineValue, int* histogram, int valueCount, int numBins)
+{
+	int blockLength = 256;
+
+	dim3 threads(blockLength);
+	dim3 blocks((int)(ceil(float(valueCount)/float(blockLength))));
+
+	ACosHistogramKernel<<<blocks,threads>>>(cosineValue, histogram, valueCount, numBins);
+}
+
+#pragma endregion

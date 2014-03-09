@@ -19,6 +19,8 @@ using namespace rgbd::framework;
 #define NUM_NORMAL_X_SUBDIVISIONS	256
 #define NUM_NORMAL_Y_SUBDIVISIONS		256
 
+#define NUM_DECOUPLED_HISTOGRAM_BINS	256
+
 enum FilterMode
 {
 	BILATERAL_FILTER,
@@ -60,6 +62,7 @@ private:
 	int* host_normalVoxels;
 	int* dev_normalVoxels;
 
+	Int3SOA dev_normalDecoupledHistogram;
 
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
 	Float1SOAPyramid dev_float1PyramidBuffers[NUM_FLOAT1_PYRAMID_BUFFERS];
@@ -74,6 +77,15 @@ private:
 
 	void createFloat3SOAPyramid(Float3SOAPyramid& dev_pyramid, int xRes, int yRes);
 	void freeFloat3SOAPyramid(Float3SOAPyramid dev_pyramid);
+
+	void createFloat3SOA(Float3SOA& dev_soa, int length);
+	void freeFloat3SOA(Float3SOA dev_soa);
+
+	
+	void createInt3SOA(Int3SOA& dev_soa, int length);
+	void freeInt3SOA(Int3SOA dev_soa);
+
+
 	void initBuffers(int xRes, int yResolution);
 	void cleanupBuffers();
 #pragma endregion
@@ -110,7 +122,7 @@ public:
 	void copyNormalVoxelsToGPU();
 	void subsamplePyramids();
 
-
+	void GPUDecoupledSegmentation();
 #pragma endregion
 
 #pragma region Buffer getters
@@ -121,11 +133,13 @@ public:
 	inline Float3SOAPyramid getRGBMapSOA() { return dev_rgbSOA;}
 	inline float* getCurvature() {return dev_curvature;}
 	inline int* getDeviceNormalHistogram() { return dev_normalVoxels;}
+
 #pragma endregion
 
 #pragma region Property Getters
 	inline int getNormalXSubdivisions() { return NUM_NORMAL_X_SUBDIVISIONS; }
 	inline int getNormalYSubdivisions() { return NUM_NORMAL_Y_SUBDIVISIONS; }
+	inline int getNormalDecoupledBins() { return NUM_DECOUPLED_HISTOGRAM_BINS; }
 #pragma endregion
 };
 

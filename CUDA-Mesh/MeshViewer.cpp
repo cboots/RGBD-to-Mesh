@@ -883,7 +883,7 @@ void MeshViewer::display()
 		mMeshTracker->subsamplePyramids();
 
 		mMeshTracker->GPUSimpleSegmentation();
-
+		mMeshTracker->GPUDecoupledSegmentation();
 
 	}//=====End of pipeline code=====
 

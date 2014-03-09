@@ -22,6 +22,12 @@ struct Float3SOA{
 	float* z;
 };
 
+struct Int3SOA{
+	int* x;
+	int* y;
+	int* z;
+};
+
 struct Float1SOAPyramid{
 	float* x[NUM_PYRAMID_LEVELS];
 };
