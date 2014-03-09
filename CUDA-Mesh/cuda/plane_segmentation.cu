@@ -63,6 +63,10 @@ __host__ void clearHistogram(int* histogram, int xBins, int yBins)
 //TODO: Shared memory
 __global__ void ACosHistogramKernel(float* cosineValue, int* histogram, int valueCount, int numBins)
 {
+	extern __shared__ int s_hist[];
+    s_hist[threadIdx.x] = 0;
+	__syncthreads();
+
 	int valueI = threadIdx.x + blockDim.x * blockIdx.x;
 
 	if(valueI < valueCount)
@@ -71,19 +75,22 @@ __global__ void ACosHistogramKernel(float* cosineValue, int* histogram, int valu
 
 		int histIndex = angle*PI_INV_F*numBins;
 		if(histIndex >= 0 && histIndex < numBins)//Sanity check
-			atomicAdd(&histogram[histIndex], 1);
-
+			atomicAdd(&s_hist[histIndex], 1);
 	}
+
+	__syncthreads();
+
+	atomicAdd(&histogram[threadIdx.x], s_hist[threadIdx.x]);
 }
 
 __host__ void ACosHistogram(float* cosineValue, int* histogram, int valueCount, int numBins)
 {
-	int blockLength = 256;
+	int blockLength = numBins;
 
 	dim3 threads(blockLength);
 	dim3 blocks((int)(ceil(float(valueCount)/float(blockLength))));
 
-	ACosHistogramKernel<<<blocks,threads>>>(cosineValue, histogram, valueCount, numBins);
+	ACosHistogramKernel<<<blocks,threads, numBins*sizeof(int)>>>(cosineValue, histogram, valueCount, numBins);
 }
 
 #pragma endregion
