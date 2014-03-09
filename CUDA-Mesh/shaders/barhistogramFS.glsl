@@ -15,7 +15,7 @@ void main()
 
 	vec4 histogramvalue = texture(u_Texture0, scaledCoord)/5000;
 	
-	FragColor.x = step(1.0-fs_texCoord.y, histogramvalue.x)*histogramvalue.x;
-	FragColor.y = step(1.0-fs_texCoord.y, histogramvalue.y)*histogramvalue.y;
-	FragColor.z = step(1.0-fs_texCoord.y, histogramvalue.z)*histogramvalue.z;
+	FragColor.x = step(1.0-fs_texCoord.y, histogramvalue.x);
+	FragColor.y = step(1.0-fs_texCoord.y, histogramvalue.y);
+	FragColor.z = step(1.0-fs_texCoord.y, histogramvalue.z);
 }

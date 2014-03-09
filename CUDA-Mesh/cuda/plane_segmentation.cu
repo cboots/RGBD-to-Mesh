@@ -25,7 +25,7 @@ __global__ void normalHistogramKernel(float* normX, float* normY, int* histogram
 __host__ void computeNormalHistogram(float* normX, float* normY, int* histogram, int xRes, int yRes, int xBins, int yBins)
 {
 	int blockLength = 256;
-	
+
 	dim3 threads(blockLength);
 	dim3 blocks((int)(ceil(float(xRes*yRes)/float(blockLength))));
 
@@ -47,7 +47,7 @@ __global__ void clearHistogramKernel(int* histogram, int length)
 __host__ void clearHistogram(int* histogram, int xBins, int yBins)
 {
 	int blockLength = 256;
-	
+
 	dim3 threads(blockLength);
 	dim3 blocks((int)(ceil(float(xBins*yBins)/float(blockLength))));
 
@@ -64,7 +64,7 @@ __host__ void clearHistogram(int* histogram, int xBins, int yBins)
 __global__ void ACosHistogramKernel(float* cosineValue, int* histogram, int valueCount, int numBins)
 {
 	extern __shared__ int s_hist[];
-    s_hist[threadIdx.x] = 0;
+	s_hist[threadIdx.x] = 0;
 	__syncthreads();
 
 	int valueI = threadIdx.x + blockDim.x * blockIdx.x;
@@ -73,9 +73,11 @@ __global__ void ACosHistogramKernel(float* cosineValue, int* histogram, int valu
 	{
 		float angle = acos(cosineValue[valueI]);
 
-		int histIndex = angle*PI_INV_F*numBins;
-		if(histIndex >= 0 && histIndex < numBins)//Sanity check
-			atomicAdd(&s_hist[histIndex], 1);
+		if(angle == angle){
+			int histIndex = angle*PI_INV_F*numBins;
+			if(histIndex >= 0 && histIndex < numBins)//Sanity check
+				atomicAdd(&s_hist[histIndex], 1);
+		}
 	}
 
 	__syncthreads();
