@@ -258,3 +258,36 @@ __host__ void drawNormalVoxelsToPBO(float4* pbo, int* voxels, int pboXRes, int p
 	sendInt1SOAToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo,  voxels, voxelAzimuthBins, voxelPolarBins, pboXRes, pboYRes);
 
 }
+
+
+__global__ void sendHistogramSOAToPBO(float4* pbo, int* binsX, int* binsY, int* binsZ, int length, int pboXRes, int pboYRes)
+{
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int pboi = (y * pboXRes) + x;
+
+	if(y < pboYRes && x < length){
+
+		// Each thread writes one pixel location in the texture (textel)
+		pbo[pboi].x = binsX[x];
+		pbo[pboi].y = binsY[x];
+		pbo[pboi].z = binsZ[x];
+		pbo[pboi].w = 0.0;
+	}
+}
+
+
+
+
+__host__ void drawDecoupledHistogramsToPBO(float4* pbo, Int3SOA histograms,  int length, int pboXRes, int pboYRes)
+{
+	
+	int tileSize = 16;
+	assert(length < pboXRes);
+
+	dim3 threadsPerBlock(tileSize, tileSize);
+	dim3 fullBlocksPerGrid((int)ceil(float(length)/float(tileSize)), 
+		(int)ceil(float(pboYRes)/float(tileSize)));
+
+	sendHistogramSOAToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo,  histograms.x, histograms.y, histograms.z, length, pboXRes, pboYRes);
+}

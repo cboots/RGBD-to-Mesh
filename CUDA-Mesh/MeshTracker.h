@@ -133,7 +133,7 @@ public:
 	inline Float3SOAPyramid getRGBMapSOA() { return dev_rgbSOA;}
 	inline float* getCurvature() {return dev_curvature;}
 	inline int* getDeviceNormalHistogram() { return dev_normalVoxels;}
-
+	inline Int3SOA getDecoupledHistogram() { return dev_normalDecoupledHistogram;}
 #pragma endregion
 
 #pragma region Property Getters

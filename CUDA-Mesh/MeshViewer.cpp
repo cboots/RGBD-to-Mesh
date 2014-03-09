@@ -265,6 +265,7 @@ void MeshViewer::initShader()
 	const char * nmap_frag = "shaders/nmapFS.glsl";
 	const char * curvature_frag = "shaders/curvatureFS.glsl";
 	const char * histogram_frag = "shaders/histogramFS.glsl";
+	const char * barhistogram_frag = "shaders/barhistogramFS.glsl";
 
 	//Color image shader
 	color_prog = glslUtility::createProgram(pass_vert, NULL, color_frag, quadAttributeLocations, 2);
@@ -284,6 +285,8 @@ void MeshViewer::initShader()
 	curvemap_prog = glslUtility::createProgram(pass_vert, NULL, curvature_frag, quadAttributeLocations, 2);
 
 	histogram_prog = glslUtility::createProgram(pass_vert, NULL, histogram_frag, quadAttributeLocations, 2);
+
+	barhistogram_prog = glslUtility::createProgram(pass_vert, NULL, barhistogram_frag, quadAttributeLocations, 2);
 }
 
 void MeshViewer::initTextures()
@@ -748,6 +751,30 @@ void MeshViewer::drawNormalHistogramtoTexture(GLuint texture)
 
 }
 
+void MeshViewer::drawDecoupledHistogramsToTexture(GLuint texture)
+{
+	float4* dptrNMap;
+	cudaGLMapBufferObject((void**)&dptrNMap, imagePBO0);
+
+	clearPBO(dptrNMap, mXRes, mYRes, 0.0f);
+	drawDecoupledHistogramsToPBO(dptrNMap, mMeshTracker->getDecoupledHistogram(),  mMeshTracker->getNormalDecoupledBins(), mXRes, mYRes);
+
+	cudaGLUnmapBufferObject(imagePBO0);
+
+	//Unpack to textures
+	glActiveTexture(GL_TEXTURE12);
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+		GL_RGBA, GL_FLOAT, NULL);
+
+	//Unbind buffers
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glActiveTexture(GL_TEXTURE0);
+
+}
+
 
 void MeshViewer::drawRGBMaptoTexture(GLuint texture, int level)
 {
@@ -912,18 +939,17 @@ void MeshViewer::display()
 		drawQuad(depth_prog, 0, 0, 1, 1, 1.0, &texture0, 1);
 		glDisable(GL_BLEND);
 		break;
-	case DISPLAY_MODE_3WAY_DEPTH_IMAGE_OVERLAY:
-		drawDepthImageBufferToTexture(texture0);
-		drawColorImageBufferToTexture(texture1);
+	case DISPLAY_MODE_HISTOGRAM_COMPARE:
+		drawDecoupledHistogramsToTexture(texture0);
+		drawNMaptoTexture(texture1, 0);
+		drawColorImageBufferToTexture(texture2);
+		drawNormalHistogramtoTexture(texture3);
 
-		drawQuad(color_prog, -0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);
-		drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);
-
-		drawQuad(color_prog, 0.5, 0, 0.5, 1, 1.0, &texture1, 1);
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);//Alpha blending
-		drawQuad(depth_prog, 0.5, 0, 0.5, 1, 1.0, &texture0, 1);
-		glDisable(GL_BLEND);
+		
+		drawQuad(nmap_prog,		 0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR normal
+		drawQuad(color_prog,		-0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL color
+		drawQuad(barhistogram_prog,  0.5,  0.5, 0.5, 0.5, 0.5, &texture0, 1);//UR bar histogram
+		drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.6,  &texture3, 1);//UL histogram
 		break;
 	case DISPLAY_MODE_HISTOGRAM_DEBUG:
 		drawDepthImageBufferToTexture(texture0);
@@ -1013,7 +1039,7 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		mViewState = DISPLAY_MODE_IMAGE;
 		break;
 	case '4':
-		mViewState = DISPLAY_MODE_3WAY_DEPTH_IMAGE_OVERLAY;
+		mViewState = DISPLAY_MODE_HISTOGRAM_COMPARE;
 		break;
 	case '5':
 		mViewState = DISPLAY_MODE_HISTOGRAM_DEBUG;

@@ -31,3 +31,5 @@ __host__ void drawRGBMaptoPBO(float4* pbo, Float3SOAPyramid rgbMap, int level, i
 __host__ void drawCurvaturetoPBO(float4* pbo, float* curvatureMap, int xRes, int yRes);
 
 __host__ void drawNormalVoxelsToPBO(float4* pbo, int* voxels, int pboXRes, int pboYRes, int voxelAzimuthBins, int voxelPolarBins);
+
+__host__ void drawDecoupledHistogramsToPBO(float4* pbo, Int3SOA histograms,  int length, int pboXRes, int pboYRes);
