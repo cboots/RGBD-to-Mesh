@@ -19,7 +19,7 @@ using namespace rgbd::framework;
 #define NUM_NORMAL_X_SUBDIVISIONS	256
 #define NUM_NORMAL_Y_SUBDIVISIONS		256
 
-#define NUM_DECOUPLED_HISTOGRAM_BINS	256
+#define NUM_DECOUPLED_HISTOGRAM_BINS	512
 
 enum FilterMode
 {

@@ -948,7 +948,7 @@ void MeshViewer::display()
 		
 		drawQuad(nmap_prog,		 0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR normal
 		drawQuad(color_prog,		-0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL color
-		drawQuad(barhistogram_prog,  0.5,  0.5, 0.5, 0.5, 0.5, &texture0, 1);//UR bar histogram
+		drawQuad(barhistogram_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR bar histogram
 		drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.6,  &texture3, 1);//UL histogram
 		break;
 	case DISPLAY_MODE_HISTOGRAM_DEBUG:
