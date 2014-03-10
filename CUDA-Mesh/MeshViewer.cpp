@@ -945,7 +945,7 @@ void MeshViewer::display()
 		drawColorImageBufferToTexture(texture2);
 		drawNormalHistogramtoTexture(texture3);
 
-		
+
 		drawQuad(nmap_prog,		 0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR normal
 		drawQuad(color_prog,		-0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL color
 		drawQuad(barhistogram_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR bar histogram
@@ -1203,6 +1203,33 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		mNormalMode = PCA_NORMALS;
 		cout << "PCA Normals Mode" << endl;
 		break;
+	case 'H':
+		{
+			ofstream arrayData("decoupledhistogram.csv"); 
+
+			Int3SOA dev_histogram = mMeshTracker->getDecoupledHistogram();
+			int histogramlength = mMeshTracker->getNormalDecoupledBins();
+
+			int* xHist = new int[histogramlength];
+			int* yHist = new int[histogramlength];
+			int* zHist = new int[histogramlength];
+
+			cudaMemcpy(xHist, dev_histogram.x, histogramlength*sizeof(int), cudaMemcpyDeviceToHost);
+			cudaMemcpy(yHist, dev_histogram.y, histogramlength*sizeof(int), cudaMemcpyDeviceToHost);
+			cudaMemcpy(zHist, dev_histogram.z, histogramlength*sizeof(int), cudaMemcpyDeviceToHost);
+
+			for(int i = 0; i < histogramlength; ++i) {
+				arrayData << xHist[i] << ','  << yHist[i] << ',' << zHist[i] << endl;
+			}
+
+			delete xHist;
+			delete yHist;
+			delete zHist;
+			
+			cout << "Current Decoupled Histogram Saved to file" <<endl;
+		}
+		break;
+
 	}
 
 }
