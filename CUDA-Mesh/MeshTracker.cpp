@@ -51,6 +51,7 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 
 	//Decoupled voxels:
 	createInt3SOA(dev_normalDecoupledHistogram, NUM_DECOUPLED_HISTOGRAM_BINS);
+	createInt3SOA(dev_normalDecoupledHistogramPeaks, MAX_DECOUPLED_PEAKS);
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -88,7 +89,7 @@ void MeshTracker::cleanupBuffers()
 	delete host_normalVoxels;
 
 	freeInt3SOA(dev_normalDecoupledHistogram);
-
+	freeInt3SOA(dev_normalDecoupledHistogramPeaks);
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
 		freeFloat1SOAPyramid(dev_float1PyramidBuffers[i]);
@@ -339,6 +340,10 @@ void MeshTracker::GPUDecoupledSegmentation()
 	ACosHistogram(dev_nmapSOA.x[0], dev_normalDecoupledHistogram.x, mXRes*mYRes, NUM_DECOUPLED_HISTOGRAM_BINS);
 	ACosHistogram(dev_nmapSOA.y[0], dev_normalDecoupledHistogram.y, mXRes*mYRes, NUM_DECOUPLED_HISTOGRAM_BINS);
 	ACosHistogram(dev_nmapSOA.z[0], dev_normalDecoupledHistogram.z, mXRes*mYRes, NUM_DECOUPLED_HISTOGRAM_BINS);
+
+
+	gaussianSubtractionPeakDetection(dev_normalDecoupledHistogram, dev_normalDecoupledHistogramPeaks, 
+		NUM_DECOUPLED_HISTOGRAM_BINS, MAX_DECOUPLED_PEAKS, MIN_DECOUPLED_PEAK_COUNT, glm::vec3(15,15,15));
 
 }
 
