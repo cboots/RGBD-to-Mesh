@@ -9,7 +9,9 @@
 #include "seperable_filter.h"
 #include "Utils.h"
 #include "plane_segmentation.h"
+#include <iostream>
 
+using namespace std;
 using namespace rgbd::framework;
 
 #define NUM_FLOAT1_IMAGE_SIZE_BUFFERS 10
@@ -21,7 +23,7 @@ using namespace rgbd::framework;
 
 #define NUM_DECOUPLED_HISTOGRAM_BINS	512
 #define MAX_DECOUPLED_PEAKS			8
-#define MIN_DECOUPLED_PEAK_COUNT	0
+#define MIN_DECOUPLED_PEAK_COUNT	500
 
 enum FilterMode
 {

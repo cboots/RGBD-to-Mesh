@@ -107,8 +107,8 @@ __global__ void gaussianSubtractionPeakDetectionKernel(int* histx, int* histy, i
 	extern __shared__ int s_temp[];
 	int* s_hist = s_temp;
 	int* s_max = s_hist + histLength;
-	int* s_maxI = s_hist + histLength/2;
-	int* s_peaks = s_max + histLength/2;
+	int* s_maxI = s_max + histLength/2;
+	int* s_peaks = s_maxI + histLength/2;
 
 	//Load histogram from different location for each block
 	float sig = sigma2inv[blockIdx.x];

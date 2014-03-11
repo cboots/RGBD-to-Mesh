@@ -345,6 +345,36 @@ void MeshTracker::GPUDecoupledSegmentation()
 	gaussianSubtractionPeakDetection(dev_normalDecoupledHistogram, dev_normalDecoupledHistogramPeaks, 
 		NUM_DECOUPLED_HISTOGRAM_BINS, MAX_DECOUPLED_PEAKS, MIN_DECOUPLED_PEAK_COUNT, glm::vec3(15,15,15));
 
+	Int3SOA peaksCopy;
+	peaksCopy.x = new int[MAX_DECOUPLED_PEAKS*3];
+	peaksCopy.y = peaksCopy.x + MAX_DECOUPLED_PEAKS;
+	peaksCopy.z = peaksCopy.y + MAX_DECOUPLED_PEAKS;
+
+	cudaMemcpy(peaksCopy.x, dev_normalDecoupledHistogramPeaks.x, MAX_DECOUPLED_PEAKS*3*sizeof(int), cudaMemcpyDeviceToHost);
+
+	cout << "X Peaks: ";
+	for(int i = 0; i < MAX_DECOUPLED_PEAKS; ++i){
+		if(peaksCopy.x[i] >= 0)
+			cout << peaksCopy.x[i] << ',';
+	}
+	cout << endl;
+
+	cout << "Y Peaks: ";
+	for(int i = 0; i < MAX_DECOUPLED_PEAKS; ++i){
+		if(peaksCopy.y[i] >= 0)
+			cout << peaksCopy.y[i] << ',';
+	}
+	cout << endl;
+
+	cout << "Z Peaks: ";
+	for(int i = 0; i < MAX_DECOUPLED_PEAKS; ++i){
+		if(peaksCopy.z[i] >= 0)
+			cout << peaksCopy.z[i] << ',';
+	}
+	cout << endl;
+
+
+	delete peaksCopy.x;
 }
 
 void MeshTracker::copyXYNormalsToHost()
