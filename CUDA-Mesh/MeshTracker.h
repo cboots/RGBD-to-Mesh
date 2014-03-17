@@ -69,6 +69,8 @@ private:
 	Int3SOA dev_normalDecoupledHistogram;
 	Int3SOA dev_normalDecoupledHistogramPeaks;
 
+	Int3SOA dev_normalSegments;
+
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
 	Float1SOAPyramid dev_float1PyramidBuffers[NUM_FLOAT1_PYRAMID_BUFFERS];
 

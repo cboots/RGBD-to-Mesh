@@ -52,6 +52,8 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 	//Decoupled voxels:
 	createInt3SOA(dev_normalDecoupledHistogram, NUM_DECOUPLED_HISTOGRAM_BINS);
 	createInt3SOA(dev_normalDecoupledHistogramPeaks, MAX_DECOUPLED_PEAKS);
+	
+	createInt3SOA(dev_normalSegments, xRes*yRes);
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -90,6 +92,8 @@ void MeshTracker::cleanupBuffers()
 
 	freeInt3SOA(dev_normalDecoupledHistogram);
 	freeInt3SOA(dev_normalDecoupledHistogramPeaks);
+	freeInt3SOA(dev_normalSegments);
+
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
 		freeFloat1SOAPyramid(dev_float1PyramidBuffers[i]);
@@ -345,6 +349,7 @@ void MeshTracker::GPUDecoupledSegmentation()
 	gaussianSubtractionPeakDetection(dev_normalDecoupledHistogram, dev_normalDecoupledHistogramPeaks, 
 		NUM_DECOUPLED_HISTOGRAM_BINS, MAX_DECOUPLED_PEAKS, MIN_DECOUPLED_PEAK_COUNT, glm::vec3(15,15,15));
 
+	//Begin peak debug code
 	Int3SOA peaksCopy;
 	peaksCopy.x = new int[MAX_DECOUPLED_PEAKS*3];
 	peaksCopy.y = peaksCopy.x + MAX_DECOUPLED_PEAKS;
@@ -375,6 +380,16 @@ void MeshTracker::GPUDecoupledSegmentation()
 
 
 	delete peaksCopy.x;
+
+	//END DEBUG PRINT
+	Float3SOA normals;
+	normals.x = dev_nmapSOA.x[0];
+	normals.y = dev_nmapSOA.y[0];
+	normals.z = dev_nmapSOA.z[0];
+
+	segmentNormals(normals, dev_normalSegments, mXRes, mYRes, 
+		dev_normalDecoupledHistogram, NUM_DECOUPLED_HISTOGRAM_BINS, 
+		dev_normalDecoupledHistogramPeaks, MAX_DECOUPLED_PEAKS);
 }
 
 void MeshTracker::copyXYNormalsToHost()

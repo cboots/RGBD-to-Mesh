@@ -207,3 +207,53 @@ __host__ void gaussianSubtractionPeakDetection(Int3SOA decoupledHist, Int3SOA pe
 
 
 #pragma endregion
+
+#pragma region Seperable histogram segmentation
+
+
+__global__ void segmentNormalsKernel(Float3SOA rawNormals, Int3SOA normalSegments, int imageWidth, int imageHeight, 
+									 Int3SOA decoupledHistogram, int histSize, Int3SOA peakIndecies, int maxPeaks)
+{
+	extern __shared__ int s_temp[];
+	int* s_peaks = s_temp;
+	int* s_peaksMax = s_temp + maxPeaks;
+
+
+	if(threadIdx.x < maxPeaks)
+	{
+		if(blockIdx.y == 0)	{
+			s_peaks[threadIdx.x] = peakIndecies.x[threadIdx.x];
+			s_peaksMax[threadIdx.x] = (s_peaks[threadIdx.x] < 0)? 0 : decoupledHistogram.x[s_peaks[threadIdx.x]];
+		}else if(blockIdx.y == 1){
+			s_peaks[threadIdx.x] = peakIndecies.y[threadIdx.x];
+			s_peaksMax[threadIdx.x] = (s_peaks[threadIdx.x] < 0)? 0 : decoupledHistogram.y[s_peaks[threadIdx.x]];
+		}else{
+			s_peaks[threadIdx.x] = peakIndecies.z[threadIdx.x];
+			s_peaksMax[threadIdx.x] = (s_peaks[threadIdx.x] < 0)? 0 : decoupledHistogram.z[s_peaks[threadIdx.x]];
+		}
+
+	}
+
+	__syncthreads();
+
+
+}
+
+__host__ void segmentNormals(Float3SOA rawNormals, Int3SOA normalSegments, int imageWidth, int imageHeight, 
+							 Int3SOA decoupledHistogram, int histSize, 
+							 Int3SOA peakIndecies, int maxPeaks)
+{
+	int blockLength = 512;
+
+	dim3 threads(blockLength);
+	dim3 blocks((int) ceil(float(imageWidth*imageHeight)/float(blockLength)), 3);
+
+	int sharedCount = sizeof(int)*(2 * maxPeaks);
+
+	segmentNormalsKernel<<<blocks, threads, sharedCount>>>(rawNormals, normalSegments, imageWidth, imageHeight, 
+		decoupledHistogram, histSize, 
+		peakIndecies, maxPeaks);
+}
+
+
+#pragma endregion
