@@ -142,6 +142,7 @@ public:
 	inline float* getCurvature() {return dev_curvature;}
 	inline int* getDeviceNormalHistogram() { return dev_normalVoxels;}
 	inline Int3SOA getDecoupledHistogram() { return dev_normalDecoupledHistogram;}
+	inline Int3SOA getNormalSegments() { return dev_normalSegments;}
 #pragma endregion
 
 #pragma region Property Getters

@@ -165,6 +165,7 @@ private:
 	GLuint curvemap_prog;
 	GLuint histogram_prog;
 	GLuint barhistogram_prog;
+	GLuint normalsegments_prog;
 #pragma endregion
 
 #pragma region Buffer Object Indecies
@@ -266,6 +267,8 @@ private:
 	void drawCurvaturetoTexture(GLuint texture);
 	void drawNormalHistogramtoTexture(GLuint texture);
 	void drawDecoupledHistogramsToTexture(GLuint texture);
+	void drawNormalSegmentsToTexture(GLuint texture);
+
 #pragma endregion
 
 

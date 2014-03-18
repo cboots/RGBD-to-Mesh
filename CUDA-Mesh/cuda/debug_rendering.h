@@ -33,3 +33,5 @@ __host__ void drawCurvaturetoPBO(float4* pbo, float* curvatureMap, int xRes, int
 __host__ void drawNormalVoxelsToPBO(float4* pbo, int* voxels, int pboXRes, int pboYRes, int voxelAzimuthBins, int voxelPolarBins);
 
 __host__ void drawDecoupledHistogramsToPBO(float4* pbo, Int3SOA histograms,  int length, int pboXRes, int pboYRes);
+
+__host__ void drawNormalSegmentsToPBO(float4* pbo, Int3SOA normalSegments, int xRes, int yRes);
