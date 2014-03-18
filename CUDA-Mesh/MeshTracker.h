@@ -25,7 +25,7 @@ using namespace rgbd::framework;
 
 #define MAX_DECOUPLED_PEAKS			8
 #define MAX_PEAK_RANGE				20
-#define MIN_DECOUPLED_PEAK_COUNT	900
+#define MIN_DECOUPLED_PEAK_COUNT	550
 
 enum FilterMode
 {

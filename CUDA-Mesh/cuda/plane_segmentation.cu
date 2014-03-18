@@ -71,7 +71,7 @@ __global__ void ACosHistogramKernel(float* cosineValue, int* histogram, int valu
 
 	if(valueI < valueCount)
 	{
-		float angle = acos(cosineValue[valueI]);
+		float angle = acosf(cosineValue[valueI]);
 
 		if(angle == angle){
 			int histIndex = angle*PI_INV_F*numBins;
@@ -249,7 +249,7 @@ __global__ void segmentNormalsKernel(Float3SOA rawNormals, Int3SOA normalSegment
 			normalComponent = rawNormals.z[normI];
 		}
 
-		float angle = acos(normalComponent);
+		float angle = acosf(normalComponent);
 
 		if(angle == angle){
 			histIndex = angle*PI_INV_F*histSize;
