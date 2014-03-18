@@ -389,7 +389,7 @@ void MeshTracker::GPUDecoupledSegmentation()
 
 	segmentNormals(normals, dev_normalSegments, mXRes, mYRes, 
 		dev_normalDecoupledHistogram, NUM_DECOUPLED_HISTOGRAM_BINS, 
-		dev_normalDecoupledHistogramPeaks, MAX_DECOUPLED_PEAKS);
+		dev_normalDecoupledHistogramPeaks, MAX_DECOUPLED_PEAKS, 15);
 }
 
 void MeshTracker::copyXYNormalsToHost()

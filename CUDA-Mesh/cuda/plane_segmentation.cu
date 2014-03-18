@@ -212,12 +212,11 @@ __host__ void gaussianSubtractionPeakDetection(Int3SOA decoupledHist, Int3SOA pe
 
 
 __global__ void segmentNormalsKernel(Float3SOA rawNormals, Int3SOA normalSegments, int imageWidth, int imageHeight, 
-									 Int3SOA decoupledHistogram, int histSize, Int3SOA peakIndecies, int maxPeaks)
+									 Int3SOA decoupledHistogram, int histSize, Int3SOA peakIndecies, int maxPeaks, int maxDistance)
 {
 	extern __shared__ int s_temp[];
 	int* s_peaks = s_temp;
 	int* s_peaksMax = s_temp + maxPeaks;
-
 
 	if(threadIdx.x < maxPeaks)
 	{
@@ -231,19 +230,70 @@ __global__ void segmentNormalsKernel(Float3SOA rawNormals, Int3SOA normalSegment
 			s_peaks[threadIdx.x] = peakIndecies.z[threadIdx.x];
 			s_peaksMax[threadIdx.x] = (s_peaks[threadIdx.x] < 0)? 0 : decoupledHistogram.z[s_peaks[threadIdx.x]];
 		}
-
 	}
 
 	__syncthreads();
 
+	int histIndex = -1000000;
+	
+	float normalComponent = 0;
+	int normI = threadIdx.x + blockDim.x * blockIdx.x;
+	if(normI < imageWidth*imageHeight)
+	{
+		
+		if(blockIdx.y == 0)	{
+			normalComponent = rawNormals.x[normI];
+		}else if(blockIdx.y == 1){
+			normalComponent = rawNormals.y[normI];
+		}else{
+			normalComponent = rawNormals.z[normI];
+		}
+
+		float angle = acos(normalComponent);
+
+		if(angle == angle){
+			histIndex = angle*PI_INV_F*histSize;
+		}
+
+		int minI = -1;
+		int minDist = maxDistance;
+
+		if(histIndex >= 0)
+		{
+			for(int i = 0; i < maxPeaks; i++)
+			{
+				if(s_peaks[i] < 0)
+					break;
+
+				int dist = s_peaks[i] - histIndex;
+				dist = (dist > 0)?dist:-dist;//ABS value
+
+				if(dist < minDist)
+				{
+					minI = i;
+					minDist = dist;
+				}
+			}
+		}
+
+		if(blockIdx.y == 0)	{
+			normalSegments.x[normI] = minI;
+		}else if(blockIdx.y == 1){
+			normalSegments.y[normI] = minI;
+		}else{
+			normalSegments.z[normI] = minI;
+		}
+	}
 
 }
 
 __host__ void segmentNormals(Float3SOA rawNormals, Int3SOA normalSegments, int imageWidth, int imageHeight, 
 							 Int3SOA decoupledHistogram, int histSize, 
-							 Int3SOA peakIndecies, int maxPeaks)
+							 Int3SOA peakIndecies, int maxPeaks, int maxDistance)
 {
 	int blockLength = 512;
+
+	assert(blockLength >= histSize);
 
 	dim3 threads(blockLength);
 	dim3 blocks((int) ceil(float(imageWidth*imageHeight)/float(blockLength)), 3);
@@ -252,7 +302,7 @@ __host__ void segmentNormals(Float3SOA rawNormals, Int3SOA normalSegments, int i
 
 	segmentNormalsKernel<<<blocks, threads, sharedCount>>>(rawNormals, normalSegments, imageWidth, imageHeight, 
 		decoupledHistogram, histSize, 
-		peakIndecies, maxPeaks);
+		peakIndecies, maxPeaks, maxDistance);
 }
 
 
