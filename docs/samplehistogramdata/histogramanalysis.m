@@ -29,7 +29,7 @@ testZHist = normZHist;
 range = 64;
 %%X histogram
 [peakV peakI] = max(testXHist);
-sigma = 15;
+sigma = 20;
 peaksX = [];
 
 figure
@@ -53,7 +53,7 @@ length(peaksX)
 
 %%Y histogram
 [peakV peakI] = max(testYHist);
-sigma = 15;
+sigma = 20;
 peaksY = [];
 
 figure
@@ -76,7 +76,7 @@ length(peaksY)
 
 %%Z histogram
 [peakV peakI] = max(testZHist);
-sigma = 20;
+sigma = 25;
 peaksZ = [];
 
 figure

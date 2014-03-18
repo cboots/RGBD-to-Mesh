@@ -347,7 +347,7 @@ void MeshTracker::GPUDecoupledSegmentation()
 
 
 	gaussianSubtractionPeakDetection(dev_normalDecoupledHistogram, dev_normalDecoupledHistogramPeaks, 
-		NUM_DECOUPLED_HISTOGRAM_BINS, MAX_DECOUPLED_PEAKS, MIN_DECOUPLED_PEAK_COUNT, glm::vec3(15,15,15));
+		NUM_DECOUPLED_HISTOGRAM_BINS, MAX_DECOUPLED_PEAKS, MIN_DECOUPLED_PEAK_COUNT, glm::vec3(15,15,20));
 
 	//Begin peak debug code
 	Int3SOA peaksCopy;
@@ -389,7 +389,7 @@ void MeshTracker::GPUDecoupledSegmentation()
 
 	segmentNormals(normals, dev_normalSegments, mXRes, mYRes, 
 		dev_normalDecoupledHistogram, NUM_DECOUPLED_HISTOGRAM_BINS, 
-		dev_normalDecoupledHistogramPeaks, MAX_DECOUPLED_PEAKS, 15);
+		dev_normalDecoupledHistogramPeaks, MAX_DECOUPLED_PEAKS, MAX_PEAK_RANGE);
 }
 
 void MeshTracker::copyXYNormalsToHost()
