@@ -15,6 +15,10 @@ __global__ void normalHistogramKernel(float* normX, float* normY, int* histogram
 		{
 			int xI = (x+1.0f)*0.5f*xBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
 			int yI = (y+1.0f)*0.5f*yBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
+			//int xI = acos(x)*PI_INV_F*xBins;
+			//int yI = acos(y)*PI_INV_F*yBins;
+
+
 			atomicAdd(&histogram[yI*xBins + xI], 1);
 		}
 	}
