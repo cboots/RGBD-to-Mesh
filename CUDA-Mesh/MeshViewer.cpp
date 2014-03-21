@@ -80,7 +80,7 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	hairyPoints = false;
 	mSpatialSigma = 2.0f;
 	mDepthSigma = 0.005f;
-	mMaxDepth = 6.0f;
+	mMaxDepth = 5.0f;
 
 	seconds = time (NULL);
 	fpstracker = 0;
@@ -975,7 +975,7 @@ void MeshViewer::display()
 		drawQuad(nmap_prog,		 0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR normal
 		drawQuad(normalsegments_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL color
 		drawQuad(barhistogram_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR bar histogram
-		drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.6,  &texture3, 1);//UL histogram
+		drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture3, 1);//UL histogram
 		break;
 	case DISPLAY_MODE_HISTOGRAM_DEBUG:
 		drawDepthImageBufferToTexture(texture0);
@@ -986,7 +986,7 @@ void MeshViewer::display()
 		drawQuad(depth_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR depth
 		drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0,  &texture1, 1);//LR color
 		drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL normal 
-		drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.6,  &texture3, 1);//UL histogram
+		drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture3, 1);//UL histogram
 		break;
 	case DISPLAY_MODE_NMAP_DEBUG:
 		drawNMaptoTexture(texture0, 0);

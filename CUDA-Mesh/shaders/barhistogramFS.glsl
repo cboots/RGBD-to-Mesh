@@ -17,5 +17,5 @@ void main()
 	
 	FragColor.x = step(1.0-fs_texCoord.y, histogramvalue.x);
 	FragColor.y = step(1.0-fs_texCoord.y, histogramvalue.y);
-	FragColor.z = step(1.0-fs_texCoord.y, histogramvalue.z);
+	//FragColor.z = step(1.0-fs_texCoord.y, histogramvalue.z);
 }

@@ -13,11 +13,13 @@ __global__ void normalHistogramKernel(float* normX, float* normY, int* histogram
 		float y = normY[i];
 		if(x == x && y == y)//Will be false if NaN
 		{
-			int xI = (x+1.0f)*0.5f*xBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
-			int yI = (y+1.0f)*0.5f*yBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
+			//int xI = (x+1.0f)*0.5f*xBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
+			//int yI = (y+1.0f)*0.5f*yBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
 			//int xI = acos(x)*PI_INV_F*xBins;
 			//int yI = acos(y)*PI_INV_F*yBins;
-
+			float azimuth = acosf(x/sqrtf(1-y*y));
+			int xI = azimuth*PI_INV_F*xBins;
+			int yI = acos(y)*PI_INV_F*yBins;
 
 			atomicAdd(&histogram[yI*xBins + xI], 1);
 		}
@@ -239,12 +241,12 @@ __global__ void segmentNormalsKernel(Float3SOA rawNormals, Int3SOA normalSegment
 	__syncthreads();
 
 	int histIndex = -1000000;
-	
+
 	float normalComponent = 0;
 	int normI = threadIdx.x + blockDim.x * blockIdx.x;
 	if(normI < imageWidth*imageHeight)
 	{
-		
+
 		if(blockIdx.y == 0)	{
 			normalComponent = rawNormals.x[normI];
 		}else if(blockIdx.y == 1){
@@ -311,3 +313,4 @@ __host__ void segmentNormals(Float3SOA rawNormals, Int3SOA normalSegments, int i
 
 
 #pragma endregion
+

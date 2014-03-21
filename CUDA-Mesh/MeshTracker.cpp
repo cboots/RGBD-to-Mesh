@@ -339,11 +339,11 @@ void MeshTracker::GPUDecoupledSegmentation()
 {
 	clearHistogram(dev_normalDecoupledHistogram.x, NUM_DECOUPLED_HISTOGRAM_BINS, 1);
 	clearHistogram(dev_normalDecoupledHistogram.y, NUM_DECOUPLED_HISTOGRAM_BINS, 1);
-	clearHistogram(dev_normalDecoupledHistogram.z, NUM_DECOUPLED_HISTOGRAM_BINS, 1);
+	//clearHistogram(dev_normalDecoupledHistogram.z, NUM_DECOUPLED_HISTOGRAM_BINS, 1);
 
 	ACosHistogram(dev_nmapSOA.x[0], dev_normalDecoupledHistogram.x, mXRes*mYRes, NUM_DECOUPLED_HISTOGRAM_BINS);
 	ACosHistogram(dev_nmapSOA.y[0], dev_normalDecoupledHistogram.y, mXRes*mYRes, NUM_DECOUPLED_HISTOGRAM_BINS);
-	ACosHistogram(dev_nmapSOA.z[0], dev_normalDecoupledHistogram.z, mXRes*mYRes, NUM_DECOUPLED_HISTOGRAM_BINS);
+	//ACosHistogram(dev_nmapSOA.z[0], dev_normalDecoupledHistogram.z, mXRes*mYRes, NUM_DECOUPLED_HISTOGRAM_BINS);
 
 
 	gaussianSubtractionPeakDetection(dev_normalDecoupledHistogram, dev_normalDecoupledHistogramPeaks, 
