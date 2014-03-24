@@ -282,7 +282,7 @@ void MeshTracker::buildNMapAverageGradient(int windowRadius)
 
 	//Apply filters to float3
 	//setSeperableKernelUniform();
-	setSeperableKernelGaussian(2.0);
+	setSeperableKernelGaussian(10.0);
 
 	seperableFilter(dev_float3PyramidBuffers[0].x[0], dev_float3PyramidBuffers[0].y[0], dev_float3PyramidBuffers[0].z[0],
 		dev_float3PyramidBuffers[0].x[0], dev_float3PyramidBuffers[0].y[0], dev_float3PyramidBuffers[0].z[0],

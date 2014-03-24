@@ -1,6 +1,6 @@
 #include "seperable_filter.h"
 
-#define SEPERABLE_KERNEL_RADIUS 3
+#define SEPERABLE_KERNEL_RADIUS 5
 #define SEPERABLE_KERNEL_SIZE 	(2*SEPERABLE_KERNEL_RADIUS+1)
 
 __constant__ float cKernel[SEPERABLE_KERNEL_SIZE];
