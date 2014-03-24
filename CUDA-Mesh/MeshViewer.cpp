@@ -73,6 +73,8 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	mWidth = screenwidth;
 	mHeight = screenheight;
 
+	mPauseVisulization = false;
+
 	//Setup default rendering/pipeline settings
 	mFilterMode = BILATERAL_FILTER;
 	mNormalMode = AVERAGE_GRADIENT_NORMALS;
@@ -874,7 +876,6 @@ void MeshViewer::display()
 	title << "RGBD to Mesh Visualization | " << (int)fps  << "FPS";
 	glutSetWindowTitle(title.str().c_str());
 
-	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	//=====Tracker Pipeline=====
 	//Check if log playback has restarted (special edge case)
@@ -942,91 +943,94 @@ void MeshViewer::display()
 
 
 	//=====RENDERING======
-	switch(mViewState)
+	if(!mPauseVisulization)
 	{
-	case DISPLAY_MODE_DEPTH:
-		drawDepthImageBufferToTexture(texture0);
+		glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		switch(mViewState)
+		{
+		case DISPLAY_MODE_DEPTH:
+			drawDepthImageBufferToTexture(texture0);
 
-		drawQuad(depth_prog, 0, 0, 1, 1, 1.0, &texture0, 1);
-		break;
-	case DISPLAY_MODE_IMAGE:
-		drawColorImageBufferToTexture(texture1);
+			drawQuad(depth_prog, 0, 0, 1, 1, 1.0, &texture0, 1);
+			break;
+		case DISPLAY_MODE_IMAGE:
+			drawColorImageBufferToTexture(texture1);
 
-		drawQuad(color_prog, 0, 0, 1, 1, 1.0, &texture1, 1);
-		break;
-	case DISPLAY_MODE_OVERLAY:
-		drawDepthImageBufferToTexture(texture0);
-		drawColorImageBufferToTexture(texture1);
-
-
-		drawQuad(color_prog, 0, 0, 1, 1, 1.0, &texture1, 1);
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);//Alpha blending
-		drawQuad(depth_prog, 0, 0, 1, 1, 1.0, &texture0, 1);
-		glDisable(GL_BLEND);
-		break;
-	case DISPLAY_MODE_HISTOGRAM_COMPARE:
-		drawDecoupledHistogramsToTexture(texture0);
-		drawNMaptoTexture(texture1, 0);
-		drawNormalSegmentsToTexture(texture2);
-		drawNormalHistogramtoTexture(texture3);
+			drawQuad(color_prog, 0, 0, 1, 1, 1.0, &texture1, 1);
+			break;
+		case DISPLAY_MODE_OVERLAY:
+			drawDepthImageBufferToTexture(texture0);
+			drawColorImageBufferToTexture(texture1);
 
 
-		drawQuad(nmap_prog,		 0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR normal
-		drawQuad(normalsegments_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL color
-		drawQuad(barhistogram_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR bar histogram
-		drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture3, 1);//UL histogram
-		break;
-	case DISPLAY_MODE_HISTOGRAM_DEBUG:
-		drawDepthImageBufferToTexture(texture0);
-		drawColorImageBufferToTexture(texture1);
-		drawNMaptoTexture(texture2, 0);
-		drawNormalHistogramtoTexture(texture3);
+			drawQuad(color_prog, 0, 0, 1, 1, 1.0, &texture1, 1);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);//Alpha blending
+			drawQuad(depth_prog, 0, 0, 1, 1, 1.0, &texture0, 1);
+			glDisable(GL_BLEND);
+			break;
+		case DISPLAY_MODE_HISTOGRAM_COMPARE:
+			drawDecoupledHistogramsToTexture(texture0);
+			drawNMaptoTexture(texture1, 0);
+			drawNormalSegmentsToTexture(texture2);
+			drawNormalHistogramtoTexture(texture3);
 
-		drawQuad(depth_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR depth
-		drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0,  &texture1, 1);//LR color
-		drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL normal 
-		drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture3, 1);//UL histogram
-		break;
-	case DISPLAY_MODE_NMAP_DEBUG:
-		drawNMaptoTexture(texture0, 0);
-		drawNMaptoTexture(texture1, 1);
-		drawNMaptoTexture(texture2, 2);
-		drawColorImageBufferToTexture(texture3);
 
-		drawQuad(nmap_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR Level0 NMap
-		drawQuad(nmap_prog,  0.5, -0.5, 0.5, 0.5, 0.5,  &texture1, 1);//LR Level1 NMap
-		drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 NMap
-		drawQuad(color_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL Original depth
-		break;
+			drawQuad(nmap_prog,		 0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR normal
+			drawQuad(normalsegments_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL color
+			drawQuad(barhistogram_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR bar histogram
+			drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture3, 1);//UL histogram
+			break;
+		case DISPLAY_MODE_HISTOGRAM_DEBUG:
+			drawDepthImageBufferToTexture(texture0);
+			drawColorImageBufferToTexture(texture1);
+			drawNMaptoTexture(texture2, 0);
+			drawNormalHistogramtoTexture(texture3);
 
-	case DISPLAY_MODE_VMAP_DEBUG:
-		drawVMaptoTexture(texture0, 0);
-		drawVMaptoTexture(texture1, 1);
-		drawVMaptoTexture(texture2, 2);
-		drawDepthImageBufferToTexture(texture3);
+			drawQuad(depth_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR depth
+			drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0,  &texture1, 1);//LR color
+			drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL normal 
+			drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture3, 1);//UL histogram
+			break;
+		case DISPLAY_MODE_NMAP_DEBUG:
+			drawNMaptoTexture(texture0, 0);
+			drawNMaptoTexture(texture1, 1);
+			drawNMaptoTexture(texture2, 2);
+			drawColorImageBufferToTexture(texture3);
 
-		drawQuad(vmap_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR Level0 VMap
-		drawQuad(vmap_prog,  0.5, -0.5, 0.5, 0.5, 0.5,  &texture1, 1);//LR Level1 VMap
-		drawQuad(vmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 VMap
-		drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL Original depth
-		break;
-	case DISPLAY_MODE_CURVATURE_DEBUG:
+			drawQuad(nmap_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR Level0 NMap
+			drawQuad(nmap_prog,  0.5, -0.5, 0.5, 0.5, 0.5,  &texture1, 1);//LR Level1 NMap
+			drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 NMap
+			drawQuad(color_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL Original depth
+			break;
 
-		drawDepthImageBufferToTexture(texture0);
-		drawColorImageBufferToTexture(texture1);
-		drawNMaptoTexture(texture2, 0);
-		drawCurvaturetoTexture(texture3);
+		case DISPLAY_MODE_VMAP_DEBUG:
+			drawVMaptoTexture(texture0, 0);
+			drawVMaptoTexture(texture1, 1);
+			drawVMaptoTexture(texture2, 2);
+			drawDepthImageBufferToTexture(texture3);
 
-		drawQuad(depth_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR depth
-		drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0,  &texture1, 1);//LR color
-		drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL normal 
-		drawQuad(curvemap_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL curvature
-		break;
+			drawQuad(vmap_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR Level0 VMap
+			drawQuad(vmap_prog,  0.5, -0.5, 0.5, 0.5, 0.5,  &texture1, 1);//LR Level1 VMap
+			drawQuad(vmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 VMap
+			drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL Original depth
+			break;
+		case DISPLAY_MODE_CURVATURE_DEBUG:
+
+			drawDepthImageBufferToTexture(texture0);
+			drawColorImageBufferToTexture(texture1);
+			drawNMaptoTexture(texture2, 0);
+			drawCurvaturetoTexture(texture3);
+
+			drawQuad(depth_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR depth
+			drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0,  &texture1, 1);//LR color
+			drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL normal 
+			drawQuad(curvemap_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL curvature
+			break;
+		}
+
+		glutSwapBuffers();
 	}
-
-	glutSwapBuffers();
-
 }
 
 #pragma region OpenGL Callbacks
@@ -1091,6 +1095,14 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 			device->restartPlayback();
 		}
 
+		break;
+	case 'P':
+		mPauseVisulization = !mPauseVisulization;
+
+		if(mPauseVisulization)
+			cout << "Pause Visualization" << endl;
+		else
+			cout << "Resume Visualization" << endl;
 		break;
 	case '=':
 		device = dynamic_cast<LogDevice*>(mDevice);
@@ -1251,7 +1263,7 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 			delete xHist;
 			delete yHist;
 			delete zHist;
-			
+
 			cout << "Current Decoupled Histogram Saved to file" <<endl;
 		}
 		break;

@@ -106,6 +106,9 @@ private:
 	DPixelArray mDepthArray;
 	timestamp mLatestTime;
 	timestamp mLastSubmittedTime;
+
+	bool mPauseVisulization;
+
 	//FPS Tracking
 	time_t seconds;
 	int fpstracker;
