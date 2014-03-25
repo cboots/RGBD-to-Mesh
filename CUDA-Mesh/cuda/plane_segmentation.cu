@@ -322,37 +322,36 @@ __global__ void normalHistogramPrimaryPeakDetectionKernel(int* histogram, int xB
 {	
 	extern __shared__ int s_temp[];
 	int* s_hist = s_temp;
-	int* s_max = s_hist + (xBins+1)*yBins;
+	int* s_max = s_hist + xBins*yBins;
 	int* s_maxI = s_max + (xBins*yBins)/2;
 
 	int index = threadIdx.x + threadIdx.y*xBins;
-	int hist_index = threadIdx.x + threadIdx.y*(xBins+1);
 	//Load histogram
-	s_hist[hist_index] = histogram[index];
+	s_hist[index] = histogram[index];
 	__syncthreads();
 
 
 	//Find local maxima
 	bool localMax = false;
 
-	if(s_hist[hist_index] > minPeakHeight)
+	if(s_hist[index] > minPeakHeight)
 	{
 		localMax = true;
 		if(threadIdx.x > 0)
-			if(s_hist[hist_index - 1] > s_hist[hist_index])
+			if(s_hist[index - 1] > s_hist[index])
 				localMax = false;
 
 
 		if(threadIdx.x < xBins-1)
-			if(s_hist[hist_index + 1] > s_hist[hist_index])
+			if(s_hist[index + 1] > s_hist[index])
 				localMax = false;
 
 		if(threadIdx.y > 0)
-			if(s_hist[hist_index - (xBins+1)] > s_hist[hist_index])
+			if(s_hist[index - xBins] > s_hist[index])
 				localMax = false;
 
 		if(threadIdx.y > yBins-1)
-			if(s_hist[hist_index + (xBins+1)] > s_hist[hist_index])
+			if(s_hist[index + xBins] > s_hist[index])
 				localMax = false;
 	}
 
@@ -370,7 +369,7 @@ __global__ void normalHistogramPrimaryPeakDetectionKernel(int* histogram, int xB
 				int ty = threadIdx.y + y;
 				if(tx >= 0 && tx < xBins && ty >= 0 && ty < yBins)
 				{
-					int binCount = s_hist[tx + ty*(xBins+1)];
+					int binCount = s_hist[tx + ty*xBins];
 					totalCount += binCount;
 					xPos += binCount*tx;
 					yPos += binCount*ty;
@@ -388,7 +387,7 @@ __global__ void normalHistogramPrimaryPeakDetectionKernel(int* histogram, int xB
 
 	if(!localMax)
 	{
-		s_hist[hist_index] = 0;//clear all non-local max histograms
+		s_hist[index] = 0;//clear all non-local max histograms
 		histogram[index] = 0;
 	}
 	__syncthreads();
@@ -403,12 +402,12 @@ __global__ void normalHistogramPrimaryPeakDetectionKernel(int* histogram, int xB
 		//========Compute maximum=======
 		//First step loads from main hist, so do outside loop
 		int halfpoint = histLength >> 1;
-		int thread2 = threadIdx.x + (threadIdx.y+yBins/2)*(xBins+1);
+		int thread2 = index + halfpoint;
 		if(index < halfpoint)
 		{
 			int temp = s_hist[thread2];
-			bool leftSmaller = (s_hist[hist_index] < temp);
-			s_max[index] = leftSmaller?temp:s_hist[hist_index];
+			bool leftSmaller = (s_hist[index] < temp);
+			s_max[index] = leftSmaller?temp:s_hist[index];
 			s_maxI[index] = leftSmaller?thread2:index;
 		}
 		__syncthreads();
@@ -454,7 +453,7 @@ __host__ void normalHistogramPrimaryPeakDetection(int* histogram, int xBins, int
 	dim3 threads(xBins, yBins);
 	dim3 blocks(1);
 
-	int sharedMem = (xBins+1)*yBins*sizeof(int)+xBins*yBins*sizeof(int);
+	int sharedMem = xBins*yBins*2*sizeof(int);
 
 	normalHistogramPrimaryPeakDetectionKernel<<<blocks,threads,sharedMem>>>(histogram, xBins, yBins, peaks, 
 		maxPeaks, exclusionRadius, minPeakHeight);
