@@ -2,6 +2,7 @@
 
 //Generic includes
 #include "Utils.h"
+#include "CudaUtils.h"
 
 //CUDA GL Includes
 #include "cuda_runtime.h"

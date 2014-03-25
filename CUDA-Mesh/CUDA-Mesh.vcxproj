@@ -163,12 +163,14 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="CudaUtils.cpp" />
     <ClCompile Include="glslUtility.cpp" />
     <ClCompile Include="MeshTracker.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MeshViewer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CudaUtils.h" />
     <ClInclude Include="cuda\array_ops.h" />
     <ClInclude Include="cuda\debug_rendering.h" />
     <ClInclude Include="cuda\gradient.h" />

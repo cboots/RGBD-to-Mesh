@@ -332,16 +332,27 @@ void MeshTracker::CPUSimpleSegmentation()
 	}
 }
 
+
 void MeshTracker::GPUSimpleSegmentation()
 {
+	
+
 	clearHistogram(dev_normalVoxels, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS);
 	computeNormalHistogram(dev_nmapSOA.x[0], dev_nmapSOA.y[0], dev_normalVoxels, mXRes, mYRes, 
 		NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS);
-
+	
 	normalHistogramPrimaryPeakDetection(dev_normalVoxels, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS, 
 		dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND,  PEAK_2D_EXCLUSION_RADIUS, MIN_2D_PEAK_COUNT);
+	
+	Float3SOA normals;
+	normals.x = dev_nmapSOA.x[0];
+	normals.y = dev_nmapSOA.y[0];
+	normals.z = dev_nmapSOA.z[0];
+	segmentNormals2D(normals, dev_normalSegments, mXRes, mYRes, 
+		dev_normalVoxels, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS, 
+		dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND, 10.0f*PI/180.0f);
 
-
+	 //Debug
 	Float3SOA peaksCopy;
 	peaksCopy.x = new float[MAX_2D_PEAKS_PER_ROUND*3];
 	peaksCopy.y = peaksCopy.x + MAX_2D_PEAKS_PER_ROUND;
@@ -372,6 +383,7 @@ void MeshTracker::GPUSimpleSegmentation()
 
 
 	delete peaksCopy.x;
+
 
 }
 

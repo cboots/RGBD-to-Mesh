@@ -399,7 +399,7 @@ __global__ void normalHistogramPrimaryPeakDetectionKernel(int* histogram, int xB
 	int histLength = xBins*yBins;
 	for(int peakNum = 0; peakNum < maxPeaks; ++peakNum)
 	{
-		
+
 #pragma region Maximum Finder
 		//========Compute maximum=======
 		//First step loads from main hist, so do outside loop
@@ -434,7 +434,7 @@ __global__ void normalHistogramPrimaryPeakDetectionKernel(int* histogram, int xB
 
 
 		//s_maxI[0] now holds the maximum index
-		
+
 		if(s_max[0] < minPeakHeight)
 		{
 			//Fill remaining slots with -1
@@ -487,5 +487,89 @@ __host__ void normalHistogramPrimaryPeakDetection(int* histogram, int xBins, int
 	normalHistogramPrimaryPeakDetectionKernel<<<blocks,threads,sharedMem>>>(histogram, xBins, yBins, peaks, 
 		maxPeaks, exclusionRadius, minPeakHeight);
 }
+
+#pragma endregion
+
+#pragma region Segmentation Two-D
+
+__global__ void segmentNormals2DKernel(Float3SOA rawNormals, Int3SOA normalSegments, int imageWidth, int imageHeight, 
+									   int* histogram, int xBins, int yBins, 
+									   Float3SOA peaks, int maxPeaks, float maxAngleRange)
+{
+	extern __shared__ float s_mem[];
+	float* s_peaksX = s_mem;
+	float* s_peaksY = s_peaksX + maxPeaks;
+	float* s_peaksZ = s_peaksY + maxPeaks;
+
+	int index = threadIdx.x + blockIdx.x*blockDim.x;
+
+	if(threadIdx.x < maxPeaks)
+	{
+		float xi = peaks.x[threadIdx.x];
+		float yi = peaks.y[threadIdx.x];
+		float x = 0;
+		float y = 0;
+		float z = 0;
+
+		if(xi < 0 || yi < 0){
+			y = cosf(PI*yi/float(yBins));
+			x = cosf(PI*xi/float(xBins)) * sqrtf(1-y*y);
+			z = 1.0f-sqrtf(x*x+y*y);
+		}
+
+		s_peaksX[threadIdx.x] = x;
+		s_peaksY[threadIdx.x] = y;
+		s_peaksZ[threadIdx.x] = z;
+	}
+
+	__syncthreads();
+
+
+	if(index < imageWidth*imageHeight)
+	{
+
+		glm::vec3 normal = glm::vec3(rawNormals.x[index], rawNormals.y[index], rawNormals.z[index]);
+		int bestPeak = -1;
+		if(normal.x == normal.x && normal.y == normal.y && normal.z == normal.z)
+		{
+			//normal is valid
+			for(int peakNum = 0; peakNum < maxPeaks; ++peakNum)
+			{
+				float angle = acosf(normal.x*s_peaksX[peakNum] + normal.y*s_peaksY[peakNum] + normal.z*s_peaksZ[peakNum]);
+
+				if(angle < maxAngleRange)
+				{
+					bestPeak = peakNum;
+					break;
+				}
+			}
+		}
+
+
+
+		normalSegments.x[index] = bestPeak;
+		normalSegments.y[index] = bestPeak;
+		normalSegments.z[index] = bestPeak;
+	}
+
+}
+
+__host__ void segmentNormals2D(Float3SOA rawNormals, Int3SOA normalSegments, int imageWidth, int imageHeight, 
+							   int* histogram, int xBins, int yBins, 
+							   Float3SOA peaks, int maxPeaks, float maxAngleRange)
+{
+	int blockLength = 512;
+	assert(blockLength > maxPeaks);
+
+	dim3 blocks((int) ceil(float(imageWidth*imageHeight)/float(blockLength)));
+	dim3 threads(blockLength);
+
+	int sharedCount = sizeof(float)*(3 * maxPeaks);
+
+	segmentNormals2DKernel<<<blocks, threads, sharedCount>>>(rawNormals, normalSegments, imageWidth, imageHeight, 
+		histogram, xBins, yBins,
+		peaks, maxPeaks, maxAngleRange);
+}
+
 
 #pragma endregion

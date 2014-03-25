@@ -877,6 +877,9 @@ void MeshViewer::display()
 	title << "RGBD to Mesh Visualization | " << (int)fps  << "FPS";
 	glutSetWindowTitle(title.str().c_str());
 
+	
+	cudaDeviceSynchronize();
+	checkCUDAError("Error");
 
 	//=====Tracker Pipeline=====
 	//Check if log playback has restarted (special edge case)
