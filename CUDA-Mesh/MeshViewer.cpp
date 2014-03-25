@@ -78,6 +78,7 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	//Setup default rendering/pipeline settings
 	mFilterMode = BILATERAL_FILTER;
 	mNormalMode = AVERAGE_GRADIENT_NORMALS;
+	mSegmentationMode = GPU_SIMPLE_SEGMENTATION;
 	mViewState = DISPLAY_MODE_OVERLAY;
 	hairyPoints = false;
 	mSpatialSigma = 2.0f;
@@ -936,9 +937,15 @@ void MeshViewer::display()
 		//Launch kernels for subsampling
 		mMeshTracker->subsamplePyramids();
 
-		mMeshTracker->GPUSimpleSegmentation();
-		mMeshTracker->GPUDecoupledSegmentation();
-
+		switch(mSegmentationMode)
+		{
+		case GPU_SIMPLE_SEGMENTATION:
+			mMeshTracker->GPUSimpleSegmentation();
+			break;
+		case GPU_DECOUPLED_SEGMENTATION:
+			mMeshTracker->GPUDecoupledSegmentation();
+			break;
+		}
 	}//=====End of pipeline code=====
 
 
@@ -986,7 +993,7 @@ void MeshViewer::display()
 			drawColorImageBufferToTexture(texture1);
 			drawNMaptoTexture(texture2, 0);
 			drawNormalHistogramtoTexture(texture0);
-			
+
 			drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture0, 1);//UL histogram
 			drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0,  &texture1, 1);//LR color
 			drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL normal 

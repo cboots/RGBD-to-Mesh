@@ -436,7 +436,16 @@ __global__ void normalHistogramPrimaryPeakDetectionKernel(int* histogram, int xB
 		//s_maxI[0] now holds the maximum index
 		
 		if(s_max[0] < minPeakHeight)
+		{
+			//Fill remaining slots with -1
+			if(index >= peakNum && index < maxPeaks)
+			{
+				peaks.x[index] = -1;
+				peaks.y[index] = -1;
+				peaks.z[index] = -1;
+			}
 			break;
+		}
 
 		if(s_maxI[0] == index)
 		{

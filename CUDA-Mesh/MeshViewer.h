@@ -56,6 +56,13 @@ enum NormalMode
 	PCA_NORMALS
 };
 
+
+enum SegementationMode
+{
+	GPU_SIMPLE_SEGMENTATION,
+	GPU_DECOUPLED_SEGMENTATION
+};
+		
 class MeshViewer : public RGBDDevice::NewRGBDFrameListener
 {
 public:
@@ -118,6 +125,7 @@ private:
 #pragma region Pipeline Options
 	FilterMode mFilterMode;
 	NormalMode mNormalMode;
+	SegementationMode mSegmentationMode;
 	float mSpatialSigma;
 	float mDepthSigma;
 	float mMaxDepth;
