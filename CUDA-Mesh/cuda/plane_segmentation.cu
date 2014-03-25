@@ -13,13 +13,13 @@ __global__ void normalHistogramKernel(float* normX, float* normY, int* histogram
 		float y = normY[i];
 		if(x == x && y == y)//Will be false if NaN
 		{
-			//int xI = (x+1.0f)*0.5f*xBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
-			//int yI = (y+1.0f)*0.5f*yBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
+			int xI = (x+1.0f)*0.5f*xBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
+			int yI = (y+1.0f)*0.5f*yBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
 			//int xI = acos(x)*PI_INV_F*xBins;
 			//int yI = acos(y)*PI_INV_F*yBins;
-			float azimuth = acosf(x/sqrtf(1-y*y));
-			int xI = azimuth*PI_INV_F*xBins;
-			int yI = acos(y)*PI_INV_F*yBins;
+			//float azimuth = acosf(x/sqrtf(1-y*y));
+			//int xI = azimuth*PI_INV_F*xBins;
+			//int yI = acos(y)*PI_INV_F*yBins;
 
 			atomicAdd(&histogram[yI*xBins + xI], 1);
 		}
@@ -451,7 +451,7 @@ __global__ void normalHistogramPrimaryPeakDetectionKernel(int* histogram, int xB
 		{
 			peaks.x[peakNum] = xPos;
 			peaks.y[peakNum] = yPos;
-			peaks.z[peakNum] = totalCount;
+			peaks.z[peakNum] = s_hist[index];
 			//DEBUG
 			histogram[index] = -(peakNum+1);
 		}
@@ -507,14 +507,19 @@ __global__ void segmentNormals2DKernel(Float3SOA rawNormals, Int3SOA normalSegme
 	{
 		float xi = peaks.x[threadIdx.x];
 		float yi = peaks.y[threadIdx.x];
-		float x = 0;
-		float y = 0;
-		float z = 0;
+		float x = 0.0f;
+		float y = 0.0f;
+		float z = 0.0f;
 
-		if(xi < 0 || yi < 0){
+		if(xi >= 0.0f && yi >= 0.0f){
+			/*
 			y = cosf(PI*yi/float(yBins));
-			x = cosf(PI*xi/float(xBins)) * sqrtf(1-y*y);
-			z = 1.0f-sqrtf(x*x+y*y);
+			x = cosf(PI*xi/float(xBins)) * sqrtf(1.0f-y*y);
+			z = sqrtf(1.0f-x*x+y*y);
+			*/
+			x = (xi/float(xBins))*2.0f-1.0f;
+			y = (yi/float(yBins))*2.0f-1.0f;
+			z = sqrtf(1.0f-x*x-y*y);
 		}
 
 		s_peaksX[threadIdx.x] = x;
@@ -535,7 +540,8 @@ __global__ void segmentNormals2DKernel(Float3SOA rawNormals, Int3SOA normalSegme
 			//normal is valid
 			for(int peakNum = 0; peakNum < maxPeaks; ++peakNum)
 			{
-				float angle = acosf(normal.x*s_peaksX[peakNum] + normal.y*s_peaksY[peakNum] + normal.z*s_peaksZ[peakNum]);
+				float dotprod = normal.x*s_peaksX[peakNum] + normal.y*s_peaksY[peakNum] + normal.z*s_peaksZ[peakNum];
+				float angle = acosf(dotprod);
 
 				if(angle < maxAngleRange)
 				{

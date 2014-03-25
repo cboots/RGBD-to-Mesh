@@ -359,7 +359,7 @@ void MeshTracker::GPUSimpleSegmentation()
 		dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND, 10.0f*PI/180.0f);
 
 	 //Debug
-	/*
+	
 	Float3SOA peaksCopy;
 	peaksCopy.x = new float[MAX_2D_PEAKS_PER_ROUND*3];
 	peaksCopy.y = peaksCopy.x + MAX_2D_PEAKS_PER_ROUND;
@@ -390,7 +390,7 @@ void MeshTracker::GPUSimpleSegmentation()
 
 
 	delete peaksCopy.x;
-	*/
+	
 
 }
 
