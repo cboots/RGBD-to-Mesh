@@ -19,3 +19,6 @@ __host__ void gaussianSubtractionPeakDetection(Int3SOA decoupledHist, Int3SOA pe
 
 __host__ void segmentNormals(Float3SOA rawNormals, Int3SOA normalSegments, int imageWidth, int imageHeight, 
 							 Int3SOA decoupledHistogram, int histSize, Int3SOA peakIndecies, int maxPeaks, int maxDistance);
+
+__host__ void normalHistogramPrimaryPeakDetection(int* histogram, int xBins, int yBins, Float3SOA peaks, int maxPeaks, 
+												  int exclusionRadius, int minPeakHeight);

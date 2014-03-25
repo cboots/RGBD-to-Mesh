@@ -18,7 +18,7 @@ using namespace rgbd::framework;
 #define NUM_FLOAT1_PYRAMID_BUFFERS 10
 #define NUM_FLOAT3_PYRAMID_BUFFERS 5
 
-#define NUM_NORMAL_X_SUBDIVISIONS	32
+#define NUM_NORMAL_X_SUBDIVISIONS		32
 #define NUM_NORMAL_Y_SUBDIVISIONS		32
 
 #define NUM_DECOUPLED_HISTOGRAM_BINS	256
@@ -26,6 +26,12 @@ using namespace rgbd::framework;
 #define MAX_DECOUPLED_PEAKS			8
 #define MAX_PEAK_RANGE				20
 #define MIN_DECOUPLED_PEAK_COUNT	550
+
+
+#define MAX_2D_PEAKS_PER_ROUND		8
+#define MIN_2D_PEAK_COUNT			500
+#define PEAK_2D_EXCLUSION_RADIUS	2
+
 
 enum FilterMode
 {
@@ -72,6 +78,7 @@ private:
 	Int3SOA dev_normalDecoupledHistogramPeaks;
 
 	Int3SOA dev_normalSegments;
+	Float3SOA dev_normalPeaks;
 
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
 	Float1SOAPyramid dev_float1PyramidBuffers[NUM_FLOAT1_PYRAMID_BUFFERS];
@@ -132,7 +139,6 @@ public:
 	void subsamplePyramids();
 
 	void GPUDecoupledSegmentation();
-	
 #pragma endregion
 
 #pragma region Buffer getters

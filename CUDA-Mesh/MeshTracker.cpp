@@ -52,8 +52,10 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 	//Decoupled voxels:
 	createInt3SOA(dev_normalDecoupledHistogram, NUM_DECOUPLED_HISTOGRAM_BINS);
 	createInt3SOA(dev_normalDecoupledHistogramPeaks, MAX_DECOUPLED_PEAKS);
-	
+
 	createInt3SOA(dev_normalSegments, xRes*yRes);
+
+	createFloat3SOA(dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND);
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -93,6 +95,8 @@ void MeshTracker::cleanupBuffers()
 	freeInt3SOA(dev_normalDecoupledHistogram);
 	freeInt3SOA(dev_normalDecoupledHistogramPeaks);
 	freeInt3SOA(dev_normalSegments);
+
+	freeFloat3SOA(dev_normalPeaks);
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -331,7 +335,44 @@ void MeshTracker::CPUSimpleSegmentation()
 void MeshTracker::GPUSimpleSegmentation()
 {
 	clearHistogram(dev_normalVoxels, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS);
-	computeNormalHistogram(dev_nmapSOA.x[0], dev_nmapSOA.y[0], dev_normalVoxels, mXRes, mYRes, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS);
+	computeNormalHistogram(dev_nmapSOA.x[0], dev_nmapSOA.y[0], dev_normalVoxels, mXRes, mYRes, 
+		NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS);
+
+	normalHistogramPrimaryPeakDetection(dev_normalVoxels, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS, 
+		dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND,  PEAK_2D_EXCLUSION_RADIUS, MIN_2D_PEAK_COUNT);
+
+
+	Float3SOA peaksCopy;
+	peaksCopy.x = new float[MAX_2D_PEAKS_PER_ROUND*3];
+	peaksCopy.y = peaksCopy.x + MAX_2D_PEAKS_PER_ROUND;
+	peaksCopy.z = peaksCopy.y + MAX_2D_PEAKS_PER_ROUND;
+
+	cudaMemcpy(peaksCopy.x, dev_normalPeaks.x, MAX_2D_PEAKS_PER_ROUND*3*sizeof(float), cudaMemcpyDeviceToHost);
+
+	cout << "X Peaks: ";
+	for(int i = 0; i < MAX_2D_PEAKS_PER_ROUND; ++i){
+	if(peaksCopy.x[i] >= 0)
+	cout << peaksCopy.x[i] << ',';
+	}
+	cout << endl;
+
+	cout << "Y Peaks: ";
+	for(int i = 0; i < MAX_2D_PEAKS_PER_ROUND; ++i){
+	if(peaksCopy.y[i] >= 0)
+	cout << peaksCopy.y[i] << ',';
+	}
+	cout << endl;
+
+	cout << "Z Peaks: ";
+	for(int i = 0; i < MAX_2D_PEAKS_PER_ROUND; ++i){
+	if(peaksCopy.z[i] >= 0)
+	cout << peaksCopy.z[i] << ',';
+	}
+	cout << endl;
+
+
+	delete peaksCopy.x;
+
 }
 
 
@@ -349,6 +390,7 @@ void MeshTracker::GPUDecoupledSegmentation()
 	gaussianSubtractionPeakDetection(dev_normalDecoupledHistogram, dev_normalDecoupledHistogramPeaks, 
 		NUM_DECOUPLED_HISTOGRAM_BINS, MAX_DECOUPLED_PEAKS, MIN_DECOUPLED_PEAK_COUNT, glm::vec3(15,15,20));
 
+	/*
 	//Begin peak debug code
 	Int3SOA peaksCopy;
 	peaksCopy.x = new int[MAX_DECOUPLED_PEAKS*3];
@@ -359,22 +401,22 @@ void MeshTracker::GPUDecoupledSegmentation()
 
 	cout << "X Peaks: ";
 	for(int i = 0; i < MAX_DECOUPLED_PEAKS; ++i){
-		if(peaksCopy.x[i] >= 0)
-			cout << peaksCopy.x[i] << ',';
+	if(peaksCopy.x[i] >= 0)
+	cout << peaksCopy.x[i] << ',';
 	}
 	cout << endl;
 
 	cout << "Y Peaks: ";
 	for(int i = 0; i < MAX_DECOUPLED_PEAKS; ++i){
-		if(peaksCopy.y[i] >= 0)
-			cout << peaksCopy.y[i] << ',';
+	if(peaksCopy.y[i] >= 0)
+	cout << peaksCopy.y[i] << ',';
 	}
 	cout << endl;
 
 	cout << "Z Peaks: ";
 	for(int i = 0; i < MAX_DECOUPLED_PEAKS; ++i){
-		if(peaksCopy.z[i] >= 0)
-			cout << peaksCopy.z[i] << ',';
+	if(peaksCopy.z[i] >= 0)
+	cout << peaksCopy.z[i] << ',';
 	}
 	cout << endl;
 
@@ -382,6 +424,8 @@ void MeshTracker::GPUDecoupledSegmentation()
 	delete peaksCopy.x;
 
 	//END DEBUG PRINT
+	*/
+
 	Float3SOA normals;
 	normals.x = dev_nmapSOA.x[0];
 	normals.y = dev_nmapSOA.y[0];

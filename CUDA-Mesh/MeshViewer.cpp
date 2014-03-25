@@ -309,8 +309,8 @@ void MeshViewer::initTextures()
 	//Setup Texture 0
 	glBindTexture(GL_TEXTURE_2D, texture0);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
@@ -970,27 +970,27 @@ void MeshViewer::display()
 			glDisable(GL_BLEND);
 			break;
 		case DISPLAY_MODE_HISTOGRAM_COMPARE:
-			drawDecoupledHistogramsToTexture(texture0);
+			drawNormalHistogramtoTexture(texture0);
 			drawNMaptoTexture(texture1, 0);
 			drawNormalSegmentsToTexture(texture2);
-			drawNormalHistogramtoTexture(texture3);
+			drawDecoupledHistogramsToTexture(texture3);
 
 
 			drawQuad(nmap_prog,		 0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR normal
 			drawQuad(normalsegments_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL color
-			drawQuad(barhistogram_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR bar histogram
-			drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture3, 1);//UL histogram
+			drawQuad(barhistogram_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture3, 1);//UR bar histogram
+			drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture0, 1);//UL histogram
 			break;
 		case DISPLAY_MODE_HISTOGRAM_DEBUG:
-			drawDepthImageBufferToTexture(texture0);
+			drawDepthImageBufferToTexture(texture3);
 			drawColorImageBufferToTexture(texture1);
 			drawNMaptoTexture(texture2, 0);
-			drawNormalHistogramtoTexture(texture3);
-
-			drawQuad(depth_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR depth
+			drawNormalHistogramtoTexture(texture0);
+			
+			drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture0, 1);//UL histogram
 			drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0,  &texture1, 1);//LR color
 			drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL normal 
-			drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture3, 1);//UL histogram
+			drawQuad(depth_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture3, 1);//UR depth
 			break;
 		case DISPLAY_MODE_NMAP_DEBUG:
 			drawNMaptoTexture(texture0, 0);
