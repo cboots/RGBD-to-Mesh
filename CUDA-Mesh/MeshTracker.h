@@ -8,6 +8,7 @@
 #include "gradient.h"
 #include "seperable_filter.h"
 #include "Utils.h"
+#include "CudaUtils.h"
 #include "plane_segmentation.h"
 #include <iostream>
 

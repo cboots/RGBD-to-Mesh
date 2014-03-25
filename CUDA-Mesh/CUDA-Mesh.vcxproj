@@ -111,6 +111,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <CudaCompile>
       <Include>cuda</Include>
       <CodeGeneration>compute_20,sm_20</CodeGeneration>
+      <MaxRegCount>32</MaxRegCount>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">

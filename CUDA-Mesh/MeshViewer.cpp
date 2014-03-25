@@ -877,9 +877,9 @@ void MeshViewer::display()
 	title << "RGBD to Mesh Visualization | " << (int)fps  << "FPS";
 	glutSetWindowTitle(title.str().c_str());
 
-	
+
 	cudaDeviceSynchronize();
-	checkCUDAError("Error");
+	checkCUDAError("Loop Error Clear");
 
 	//=====Tracker Pipeline=====
 	//Check if log playback has restarted (special edge case)
@@ -922,6 +922,8 @@ void MeshViewer::display()
 
 		}
 
+		cudaDeviceSynchronize();
+		checkCUDAError("VMap Generation");
 		switch(mNormalMode)
 		{
 		case SIMPLE_NORMALS:
@@ -937,8 +939,14 @@ void MeshViewer::display()
 			break;
 		}
 
+		cudaDeviceSynchronize();
+		checkCUDAError("NMapGeneration");
+
 		//Launch kernels for subsampling
 		mMeshTracker->subsamplePyramids();
+
+		cudaDeviceSynchronize();
+		checkCUDAError("SubSampling");
 
 		switch(mSegmentationMode)
 		{
@@ -949,6 +957,10 @@ void MeshViewer::display()
 			mMeshTracker->GPUDecoupledSegmentation();
 			break;
 		}
+
+
+		cudaDeviceSynchronize();
+		checkCUDAError("Segmentation");
 	}//=====End of pipeline code=====
 
 
