@@ -388,7 +388,9 @@ __global__ void normalHistogramPrimaryPeakDetectionKernel(int* histogram, int xB
 	if(!localMax)
 	{
 		s_hist[index] = 0;//clear all non-local max histograms
-		histogram[index] = 0;
+
+		//DEBUG
+		//histogram[index] = 0;
 	}
 	__syncthreads();
 	//Preprocessing complete
@@ -429,13 +431,31 @@ __global__ void normalHistogramPrimaryPeakDetectionKernel(int* histogram, int xB
 		//========Compute maximum End=======
 #pragma endregion
 
-		//s_maxI[0] now holds the maximum
+
+
+		//s_maxI[0] now holds the maximum index
+		
+		if(s_max[0] < minPeakHeight)
+			break;
+
 		if(s_maxI[0] == index)
 		{
 			peaks.x[peakNum] = xPos;
 			peaks.y[peakNum] = yPos;
 			peaks.z[peakNum] = totalCount;
+			//DEBUG
+			histogram[index] = -(peakNum+1);
 		}
+
+		//Distance to max
+		int dx = (s_maxI[0] % xBins) - threadIdx.x;
+		int dy = (s_maxI[0] / yBins) - threadIdx.y;
+
+		if(dx*dx+dy*dy < exclusionRadius*exclusionRadius)
+		{
+			s_hist[index] = 0;
+		}
+
 
 		__syncthreads();
 	}

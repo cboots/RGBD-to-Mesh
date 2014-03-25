@@ -30,7 +30,7 @@ using namespace rgbd::framework;
 
 #define MAX_2D_PEAKS_PER_ROUND		8
 #define MIN_2D_PEAK_COUNT			500
-#define PEAK_2D_EXCLUSION_RADIUS	2
+#define PEAK_2D_EXCLUSION_RADIUS	5
 
 
 enum FilterMode
