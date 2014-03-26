@@ -984,27 +984,25 @@ void MeshViewer::display()
 			glDisable(GL_BLEND);
 			break;
 		case DISPLAY_MODE_HISTOGRAM_COMPARE:
-			drawNormalHistogramtoTexture(texture0);
+
+			switch(mSegmentationMode)
+			{
+			case GPU_SIMPLE_SEGMENTATION:
+				drawNormalHistogramtoTexture(texture0);
+				drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture0, 1);//UL histogram
+				break;
+			case GPU_DECOUPLED_SEGMENTATION:
+				drawDecoupledHistogramsToTexture(texture0);
+				drawQuad(barhistogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture0, 1);//UL histogram
+				break;
+			}
+
 			drawNMaptoTexture(texture1, 0);
 			drawNormalSegmentsToTexture(texture2);
-			drawDecoupledHistogramsToTexture(texture3);
-
-
-			drawQuad(nmap_prog,		 0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR normal
-			drawQuad(normalsegments_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL color
-			drawQuad(barhistogram_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture3, 1);//UR bar histogram
-			drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture0, 1);//UL histogram
-			break;
-		case DISPLAY_MODE_HISTOGRAM_DEBUG:
-			drawDepthImageBufferToTexture(texture3);
-			drawColorImageBufferToTexture(texture1);
-			drawNMaptoTexture(texture2, 0);
-			drawNormalHistogramtoTexture(texture0);
-
-			drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture0, 1);//UL histogram
-			drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0,  &texture1, 1);//LR color
-			drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL normal 
-			drawQuad(depth_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture3, 1);//UR depth
+			drawColorImageBufferToTexture(texture3);
+			drawQuad(nmap_prog,		 0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR
+			drawQuad(normalsegments_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL
+			drawQuad(color_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture3, 1);//UR
 			break;
 		case DISPLAY_MODE_NMAP_DEBUG:
 			drawNMaptoTexture(texture0, 0);
@@ -1085,9 +1083,6 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		break;
 	case '4':
 		mViewState = DISPLAY_MODE_HISTOGRAM_COMPARE;
-		break;
-	case '5':
-		mViewState = DISPLAY_MODE_HISTOGRAM_DEBUG;
 		break;
 	case '6':
 		mViewState = DISPLAY_MODE_VMAP_DEBUG;
