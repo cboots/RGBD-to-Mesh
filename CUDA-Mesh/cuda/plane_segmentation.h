@@ -24,6 +24,6 @@ __host__ void normalHistogramPrimaryPeakDetection(int* histogram, int xBins, int
 												  int exclusionRadius, int minPeakHeight);
 
 
-__host__ void segmentNormals2D(Float3SOA rawNormals, Int3SOA normalSegments, int imageWidth, int imageHeight, 
+__host__ void segmentNormals2D(Float3SOA rawNormals, int* normalSegments, int imageWidth, int imageHeight, 
 							   int* histogram, int xBins, int yBins, 
 							   Float3SOA peaks, int maxPeaks, float maxAngleRange);

@@ -78,7 +78,6 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	//Setup default rendering/pipeline settings
 	mFilterMode = BILATERAL_FILTER;
 	mNormalMode = AVERAGE_GRADIENT_NORMALS;
-	mSegmentationMode = GPU_SIMPLE_SEGMENTATION;
 	mViewState = DISPLAY_MODE_OVERLAY;
 	hairyPoints = false;
 	mSpatialSigma = 2.0f;
@@ -757,30 +756,6 @@ void MeshViewer::drawNormalHistogramtoTexture(GLuint texture)
 
 }
 
-void MeshViewer::drawDecoupledHistogramsToTexture(GLuint texture)
-{
-	float4* dptrNMap;
-	cudaGLMapBufferObject((void**)&dptrNMap, imagePBO0);
-
-	clearPBO(dptrNMap, mXRes, mYRes, 0.0f);
-	drawDecoupledHistogramsToPBO(dptrNMap, mMeshTracker->getDecoupledHistogram(),  mMeshTracker->getNormalDecoupledBins(), mXRes, mYRes);
-
-	cudaGLUnmapBufferObject(imagePBO0);
-
-	//Unpack to textures
-	glActiveTexture(GL_TEXTURE12);
-	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
-		GL_RGBA, GL_FLOAT, NULL);
-
-	//Unbind buffers
-	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glActiveTexture(GL_TEXTURE0);
-
-}
-
 
 void MeshViewer::drawRGBMaptoTexture(GLuint texture, int level)
 {
@@ -941,16 +916,7 @@ void MeshViewer::display()
 		//Launch kernels for subsampling
 		mMeshTracker->subsamplePyramids();
 
-
-		switch(mSegmentationMode)
-		{
-		case GPU_SIMPLE_SEGMENTATION:
-			mMeshTracker->GPUSimpleSegmentation();
-			break;
-		case GPU_DECOUPLED_SEGMENTATION:
-			mMeshTracker->GPUDecoupledSegmentation();
-			break;
-		}
+		mMeshTracker->GPUSimpleSegmentation();
 
 
 	}//=====End of pipeline code=====
@@ -984,22 +950,12 @@ void MeshViewer::display()
 			glDisable(GL_BLEND);
 			break;
 		case DISPLAY_MODE_HISTOGRAM_COMPARE:
-
-			switch(mSegmentationMode)
-			{
-			case GPU_SIMPLE_SEGMENTATION:
-				drawNormalHistogramtoTexture(texture0);
-				drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture0, 1);//UL histogram
-				break;
-			case GPU_DECOUPLED_SEGMENTATION:
-				drawDecoupledHistogramsToTexture(texture0);
-				drawQuad(barhistogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture0, 1);//UL histogram
-				break;
-			}
-
+			drawNormalHistogramtoTexture(texture0);
 			drawNMaptoTexture(texture1, 0);
 			drawNormalSegmentsToTexture(texture2);
 			drawColorImageBufferToTexture(texture3);
+
+			drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture0, 1);//UL histogram
 			drawQuad(nmap_prog,		 0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR
 			drawQuad(normalsegments_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL
 			drawQuad(color_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture3, 1);//UR
@@ -1273,32 +1229,6 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	case '/':
 		mNormalMode = PCA_NORMALS;
 		cout << "PCA Normals Mode" << endl;
-		break;
-	case 'H':
-		{
-			ofstream arrayData("decoupledhistogram.csv"); 
-
-			Int3SOA dev_histogram = mMeshTracker->getDecoupledHistogram();
-			int histogramlength = mMeshTracker->getNormalDecoupledBins();
-
-			int* xHist = new int[histogramlength];
-			int* yHist = new int[histogramlength];
-			int* zHist = new int[histogramlength];
-
-			cudaMemcpy(xHist, dev_histogram.x, histogramlength*sizeof(int), cudaMemcpyDeviceToHost);
-			cudaMemcpy(yHist, dev_histogram.y, histogramlength*sizeof(int), cudaMemcpyDeviceToHost);
-			cudaMemcpy(zHist, dev_histogram.z, histogramlength*sizeof(int), cudaMemcpyDeviceToHost);
-
-			for(int i = 0; i < histogramlength; ++i) {
-				arrayData << xHist[i] << ','  << yHist[i] << ',' << zHist[i] << endl;
-			}
-
-			delete xHist;
-			delete yHist;
-			delete zHist;
-
-			cout << "Current Decoupled Histogram Saved to file" <<endl;
-		}
 		break;
 
 	}

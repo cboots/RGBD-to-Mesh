@@ -68,18 +68,10 @@ private:
 
 	float* dev_curvature;
 
-	
-	float* host_curvature;
-	float* host_normalX;
-	float* host_normalY;
 
-	int* host_normalVoxels;
 	int* dev_normalVoxels;
 
-	Int3SOA dev_normalDecoupledHistogram;
-	Int3SOA dev_normalDecoupledHistogramPeaks;
-
-	Int3SOA dev_normalSegments;
+	int* dev_normalSegments;
 	Float3SOA dev_normalPeaks;
 
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
@@ -134,13 +126,9 @@ public:
 
 
 	void estimateCurvatureFromNormals();
-	void CPUSimpleSegmentation();
 	void GPUSimpleSegmentation();
-	void copyXYNormalsToHost();
-	void copyNormalVoxelsToGPU();
 	void subsamplePyramids();
 
-	void GPUDecoupledSegmentation();
 #pragma endregion
 
 #pragma region Buffer getters
@@ -151,8 +139,7 @@ public:
 	inline Float3SOAPyramid getRGBMapSOA() { return dev_rgbSOA;}
 	inline float* getCurvature() {return dev_curvature;}
 	inline int* getDeviceNormalHistogram() { return dev_normalVoxels;}
-	inline Int3SOA getDecoupledHistogram() { return dev_normalDecoupledHistogram;}
-	inline Int3SOA getNormalSegments() { return dev_normalSegments;}
+	inline int* getNormalSegments() { return dev_normalSegments;}
 #pragma endregion
 
 #pragma region Property Getters

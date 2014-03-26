@@ -312,7 +312,7 @@ __global__ void sendInt3SOAToPBO(float4* pbo, int* x_src, int* y_src, int* z_src
 }
 
 
-__host__ void drawNormalSegmentsToPBO(float4* pbo, Int3SOA normalSegments, int xRes, int yRes)
+__host__ void drawNormalSegmentsToPBO(float4* pbo, int* normalSegments, int xRes, int yRes)
 {
 
 	int tileSize = 16;
@@ -323,6 +323,6 @@ __host__ void drawNormalSegmentsToPBO(float4* pbo, Int3SOA normalSegments, int x
 		(int)ceil(float(yRes)/float(tileSize)));
 
 
-	sendInt3SOAToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo,  normalSegments.x, normalSegments.y, normalSegments.z,
+	sendInt1SOAToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo,  normalSegments,
 		xRes, yRes, xRes, yRes);
 }

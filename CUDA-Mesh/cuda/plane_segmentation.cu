@@ -492,7 +492,7 @@ __host__ void normalHistogramPrimaryPeakDetection(int* histogram, int xBins, int
 
 #pragma region Segmentation Two-D
 
-__global__ void segmentNormals2DKernel(Float3SOA rawNormals, Int3SOA normalSegments, int imageWidth, int imageHeight, 
+__global__ void segmentNormals2DKernel(Float3SOA rawNormals, int* normalSegments, int imageWidth, int imageHeight, 
 									   int* histogram, int xBins, int yBins, 
 									   Float3SOA peaks, int maxPeaks, float maxAngleRange)
 {
@@ -554,16 +554,12 @@ __global__ void segmentNormals2DKernel(Float3SOA rawNormals, Int3SOA normalSegme
 			}
 		}
 
-
-
-		normalSegments.x[index] = bestPeak;
-		normalSegments.y[index] = bestPeak;
-		normalSegments.z[index] = bestPeak;
+		normalSegments[index] = bestPeak;
 	}
 
 }
 
-__host__ void segmentNormals2D(Float3SOA rawNormals, Int3SOA normalSegments, int imageWidth, int imageHeight, 
+__host__ void segmentNormals2D(Float3SOA rawNormals, int* normalSegments, int imageWidth, int imageHeight, 
 							   int* histogram, int xBins, int yBins, 
 							   Float3SOA peaks, int maxPeaks, float maxAngleRange)
 {
