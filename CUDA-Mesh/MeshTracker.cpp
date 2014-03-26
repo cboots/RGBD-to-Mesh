@@ -341,15 +341,9 @@ void MeshTracker::GPUSimpleSegmentation()
 	computeNormalHistogram(dev_nmapSOA.x[0], dev_nmapSOA.y[0], dev_normalVoxels, mXRes, mYRes, 
 		NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS);
 	
-	cudaDeviceSynchronize();
-	checkCUDAError("Normal Histogram Generation");
-
 	normalHistogramPrimaryPeakDetection(dev_normalVoxels, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS, 
 		dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND,  PEAK_2D_EXCLUSION_RADIUS, MIN_2D_PEAK_COUNT);
 	
-	cudaDeviceSynchronize();
-	checkCUDAError("Normal Histogram Primary Peak Detection");
-
 	Float3SOA normals;
 	normals.x = dev_nmapSOA.x[0];
 	normals.y = dev_nmapSOA.y[0];

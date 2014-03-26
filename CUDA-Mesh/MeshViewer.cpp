@@ -922,8 +922,6 @@ void MeshViewer::display()
 
 		}
 
-		cudaDeviceSynchronize();
-		checkCUDAError("VMap Generation");
 		switch(mNormalMode)
 		{
 		case SIMPLE_NORMALS:
@@ -939,15 +937,11 @@ void MeshViewer::display()
 			break;
 		}
 
-		cudaDeviceSynchronize();
-		checkCUDAError("NMapGeneration");
 
 		//Launch kernels for subsampling
 		mMeshTracker->subsamplePyramids();
 
-		cudaDeviceSynchronize();
-		checkCUDAError("SubSampling");
-
+		
 		switch(mSegmentationMode)
 		{
 		case GPU_SIMPLE_SEGMENTATION:
@@ -959,8 +953,6 @@ void MeshViewer::display()
 		}
 
 
-		cudaDeviceSynchronize();
-		checkCUDAError("Segmentation");
 	}//=====End of pipeline code=====
 
 
