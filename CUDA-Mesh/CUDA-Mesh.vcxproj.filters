@@ -37,6 +37,9 @@
     <ClCompile Include="MeshTracker.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MeshViewer.cpp" />
+    <ClCompile Include="CudaUtils.cpp">
+      <Filter>Cuda</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="device_structs.h" />
@@ -73,6 +76,9 @@
       <Filter>Cuda</Filter>
     </ClInclude>
     <ClInclude Include="cuda\seperable_filter.h">
+      <Filter>Cuda</Filter>
+    </ClInclude>
+    <ClInclude Include="CudaUtils.h">
       <Filter>Cuda</Filter>
     </ClInclude>
   </ItemGroup>

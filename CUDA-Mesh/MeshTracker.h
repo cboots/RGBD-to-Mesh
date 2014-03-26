@@ -8,6 +8,7 @@
 #include "gradient.h"
 #include "seperable_filter.h"
 #include "Utils.h"
+#include "CudaUtils.h"
 #include "plane_segmentation.h"
 #include <iostream>
 
@@ -18,14 +19,20 @@ using namespace rgbd::framework;
 #define NUM_FLOAT1_PYRAMID_BUFFERS 10
 #define NUM_FLOAT3_PYRAMID_BUFFERS 5
 
-#define NUM_NORMAL_X_SUBDIVISIONS	256
-#define NUM_NORMAL_Y_SUBDIVISIONS		256
+#define NUM_NORMAL_X_SUBDIVISIONS		32
+#define NUM_NORMAL_Y_SUBDIVISIONS		32
 
 #define NUM_DECOUPLED_HISTOGRAM_BINS	256
 
 #define MAX_DECOUPLED_PEAKS			8
 #define MAX_PEAK_RANGE				20
 #define MIN_DECOUPLED_PEAK_COUNT	550
+
+
+#define MAX_2D_PEAKS_PER_ROUND		8
+#define MIN_2D_PEAK_COUNT			500
+#define PEAK_2D_EXCLUSION_RADIUS	5
+
 
 enum FilterMode
 {
@@ -47,6 +54,7 @@ private:
 	int mXRes;
 	int mYRes;
 	Intrinsics mIntr;
+	float m2DSegmentationMaxAngleFromPeak;
 #pragma region
 
 #pragma region Pipeline Buffer Device Pointers
@@ -72,6 +80,7 @@ private:
 	Int3SOA dev_normalDecoupledHistogramPeaks;
 
 	Int3SOA dev_normalSegments;
+	Float3SOA dev_normalPeaks;
 
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
 	Float1SOAPyramid dev_float1PyramidBuffers[NUM_FLOAT1_PYRAMID_BUFFERS];
@@ -132,7 +141,6 @@ public:
 	void subsamplePyramids();
 
 	void GPUDecoupledSegmentation();
-	
 #pragma endregion
 
 #pragma region Buffer getters
@@ -151,6 +159,12 @@ public:
 	inline int getNormalXSubdivisions() { return NUM_NORMAL_X_SUBDIVISIONS; }
 	inline int getNormalYSubdivisions() { return NUM_NORMAL_Y_SUBDIVISIONS; }
 	inline int getNormalDecoupledBins() { return NUM_DECOUPLED_HISTOGRAM_BINS; }
+	//In degrees
+	inline float get2DSegmentationMaxAngle(){return m2DSegmentationMaxAngleFromPeak;}
+	inline void set2DSegmentationMaxAngle(float maxAngleDegrees){
+		if(maxAngleDegrees > 0.0f && maxAngleDegrees < 90.0f) 
+			m2DSegmentationMaxAngleFromPeak = maxAngleDegrees;
+	}
 #pragma endregion
 };
 

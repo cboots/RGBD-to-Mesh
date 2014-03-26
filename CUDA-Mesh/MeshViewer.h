@@ -2,6 +2,7 @@
 
 //Generic includes
 #include "Utils.h"
+#include "CudaUtils.h"
 
 //CUDA GL Includes
 #include "cuda_runtime.h"
@@ -56,6 +57,13 @@ enum NormalMode
 	PCA_NORMALS
 };
 
+
+enum SegementationMode
+{
+	GPU_SIMPLE_SEGMENTATION,
+	GPU_DECOUPLED_SEGMENTATION
+};
+		
 class MeshViewer : public RGBDDevice::NewRGBDFrameListener
 {
 public:
@@ -106,6 +114,9 @@ private:
 	DPixelArray mDepthArray;
 	timestamp mLatestTime;
 	timestamp mLastSubmittedTime;
+
+	bool mPauseVisulization;
+
 	//FPS Tracking
 	time_t seconds;
 	int fpstracker;
@@ -115,6 +126,7 @@ private:
 #pragma region Pipeline Options
 	FilterMode mFilterMode;
 	NormalMode mNormalMode;
+	SegementationMode mSegmentationMode;
 	float mSpatialSigma;
 	float mDepthSigma;
 	float mMaxDepth;

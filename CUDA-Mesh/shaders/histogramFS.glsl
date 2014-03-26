@@ -11,5 +11,12 @@ out vec4 FragColor;
 
 void main()
 {
-	FragColor = vec4(texture(u_Texture0, fs_texCoord*u_TextureScale).x)/25;
+	float centerval = texture(u_Texture0, fs_texCoord*u_TextureScale).x;
+	FragColor = vec4(centerval/2500.0);
+	
+	if(centerval < 0)
+	{
+		int peakInd = int(-centerval - 1);
+		FragColor = vec4(peakInd & 1, peakInd & 2, peakInd & 4, 1.0);
+	}	
 }

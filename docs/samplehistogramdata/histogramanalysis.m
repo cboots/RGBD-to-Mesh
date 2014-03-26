@@ -29,7 +29,7 @@ testZHist = normZHist;
 range = 64;
 %%X histogram
 [peakV peakI] = max(testXHist);
-sigma = 20;
+sigma = 10;
 peaksX = [];
 
 figure

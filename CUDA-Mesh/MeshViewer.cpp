@@ -73,14 +73,17 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	mWidth = screenwidth;
 	mHeight = screenheight;
 
+	mPauseVisulization = false;
+
 	//Setup default rendering/pipeline settings
 	mFilterMode = BILATERAL_FILTER;
 	mNormalMode = AVERAGE_GRADIENT_NORMALS;
+	mSegmentationMode = GPU_SIMPLE_SEGMENTATION;
 	mViewState = DISPLAY_MODE_OVERLAY;
 	hairyPoints = false;
 	mSpatialSigma = 2.0f;
 	mDepthSigma = 0.005f;
-	mMaxDepth = 6.0f;
+	mMaxDepth = 5.0f;
 
 	seconds = time (NULL);
 	fpstracker = 0;
@@ -307,8 +310,8 @@ void MeshViewer::initTextures()
 	//Setup Texture 0
 	glBindTexture(GL_TEXTURE_2D, texture0);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
@@ -318,8 +321,8 @@ void MeshViewer::initTextures()
 	//Setup Texture 1
 	glBindTexture(GL_TEXTURE_2D, texture1);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
@@ -329,8 +332,8 @@ void MeshViewer::initTextures()
 	//Setup Texture 2
 	glBindTexture(GL_TEXTURE_2D, texture2);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
@@ -340,8 +343,8 @@ void MeshViewer::initTextures()
 	//Setup Texture 3
 	glBindTexture(GL_TEXTURE_2D, texture3);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
@@ -874,7 +877,9 @@ void MeshViewer::display()
 	title << "RGBD to Mesh Visualization | " << (int)fps  << "FPS";
 	glutSetWindowTitle(title.str().c_str());
 
-	glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	cudaDeviceSynchronize();
+	checkCUDAError("Loop Error Clear");
 
 	//=====Tracker Pipeline=====
 	//Check if log playback has restarted (special edge case)
@@ -932,101 +937,114 @@ void MeshViewer::display()
 			break;
 		}
 
+
 		//Launch kernels for subsampling
 		mMeshTracker->subsamplePyramids();
 
-		mMeshTracker->GPUSimpleSegmentation();
-		mMeshTracker->GPUDecoupledSegmentation();
+
+		switch(mSegmentationMode)
+		{
+		case GPU_SIMPLE_SEGMENTATION:
+			mMeshTracker->GPUSimpleSegmentation();
+			break;
+		case GPU_DECOUPLED_SEGMENTATION:
+			mMeshTracker->GPUDecoupledSegmentation();
+			break;
+		}
+
 
 	}//=====End of pipeline code=====
 
 
 	//=====RENDERING======
-	switch(mViewState)
+	if(!mPauseVisulization)
 	{
-	case DISPLAY_MODE_DEPTH:
-		drawDepthImageBufferToTexture(texture0);
+		glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		switch(mViewState)
+		{
+		case DISPLAY_MODE_DEPTH:
+			drawDepthImageBufferToTexture(texture0);
 
-		drawQuad(depth_prog, 0, 0, 1, 1, 1.0, &texture0, 1);
-		break;
-	case DISPLAY_MODE_IMAGE:
-		drawColorImageBufferToTexture(texture1);
+			drawQuad(depth_prog, 0, 0, 1, 1, 1.0, &texture0, 1);
+			break;
+		case DISPLAY_MODE_IMAGE:
+			drawColorImageBufferToTexture(texture1);
 
-		drawQuad(color_prog, 0, 0, 1, 1, 1.0, &texture1, 1);
-		break;
-	case DISPLAY_MODE_OVERLAY:
-		drawDepthImageBufferToTexture(texture0);
-		drawColorImageBufferToTexture(texture1);
-
-
-		drawQuad(color_prog, 0, 0, 1, 1, 1.0, &texture1, 1);
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);//Alpha blending
-		drawQuad(depth_prog, 0, 0, 1, 1, 1.0, &texture0, 1);
-		glDisable(GL_BLEND);
-		break;
-	case DISPLAY_MODE_HISTOGRAM_COMPARE:
-		drawDecoupledHistogramsToTexture(texture0);
-		drawNMaptoTexture(texture1, 0);
-		drawNormalSegmentsToTexture(texture2);
-		drawNormalHistogramtoTexture(texture3);
+			drawQuad(color_prog, 0, 0, 1, 1, 1.0, &texture1, 1);
+			break;
+		case DISPLAY_MODE_OVERLAY:
+			drawDepthImageBufferToTexture(texture0);
+			drawColorImageBufferToTexture(texture1);
 
 
-		drawQuad(nmap_prog,		 0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR normal
-		drawQuad(normalsegments_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL color
-		drawQuad(barhistogram_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR bar histogram
-		drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.6,  &texture3, 1);//UL histogram
-		break;
-	case DISPLAY_MODE_HISTOGRAM_DEBUG:
-		drawDepthImageBufferToTexture(texture0);
-		drawColorImageBufferToTexture(texture1);
-		drawNMaptoTexture(texture2, 0);
-		drawNormalHistogramtoTexture(texture3);
+			drawQuad(color_prog, 0, 0, 1, 1, 1.0, &texture1, 1);
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);//Alpha blending
+			drawQuad(depth_prog, 0, 0, 1, 1, 1.0, &texture0, 1);
+			glDisable(GL_BLEND);
+			break;
+		case DISPLAY_MODE_HISTOGRAM_COMPARE:
+			drawNormalHistogramtoTexture(texture0);
+			drawNMaptoTexture(texture1, 0);
+			drawNormalSegmentsToTexture(texture2);
+			drawDecoupledHistogramsToTexture(texture3);
 
-		drawQuad(depth_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR depth
-		drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0,  &texture1, 1);//LR color
-		drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL normal 
-		drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.6,  &texture3, 1);//UL histogram
-		break;
-	case DISPLAY_MODE_NMAP_DEBUG:
-		drawNMaptoTexture(texture0, 0);
-		drawNMaptoTexture(texture1, 1);
-		drawNMaptoTexture(texture2, 2);
-		drawColorImageBufferToTexture(texture3);
 
-		drawQuad(nmap_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR Level0 NMap
-		drawQuad(nmap_prog,  0.5, -0.5, 0.5, 0.5, 0.5,  &texture1, 1);//LR Level1 NMap
-		drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 NMap
-		drawQuad(color_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL Original depth
-		break;
+			drawQuad(nmap_prog,		 0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR normal
+			drawQuad(normalsegments_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL color
+			drawQuad(barhistogram_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture3, 1);//UR bar histogram
+			drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture0, 1);//UL histogram
+			break;
+		case DISPLAY_MODE_HISTOGRAM_DEBUG:
+			drawDepthImageBufferToTexture(texture3);
+			drawColorImageBufferToTexture(texture1);
+			drawNMaptoTexture(texture2, 0);
+			drawNormalHistogramtoTexture(texture0);
 
-	case DISPLAY_MODE_VMAP_DEBUG:
-		drawVMaptoTexture(texture0, 0);
-		drawVMaptoTexture(texture1, 1);
-		drawVMaptoTexture(texture2, 2);
-		drawDepthImageBufferToTexture(texture3);
+			drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture0, 1);//UL histogram
+			drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0,  &texture1, 1);//LR color
+			drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL normal 
+			drawQuad(depth_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture3, 1);//UR depth
+			break;
+		case DISPLAY_MODE_NMAP_DEBUG:
+			drawNMaptoTexture(texture0, 0);
+			drawNMaptoTexture(texture1, 1);
+			drawNMaptoTexture(texture2, 2);
+			drawColorImageBufferToTexture(texture3);
 
-		drawQuad(vmap_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR Level0 VMap
-		drawQuad(vmap_prog,  0.5, -0.5, 0.5, 0.5, 0.5,  &texture1, 1);//LR Level1 VMap
-		drawQuad(vmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 VMap
-		drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL Original depth
-		break;
-	case DISPLAY_MODE_CURVATURE_DEBUG:
+			drawQuad(nmap_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR Level0 NMap
+			drawQuad(nmap_prog,  0.5, -0.5, 0.5, 0.5, 0.5,  &texture1, 1);//LR Level1 NMap
+			drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 NMap
+			drawQuad(color_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL Original depth
+			break;
 
-		drawDepthImageBufferToTexture(texture0);
-		drawColorImageBufferToTexture(texture1);
-		drawNMaptoTexture(texture2, 0);
-		drawCurvaturetoTexture(texture3);
+		case DISPLAY_MODE_VMAP_DEBUG:
+			drawVMaptoTexture(texture0, 0);
+			drawVMaptoTexture(texture1, 1);
+			drawVMaptoTexture(texture2, 2);
+			drawDepthImageBufferToTexture(texture3);
 
-		drawQuad(depth_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR depth
-		drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0,  &texture1, 1);//LR color
-		drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL normal 
-		drawQuad(curvemap_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL curvature
-		break;
+			drawQuad(vmap_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR Level0 VMap
+			drawQuad(vmap_prog,  0.5, -0.5, 0.5, 0.5, 0.5,  &texture1, 1);//LR Level1 VMap
+			drawQuad(vmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 VMap
+			drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL Original depth
+			break;
+		case DISPLAY_MODE_CURVATURE_DEBUG:
+
+			drawDepthImageBufferToTexture(texture0);
+			drawColorImageBufferToTexture(texture1);
+			drawNMaptoTexture(texture2, 0);
+			drawCurvaturetoTexture(texture3);
+
+			drawQuad(depth_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR depth
+			drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0,  &texture1, 1);//LR color
+			drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL normal 
+			drawQuad(curvemap_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL curvature
+			break;
+		}
+
+		glutSwapBuffers();
 	}
-
-	glutSwapBuffers();
-
 }
 
 #pragma region OpenGL Callbacks
@@ -1041,6 +1059,7 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	float cameraHighSpeed = 0.1f;
 	float cameraLowSpeed = 0.025f;
 	float edgeLengthStep = 0.001f;
+	float angle;
 	switch (key)
 	{
 	case 27://ESC
@@ -1091,6 +1110,14 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 			device->restartPlayback();
 		}
 
+		break;
+	case 'P':
+		mPauseVisulization = !mPauseVisulization;
+
+		if(mPauseVisulization)
+			cout << "Pause Visualization" << endl;
+		else
+			cout << "Resume Visualization" << endl;
 		break;
 	case '=':
 		device = dynamic_cast<LogDevice*>(mDevice);
@@ -1217,6 +1244,29 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		mMaxDepth -= 0.25f;
 		cout << "Max Depth: " << mMaxDepth << " (m)" << endl;
 		break;
+	case ':':
+		angle = mMeshTracker->get2DSegmentationMaxAngle();
+		angle -= 0.5f;
+		if(angle > 0.0f)
+		{
+			cout << "Max Segmentation Angle (degrees): " << angle << endl;
+			mMeshTracker->set2DSegmentationMaxAngle(angle);
+		}else{
+			cout << "Control at limit" << endl;
+		}
+		break;
+	case '"':
+		angle = mMeshTracker->get2DSegmentationMaxAngle();
+		angle += 0.5f;
+		if(angle > 0.0f)
+		{
+			cout << "Max Segmentation Angle (degrees): " << angle << endl;
+			mMeshTracker->set2DSegmentationMaxAngle(angle);
+		}else{
+			cout << "Control at limit" << endl;
+		}
+		break;
+
 	case ',':
 		mNormalMode = AVERAGE_GRADIENT_NORMALS;
 		cout << "Average Gradient Normals Mode"<< endl;
@@ -1251,7 +1301,7 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 			delete xHist;
 			delete yHist;
 			delete zHist;
-			
+
 			cout << "Current Decoupled Histogram Saved to file" <<endl;
 		}
 		break;
