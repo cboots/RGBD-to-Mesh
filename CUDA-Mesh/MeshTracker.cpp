@@ -49,6 +49,7 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 
 	//Normal Segmentation Results
 	cudaMalloc((void**) &dev_normalSegments, xRes*yRes*sizeof(int));
+	cudaMalloc((void**) &dev_planeProjectedDistanceMap, xRes*yRes*sizeof(float));
 
 	createFloat3SOA(dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND);
 
@@ -84,6 +85,7 @@ void MeshTracker::cleanupBuffers()
 	cudaFree(dev_normalVoxels);
 
 	cudaFree(dev_normalSegments);
+	cudaFree(dev_planeProjectedDistanceMap);
 
 	freeFloat3SOA(dev_normalPeaks);
 
@@ -311,11 +313,14 @@ void MeshTracker::GPUSimpleSegmentation()
 	normals.x = dev_nmapSOA.x[0];
 	normals.y = dev_nmapSOA.y[0];
 	normals.z = dev_nmapSOA.z[0];
-	segmentNormals2D(normals, dev_normalSegments, mXRes, mYRes, 
+
+	Float3SOA positions;
+	positions.x = dev_vmapSOA.x[0];
+	positions.y = dev_vmapSOA.y[0];
+	positions.z = dev_vmapSOA.z[0];
+	segmentNormals2D(normals, positions, dev_normalSegments, dev_planeProjectedDistanceMap, mXRes, mYRes, 
 		dev_normalVoxels, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS, 
 		dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND, m2DSegmentationMaxAngleFromPeak*PI/180.0f);
-
-	
 
 }
 

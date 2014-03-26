@@ -214,107 +214,6 @@ __host__ void gaussianSubtractionPeakDetection(Int3SOA decoupledHist, Int3SOA pe
 
 #pragma endregion
 
-#pragma region Seperable histogram segmentation
-
-
-__global__ void segmentNormalsKernel(Float3SOA rawNormals, Int3SOA normalSegments, int imageWidth, int imageHeight, 
-									 Int3SOA decoupledHistogram, int histSize, Int3SOA peakIndecies, int maxPeaks, int maxDistance)
-{
-	extern __shared__ int s_temp[];
-	int* s_peaks = s_temp;
-	int* s_peaksMax = s_temp + maxPeaks;
-
-	if(threadIdx.x < maxPeaks)
-	{
-		if(blockIdx.y == 0)	{
-			s_peaks[threadIdx.x] = peakIndecies.x[threadIdx.x];
-			s_peaksMax[threadIdx.x] = (s_peaks[threadIdx.x] < 0)? 0 : decoupledHistogram.x[s_peaks[threadIdx.x]];
-		}else if(blockIdx.y == 1){
-			s_peaks[threadIdx.x] = peakIndecies.y[threadIdx.x];
-			s_peaksMax[threadIdx.x] = (s_peaks[threadIdx.x] < 0)? 0 : decoupledHistogram.y[s_peaks[threadIdx.x]];
-		}else{
-			s_peaks[threadIdx.x] = peakIndecies.z[threadIdx.x];
-			s_peaksMax[threadIdx.x] = (s_peaks[threadIdx.x] < 0)? 0 : decoupledHistogram.z[s_peaks[threadIdx.x]];
-		}
-	}
-
-	__syncthreads();
-
-	int histIndex = -1000000;
-
-	float normalComponent = 0;
-	int normI = threadIdx.x + blockDim.x * blockIdx.x;
-	if(normI < imageWidth*imageHeight)
-	{
-
-		if(blockIdx.y == 0)	{
-			normalComponent = rawNormals.x[normI];
-		}else if(blockIdx.y == 1){
-			normalComponent = rawNormals.y[normI];
-		}else{
-			normalComponent = rawNormals.z[normI];
-		}
-
-		float angle = acosf(normalComponent);
-
-		if(angle == angle){
-			histIndex = angle*PI_INV_F*histSize;
-		}
-
-		int minI = -1;
-		int minDist = maxDistance;
-
-		if(histIndex >= 0)
-		{
-			for(int i = 0; i < maxPeaks; i++)
-			{
-				if(s_peaks[i] < 0)
-					break;
-
-				int dist = s_peaks[i] - histIndex;
-				dist = (dist > 0)?dist:-dist;//ABS value
-
-				if(dist < minDist)
-				{
-					minI = i;
-					minDist = dist;
-				}
-			}
-		}
-
-		if(blockIdx.y == 0)	{
-			normalSegments.x[normI] = minI;
-		}else if(blockIdx.y == 1){
-			normalSegments.y[normI] = minI;
-		}else{
-			normalSegments.z[normI] = minI;
-		}
-	}
-
-}
-
-__host__ void segmentNormals(Float3SOA rawNormals, Int3SOA normalSegments, int imageWidth, int imageHeight, 
-							 Int3SOA decoupledHistogram, int histSize, 
-							 Int3SOA peakIndecies, int maxPeaks, int maxDistance)
-{
-	int blockLength = 512;
-
-	assert(blockLength >= histSize);
-
-	dim3 threads(blockLength);
-	dim3 blocks((int) ceil(float(imageWidth*imageHeight)/float(blockLength)), 3);
-
-	int sharedCount = sizeof(int)*(2 * maxPeaks);
-
-	segmentNormalsKernel<<<blocks, threads, sharedCount>>>(rawNormals, normalSegments, imageWidth, imageHeight, 
-		decoupledHistogram, histSize, 
-		peakIndecies, maxPeaks, maxDistance);
-}
-
-
-#pragma endregion
-
-
 #pragma region Histogram Peak Detection Two-D
 
 __global__ void normalHistogramPrimaryPeakDetectionKernel(int* histogram, int xBins, int yBins, Float3SOA peaks, int maxPeaks, 
@@ -492,7 +391,8 @@ __host__ void normalHistogramPrimaryPeakDetection(int* histogram, int xBins, int
 
 #pragma region Segmentation Two-D
 
-__global__ void segmentNormals2DKernel(Float3SOA rawNormals, int* normalSegments, int imageWidth, int imageHeight, 
+__global__ void segmentNormals2DKernel(Float3SOA rawNormals, Float3SOA rawPositions, int* normalSegments, float* projectedDistance,
+									   int imageWidth, int imageHeight, 
 									   int* histogram, int xBins, int yBins, 
 									   Float3SOA peaks, int maxPeaks, float maxAngleRange)
 {
@@ -516,13 +416,6 @@ __global__ void segmentNormals2DKernel(Float3SOA rawNormals, int* normalSegments
 			y = cosf(PI*yi/float(yBins));
 			x = cosf(PI*xi/float(xBins)) * sqrtf(1.0f-y*y);
 			z = sqrtf(1.0f-x*x-y*y);
-			
-
-			/*
-			x = (xi/float(xBins))*2.0f-1.0f;
-			y = (yi/float(yBins))*2.0f-1.0f;
-			z = sqrtf(1.0f-x*x-y*y);
-			*/
 		}
 
 		s_peaksX[threadIdx.x] = x;
@@ -554,13 +447,27 @@ __global__ void segmentNormals2DKernel(Float3SOA rawNormals, int* normalSegments
 			}
 		}
 
+		float projectedD = CUDART_NAN_F;//Initialize to NAN
+		if(bestPeak >= 0)
+		{
+			//Peak found, compute projection
+			projectedD = s_peaksX[bestPeak]*rawPositions.x[index] 
+				+ s_peaksY[bestPeak]*rawPositions.y[index] 
+				+ s_peaksZ[bestPeak]*rawPositions.z[index];
+
+		}
+
+			
+		//Writeback
 		normalSegments[index] = bestPeak;
+		projectedDistance[index] = projectedD;
 	}
 
 }
 
-__host__ void segmentNormals2D(Float3SOA rawNormals, int* normalSegments, int imageWidth, int imageHeight, 
-							   int* histogram, int xBins, int yBins, 
+__host__ void segmentNormals2D(Float3SOA rawNormals, Float3SOA rawPositions, 
+							   int* normalSegments, float* projectedDistance,int imageWidth, int imageHeight,
+							   int* normalHistogram, int xBins, int yBins, 
 							   Float3SOA peaks, int maxPeaks, float maxAngleRange)
 {
 	int blockLength = 512;
@@ -571,9 +478,8 @@ __host__ void segmentNormals2D(Float3SOA rawNormals, int* normalSegments, int im
 
 	int sharedCount = sizeof(float)*(3 * maxPeaks);
 
-	segmentNormals2DKernel<<<blocks, threads, sharedCount>>>(rawNormals, normalSegments, imageWidth, imageHeight, 
-		histogram, xBins, yBins,
-		peaks, maxPeaks, maxAngleRange);
+	segmentNormals2DKernel<<<blocks, threads, sharedCount>>>(rawNormals, rawPositions, normalSegments, projectedDistance, 
+		imageWidth, imageHeight, normalHistogram, xBins, yBins, peaks, maxPeaks, maxAngleRange);
 }
 
 

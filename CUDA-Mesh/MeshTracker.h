@@ -31,7 +31,7 @@ using namespace rgbd::framework;
 
 #define MAX_2D_PEAKS_PER_ROUND		8
 #define MIN_2D_PEAK_COUNT			500
-#define PEAK_2D_EXCLUSION_RADIUS	5
+#define PEAK_2D_EXCLUSION_RADIUS	8
 
 
 enum FilterMode
@@ -68,11 +68,12 @@ private:
 
 	float* dev_curvature;
 
-
 	int* dev_normalVoxels;
 
 	int* dev_normalSegments;
+	float* dev_planeProjectedDistanceMap;
 	Float3SOA dev_normalPeaks;
+
 
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
 	Float1SOAPyramid dev_float1PyramidBuffers[NUM_FLOAT1_PYRAMID_BUFFERS];
@@ -140,6 +141,7 @@ public:
 	inline float* getCurvature() {return dev_curvature;}
 	inline int* getDeviceNormalHistogram() { return dev_normalVoxels;}
 	inline int* getNormalSegments() { return dev_normalSegments;}
+	inline float* getPlaneProjectedDistance() {return dev_planeProjectedDistanceMap;}
 #pragma endregion
 
 #pragma region Property Getters

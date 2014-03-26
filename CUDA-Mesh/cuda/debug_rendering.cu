@@ -312,7 +312,28 @@ __global__ void sendInt3SOAToPBO(float4* pbo, int* x_src, int* y_src, int* z_src
 }
 
 
-__host__ void drawNormalSegmentsToPBO(float4* pbo, int* normalSegments, int xRes, int yRes)
+
+
+__global__ void sendSegmentDataToPBO(float4* pbo, int* segments, float* projectedDistances, int xRes, int yRes, int pboXRes, int pboYRes)
+{
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int i = (y * xRes) + x;
+	int pboi = (y * pboXRes) + x;
+
+	if(y < yRes && x < xRes){
+
+		// Each thread writes one pixel location in the texture (textel)
+		pbo[pboi].x = segments[i];
+		pbo[pboi].y = projectedDistances[i];
+		pbo[pboi].z = 0.0;
+		pbo[pboi].w = 0.0;
+	}
+}
+
+
+
+__host__ void drawNormalSegmentsToPBO(float4* pbo, int* normalSegments, float* projectedDistanceMap, int xRes, int yRes)
 {
 
 	int tileSize = 16;
@@ -323,6 +344,6 @@ __host__ void drawNormalSegmentsToPBO(float4* pbo, int* normalSegments, int xRes
 		(int)ceil(float(yRes)/float(tileSize)));
 
 
-	sendInt1SOAToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo,  normalSegments,
+	sendSegmentDataToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo,  normalSegments, projectedDistanceMap,
 		xRes, yRes, xRes, yRes);
 }

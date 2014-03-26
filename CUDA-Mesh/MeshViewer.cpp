@@ -786,7 +786,7 @@ void MeshViewer::drawNormalSegmentsToTexture(GLuint texture)
 	cudaGLMapBufferObject((void**)&dptrNormalSegmentsMap, imagePBO0);
 
 	clearPBO(dptrNormalSegmentsMap, mXRes, mYRes, 0.0f);
-	drawNormalSegmentsToPBO(dptrNormalSegmentsMap, mMeshTracker->getNormalSegments(), mXRes, mYRes);
+	drawNormalSegmentsToPBO(dptrNormalSegmentsMap, mMeshTracker->getNormalSegments(), mMeshTracker->getPlaneProjectedDistance(), mXRes, mYRes);
 
 	cudaGLUnmapBufferObject(imagePBO0);
 
