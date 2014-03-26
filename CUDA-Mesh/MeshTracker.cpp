@@ -8,6 +8,9 @@ MeshTracker::MeshTracker(int xResolution, int yResolution, Intrinsics intr)
 	mYRes = yResolution;
 	mIntr = intr;
 
+	//Setup default configuration
+	m2DSegmentationMaxAngleFromPeak = 10.0f;
+
 	initBuffers(mXRes, mYRes);
 
 	resetTracker();
@@ -350,10 +353,10 @@ void MeshTracker::GPUSimpleSegmentation()
 	normals.z = dev_nmapSOA.z[0];
 	segmentNormals2D(normals, dev_normalSegments, mXRes, mYRes, 
 		dev_normalVoxels, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS, 
-		dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND, 10.0f*PI/180.0f);
+		dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND, m2DSegmentationMaxAngleFromPeak*PI/180.0f);
 
 	 //Debug
-	
+	/*
 	Float3SOA peaksCopy;
 	peaksCopy.x = new float[MAX_2D_PEAKS_PER_ROUND*3];
 	peaksCopy.y = peaksCopy.x + MAX_2D_PEAKS_PER_ROUND;
@@ -384,7 +387,7 @@ void MeshTracker::GPUSimpleSegmentation()
 
 
 	delete peaksCopy.x;
-	
+	*/
 
 }
 

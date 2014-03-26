@@ -941,7 +941,7 @@ void MeshViewer::display()
 		//Launch kernels for subsampling
 		mMeshTracker->subsamplePyramids();
 
-		
+
 		switch(mSegmentationMode)
 		{
 		case GPU_SIMPLE_SEGMENTATION:
@@ -1059,6 +1059,7 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	float cameraHighSpeed = 0.1f;
 	float cameraLowSpeed = 0.025f;
 	float edgeLengthStep = 0.001f;
+	float angle;
 	switch (key)
 	{
 	case 27://ESC
@@ -1243,6 +1244,29 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		mMaxDepth -= 0.25f;
 		cout << "Max Depth: " << mMaxDepth << " (m)" << endl;
 		break;
+	case ':':
+		angle = mMeshTracker->get2DSegmentationMaxAngle();
+		angle -= 0.5f;
+		if(angle > 0.0f)
+		{
+			cout << "Max Segmentation Angle (degrees): " << angle << endl;
+			mMeshTracker->set2DSegmentationMaxAngle(angle);
+		}else{
+			cout << "Control at limit" << endl;
+		}
+		break;
+	case '"':
+		angle = mMeshTracker->get2DSegmentationMaxAngle();
+		angle += 0.5f;
+		if(angle > 0.0f)
+		{
+			cout << "Max Segmentation Angle (degrees): " << angle << endl;
+			mMeshTracker->set2DSegmentationMaxAngle(angle);
+		}else{
+			cout << "Control at limit" << endl;
+		}
+		break;
+
 	case ',':
 		mNormalMode = AVERAGE_GRADIENT_NORMALS;
 		cout << "Average Gradient Normals Mode"<< endl;
