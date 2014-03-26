@@ -16,7 +16,7 @@ void main()
 	
 	if(centerval < 0)
 	{
-		int peakInd = int(-centerval - 1);
+		int peakInd = int(-centerval);
 		FragColor = vec4(peakInd & 1, peakInd & 2, peakInd & 4, 1.0);
 	}	
 }
