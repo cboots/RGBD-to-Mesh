@@ -1230,6 +1230,58 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		mNormalMode = PCA_NORMALS;
 		cout << "PCA Normals Mode" << endl;
 		break;
+		case 'H':
+		{
+			ofstream arrayData("segmentationSample.csv"); 
+
+			int* dev_segements = mMeshTracker->getNormalSegments();
+			float* dev_segDistance = mMeshTracker->getPlaneProjectedDistance();
+
+			float* dev_posX = mMeshTracker->getVMapPyramid().x[0];
+			float* dev_posY = mMeshTracker->getVMapPyramid().y[0];
+			float* dev_posZ = mMeshTracker->getVMapPyramid().z[0];
+
+			float* dev_normX = mMeshTracker->getNMapPyramid().x[0];
+			float* dev_normY = mMeshTracker->getNMapPyramid().y[0];
+			float* dev_normZ = mMeshTracker->getNMapPyramid().z[0];
+
+
+			int* segmentIndex = new int[mXRes*mYRes];
+			float* segDistance = new float[mXRes*mYRes];
+
+			float* posX = new float[mXRes*mYRes];
+			float* posY = new float[mXRes*mYRes];
+			float* posZ = new float[mXRes*mYRes];
+
+			float* normX = new float[mXRes*mYRes];
+			float* normY = new float[mXRes*mYRes];
+			float* normZ = new float[mXRes*mYRes];
+
+			cudaMemcpy(segmentIndex,  dev_segements, mXRes*mYRes*sizeof(int), cudaMemcpyDeviceToHost);
+			cudaMemcpy(segDistance, dev_segDistance, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(posX, dev_posX, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(posY, dev_posY, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(posZ, dev_posZ, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(normX, dev_normX, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+
+			for(int i = 0; i < mXRes*mYRes; ++i) {
+				arrayData << posX[i] << ',' << posY[i] << ',' << posZ[i] << ',' 
+					<< normX[i] << ',' << normY[i] << ',' << normZ[i] << ',' 
+					<< segmentIndex[i] << ','  << segDistance[i] << endl;
+			}
+
+			delete segmentIndex;
+			delete segDistance;
+			delete posX;
+			delete posY;
+			delete posZ;
+			delete normX;
+			delete normY;
+			delete normZ;
+
+			cout << "Current Segmentation Saved to file" <<endl;
+		}
+		break;
 
 	}
 

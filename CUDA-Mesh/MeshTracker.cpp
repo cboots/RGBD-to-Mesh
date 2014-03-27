@@ -9,7 +9,7 @@ MeshTracker::MeshTracker(int xResolution, int yResolution, Intrinsics intr)
 	mIntr = intr;
 
 	//Setup default configuration
-	m2DSegmentationMaxAngleFromPeak = 10.0f;
+	m2DSegmentationMaxAngleFromPeak = 5.0f;
 
 	initBuffers(mXRes, mYRes);
 
@@ -302,10 +302,14 @@ void MeshTracker::estimateCurvatureFromNormals()
 
 void MeshTracker::GPUSimpleSegmentation()
 {
+	//Clear and init 2D histogram
 	clearHistogram(dev_normalVoxels, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS);
 	computeNormalHistogram(dev_nmapSOA.x[0], dev_nmapSOA.y[0], dev_normalVoxels, mXRes, mYRes, 
 		NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS);
 	
+	//Future LOOP Start
+
+	//Detect peaks
 	normalHistogramPrimaryPeakDetection(dev_normalVoxels, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS, 
 		dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND,  PEAK_2D_EXCLUSION_RADIUS, MIN_2D_PEAK_COUNT);
 	
@@ -318,9 +322,13 @@ void MeshTracker::GPUSimpleSegmentation()
 	positions.x = dev_vmapSOA.x[0];
 	positions.y = dev_vmapSOA.y[0];
 	positions.z = dev_vmapSOA.z[0];
+
+	//
 	segmentNormals2D(normals, positions, dev_normalSegments, dev_planeProjectedDistanceMap, mXRes, mYRes, 
 		dev_normalVoxels, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS, 
 		dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND, m2DSegmentationMaxAngleFromPeak*PI/180.0f);
+
+
 
 }
 
