@@ -14,12 +14,24 @@ normY= reshape(data(:,5),[640 480])';
 normZ= reshape(data(:,6),[640 480])';
 segmentIndexes = reshape(data(:,7),[640 480])';
 segmentDistances = reshape(data(:,8),[640 480])';
+red = zeros(480,640);
+grn = zeros(480,640);
+blu = zeros(480,640);
+if(size(data,2) > 8)
+    red = reshape(data(:,8),[640 480])';
+    grn = reshape(data(:,9),[640 480])';
+    blu = reshape(data(:,10),[640 480])';
+end
+
+rgbIm = cat(3, red,grn,blu);
 
 %% Clear temporary variables
-clearvars data raw columnIndices;
+clearvars data raw columnIndices red grn blu;
  
 end
 
+figure
+image(rgbIm);
 
 figure
 imagesc(segmentIndexes);
@@ -27,6 +39,7 @@ imagesc(segmentIndexes);
 figure
 imagesc(segmentDistances);
 
+allSegments = zeros(480,640,4);
 for i=0:3
 distancesegment = segmentDistances(segmentIndexes == i);
 distancesegment(distancesegment < 0) = [];
@@ -146,7 +159,7 @@ if(count > 500)
     segmentids = unique(finalsegments);
     segmentids(segmentids==0) = [];
     
-    anglethresh = cosd(30.0);
+    anglethresh = cosd(25.0);
     distthresh = 0.025;
     fullImageSegmentation = zeros(480,640);
     
@@ -158,7 +171,6 @@ if(count > 500)
         norm = normals(j,:);
         d = distances(j);
         
-        figure
         normdotprod = bsxfun(@times, norms(:,:,1), norm(1)) ...
                 + bsxfun(@times, norms(:,:,2), norm(2)) ...
                 + bsxfun(@times, norms(:,:,3), norm(3));
@@ -171,6 +183,8 @@ if(count > 500)
         anglemask = normdotprod > anglethresh;
         distmask = abs(dist - d) < distthresh; 
         
+        
+        figure
         subplot(2,2,1)
         imagesc(normdotprod);
         
@@ -183,13 +197,73 @@ if(count > 500)
         subplot(2,2,4);
         imagesc(distmask);
             
-        fullImageSegmentation(anglemask & distmask) = j;
+        %%Don't overwrite previous segments
+        fullImageSegmentation(anglemask & distmask & (fullImageSegmentation == 0)) = j;
     end
     
     figure
     imagesc(fullImageSegmentation);
     
-    
+    allSegments(:,:,i+1) = fullImageSegmentation;
 end
 
 end
+
+
+%% Assemble final 
+segments1 = unique(allSegments(:,:,1));
+segments1 = segments1(segments1 > 0);
+segments2 = unique(allSegments(:,:,2));
+segments2 = segments2(segments2 > 0);
+segments3 = unique(allSegments(:,:,3));
+segments3 = segments3(segments3 > 0);
+segments4 = unique(allSegments(:,:,4));
+segments4 = segments4(segments4 > 0);
+
+start = 1;
+segmentsmap1 = start:start+length(segments1);
+start = max(segmentsmap1)+1;
+
+segmentsmap2 = start:start+length(segments2);
+start = max(segmentsmap2)+1;
+
+segmentsmap3 = start:start+length(segments3);
+start = max(segmentsmap3)+1;
+
+
+segmentsmap4 = start:start+length(segments4);
+
+for i = 1:length(segments1)
+    oldId = segments1(i);
+    segs = allSegments(:,:,1);
+    segs(segs==oldId) = segmentsmap1(i);
+    allSegments(:,:,1) = segs;
+end
+
+for i = 1:length(segments2)
+    oldId = segments2(i);
+    segs = allSegments(:,:,2);
+    segs(segs==oldId) = segmentsmap2(i);
+    allSegments(:,:,2) = segs;
+end
+
+for i = 1:length(segments3)
+    oldId = segments3(i);
+    segs = allSegments(:,:,3);
+    segs(segs==oldId) = segmentsmap3(i);
+    allSegments(:,:,3) = segs;
+end
+
+for i = 1:length(segments4)
+    oldId = segments4(i);
+    segs = allSegments(:,:,4);
+    segs(segs==oldId) = segmentsmap4(i);
+    allSegments(:,:,4) = segs;
+end
+
+mergedImage = allSegments(:,:,1) + allSegments(:,:,2) + ...
+                allSegments(:,:,3) + allSegments(:,:,4);
+            
+         
+figure
+imagesc(mergedImage);

@@ -1237,6 +1237,12 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 			int* dev_segements = mMeshTracker->getNormalSegments();
 			float* dev_segDistance = mMeshTracker->getPlaneProjectedDistance();
 
+			
+			float* dev_rgbX = mMeshTracker->getRGBMapSOA().x[0];
+			float* dev_rgbY = mMeshTracker->getRGBMapSOA().y[0];
+			float* dev_rgbZ = mMeshTracker->getRGBMapSOA().z[0];
+
+
 			float* dev_posX = mMeshTracker->getVMapPyramid().x[0];
 			float* dev_posY = mMeshTracker->getVMapPyramid().y[0];
 			float* dev_posZ = mMeshTracker->getVMapPyramid().z[0];
@@ -1249,6 +1255,11 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 			int* segmentIndex = new int[mXRes*mYRes];
 			float* segDistance = new float[mXRes*mYRes];
 
+			
+			float* rgbX = new float[mXRes*mYRes];
+			float* rgbY = new float[mXRes*mYRes];
+			float* rgbZ = new float[mXRes*mYRes];
+
 			float* posX = new float[mXRes*mYRes];
 			float* posY = new float[mXRes*mYRes];
 			float* posZ = new float[mXRes*mYRes];
@@ -1259,6 +1270,10 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 
 			cudaMemcpy(segmentIndex,  dev_segements, mXRes*mYRes*sizeof(int), cudaMemcpyDeviceToHost);
 			cudaMemcpy(segDistance, dev_segDistance, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+			
+			cudaMemcpy(rgbX, dev_rgbX, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(rgbY, dev_rgbY, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(rgbZ, dev_rgbZ, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
 			cudaMemcpy(posX, dev_posX, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
 			cudaMemcpy(posY, dev_posY, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
 			cudaMemcpy(posZ, dev_posZ, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
@@ -1269,7 +1284,8 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 			for(int i = 0; i < mXRes*mYRes; ++i) {
 				arrayData << posX[i] << ',' << posY[i] << ',' << posZ[i] << ',' 
 					<< normX[i] << ',' << normY[i] << ',' << normZ[i] << ',' 
-					<< segmentIndex[i] << ','  << segDistance[i] << endl;
+					<< segmentIndex[i] << ','  << segDistance[i] << ','
+					<< rgbX[i] << ',' << rgbY[i] << ',' << rgbZ[i] << endl;
 			}
 
 			delete segmentIndex;
