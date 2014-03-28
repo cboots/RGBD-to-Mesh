@@ -1263,6 +1263,8 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 			cudaMemcpy(posY, dev_posY, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
 			cudaMemcpy(posZ, dev_posZ, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
 			cudaMemcpy(normX, dev_normX, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(normY, dev_normY, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(normZ, dev_normZ, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
 
 			for(int i = 0; i < mXRes*mYRes; ++i) {
 				arrayData << posX[i] << ',' << posY[i] << ',' << posZ[i] << ',' 
