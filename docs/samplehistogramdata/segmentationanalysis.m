@@ -140,6 +140,56 @@ if(count > 500)
     counts = hist(newprojection(:), samples);
     subplot(2,1,2)
     plot(samples, counts);
+    
+    
+    %% Compute final segmentation
+    segmentids = unique(finalsegments);
+    segmentids(segmentids==0) = [];
+    
+    anglethresh = cosd(30.0);
+    distthresh = 0.025;
+    fullImageSegmentation = zeros(480,640);
+    
+    points = cat(3,posX, posY, posZ);
+    norms = cat(3,normX, normY, normZ);
+    
+    for seg=1:length(segmentids)
+        j = segmentids(seg);
+        norm = normals(j,:);
+        d = distances(j);
+        
+        figure
+        normdotprod = bsxfun(@times, norms(:,:,1), norm(1)) ...
+                + bsxfun(@times, norms(:,:,2), norm(2)) ...
+                + bsxfun(@times, norms(:,:,3), norm(3));
+            
+        dist = bsxfun(@times, points(:,:,1), norm(1)) ...
+                + bsxfun(@times, points(:,:,2), norm(2)) ...
+                + bsxfun(@times, points(:,:,3), norm(3));
+        
+            
+        anglemask = normdotprod > anglethresh;
+        distmask = abs(dist - d) < distthresh; 
+        
+        subplot(2,2,1)
+        imagesc(normdotprod);
+        
+        subplot(2,2,2)
+        imagesc(dist);
+        
+        subplot(2,2,3);
+        imagesc(anglemask);
+        
+        subplot(2,2,4);
+        imagesc(distmask);
+            
+        fullImageSegmentation(anglemask & distmask) = j;
+    end
+    
+    figure
+    imagesc(fullImageSegmentation);
+    
+    
 end
 
 end
