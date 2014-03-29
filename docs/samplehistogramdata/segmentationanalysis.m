@@ -3,7 +3,8 @@ close all
 if (~exist('segmentDistances'))
    
 %% Import the data
-data = xlsread('segmentationSampleCorner2.csv');
+%data = xlsread('segmentationSampleCorner2.csv');
+data = xlsread('segmentationSampleCabinet.csv');
 
 %% Allocate imported array to column variable names
 posX = reshape(data(:,1),[640 480])';
@@ -18,9 +19,9 @@ red = zeros(480,640);
 grn = zeros(480,640);
 blu = zeros(480,640);
 if(size(data,2) > 8)
-    red = reshape(data(:,8),[640 480])';
-    grn = reshape(data(:,9),[640 480])';
-    blu = reshape(data(:,10),[640 480])';
+    red = reshape(data(:,9),[640 480])';
+    grn = reshape(data(:,10),[640 480])';
+    blu = reshape(data(:,11),[640 480])';
 end
 
 rgbIm = cat(3, red,grn,blu);
@@ -99,6 +100,7 @@ if(count > 500)
         points = [posX(segments == j) posY(segments == j) posZ(segments == j)];
         cm = mean(points,1);
         points0 = bsxfun(@minus, points, cm);
+        
         [U,S,V] = svd(points0,0);
         normal = V(:,3);
         if(normal(3) < 0.0)
