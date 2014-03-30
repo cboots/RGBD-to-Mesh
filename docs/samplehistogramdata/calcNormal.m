@@ -1,4 +1,4 @@
-function v = calcNormal(points)
+function [v curve] = calcNormal(points)
 
 A = points'*points;
 
@@ -35,12 +35,15 @@ end
 mineig = min([eig1 eig2 eig3]);
 
 
-[V D] = eig(A);;
+[V D] = eig(A);
 
-N = (A-eye(3)*eig1)*(A-eye(3)*eig2);
+N = (A-eye(3)*eig1)*(A(:,1)-[1;0;0]*eig2);
 
 
 norms = sqrt(sum(N.^2,1));
 [~,i] = max(norms);
-
+if(min(norms) == 0)
+    stop
+end
 v = N(:,i)./norms(i);
+curve = eig3/(eig1+eig2+eig3);

@@ -3,9 +3,9 @@ close all
 if (~exist('segmentDistances'))
    
 %% Import the data
-%data = xlsread('segmentationSampleCorner2.csv');
+data = xlsread('segmentationSampleCorner2.csv');
 % data = xlsread('segmentationSampleCabinet.csv');
-data = xlsread('segmentationSampleBackwall.csv');
+% data = xlsread('segmentationSampleBackwall.csv');
 
 %% Allocate imported array to column variable names
 posX = reshape(data(:,1),[640 480])';
@@ -106,9 +106,10 @@ if(count > 500)
         
         disp('Normals:')
         normal = V(:,3);
-        normalOther = calcNormal(points0);
+        [normalOther curvature] = calcNormal(points0);
         normal'
         normalOther'
+        curvature
         
         
         if(normal(3) < 0.0)
