@@ -4,7 +4,8 @@ if (~exist('segmentDistances'))
    
 %% Import the data
 %data = xlsread('segmentationSampleCorner2.csv');
-data = xlsread('segmentationSampleCabinet.csv');
+% data = xlsread('segmentationSampleCabinet.csv');
+data = xlsread('segmentationSampleBackwall.csv');
 
 %% Allocate imported array to column variable names
 posX = reshape(data(:,1),[640 480])';
@@ -102,7 +103,14 @@ if(count > 500)
         points0 = bsxfun(@minus, points, cm);
         
         [U,S,V] = svd(points0,0);
+        
+        disp('Normals:')
         normal = V(:,3);
+        normalOther = calcNormal(points0);
+        normal'
+        normalOther'
+        
+        
         if(normal(3) < 0.0)
             normal = -normal;
         end
@@ -118,7 +126,7 @@ if(count > 500)
     centroids;
     
     anglethresh =  cos(2.5*pi/180.0);
-    distthresh = 0.015;
+    distthresh = 0.02;
     
     dotproducts = (normals*normals');
     acosd(dotproducts);
@@ -131,7 +139,7 @@ if(count > 500)
        end
     end
     delts;
-    merge = (delts < distthresh) & (dotproducts > anglethresh)
+    merge = (delts < distthresh) & (dotproducts > anglethresh);
     
     finalsegments = zeros(480,640);
     for x=1:size(merge,1)
@@ -173,9 +181,9 @@ if(count > 500)
         norm = normals(j,:);
         d = distances(j);
         
-        normdotprod = bsxfun(@times, norms(:,:,1), norm(1)) ...
+        normdotprod = abs(bsxfun(@times, norms(:,:,1), norm(1)) ...
                 + bsxfun(@times, norms(:,:,2), norm(2)) ...
-                + bsxfun(@times, norms(:,:,3), norm(3));
+                + bsxfun(@times, norms(:,:,3), norm(3)));
             
         dist = bsxfun(@times, points(:,:,1), norm(1)) ...
                 + bsxfun(@times, points(:,:,2), norm(2)) ...
@@ -191,7 +199,7 @@ if(count > 500)
         imagesc(normdotprod);
         
         subplot(2,2,2)
-        imagesc(dist);
+        imagesc(abs(dist-d));
         
         subplot(2,2,3);
         imagesc(anglemask);
