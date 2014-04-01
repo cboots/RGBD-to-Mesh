@@ -26,6 +26,10 @@ using namespace rgbd::framework;
 #define MIN_2D_PEAK_COUNT			500
 #define PEAK_2D_EXCLUSION_RADIUS	8
 
+#define DISTANCE_HIST_COUNT	512
+#define DISTANCE_HIST_MIN	0.1f
+#define DISTANCE_HIST_MAX	5.0f
+
 
 enum FilterMode
 {
@@ -59,11 +63,14 @@ private:
 	Float3SOAPyramid dev_vmapSOA;
 	Float3SOAPyramid dev_nmapSOA;
 
-	int* dev_normalVoxels;
+	//Segmentation buffers
+	int* dev_normalVoxels;//2D Normal Histogram
+	Float3SOA dev_normalPeaks;//Normal Peaks Array
+	int* dev_normalSegments;//Normal Segmentation Buffer
+	float* dev_planeProjectedDistanceMap;//Projetd Distance Buffer
 
-	int* dev_normalSegments;
-	float* dev_planeProjectedDistanceMap;
-	Float3SOA dev_normalPeaks;
+	float* 
+
 
 
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];

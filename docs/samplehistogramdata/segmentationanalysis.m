@@ -3,10 +3,10 @@ close all
 if (~exist('segmentDistances'))
    
 %% Import the data
-data = xlsread('segmentationSampleCorner2.csv');
+% data = xlsread('segmentationSampleCorner2.csv');
 % data = xlsread('segmentationSampleCabinet.csv');
 % data = xlsread('segmentationSampleBackwall.csv');
-% data = xlsread('segmentationSampleTiltedWhiteboard.csv');
+data = xlsread('segmentationSampleTiltedWhiteboard.csv');
 
 %% Allocate imported array to column variable names
 posX = reshape(data(:,1),[640 480])';
@@ -64,13 +64,13 @@ if(count > 500)
     surf(segmentDistances.*mask);
     view([0 0])
 
-    samples = logspace(log10(0.1), log10(5.0), 512);
+    samples = linspace(0.1, 5.0, 512);
     KS = hist(distancesegment, samples);
     segments = zeros(480,640);
 
     pks = [];
     locs = [];
-    windowr = 2;
+    windowr = 3;
     KSCopy = KS;
     while(max(KSCopy) > 350)
        [peak loc] = max(KSCopy);
