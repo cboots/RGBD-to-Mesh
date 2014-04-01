@@ -3,10 +3,10 @@ close all
 if (~exist('segmentDistances'))
    
 %% Import the data
-% data = xlsread('segmentationSampleCorner2.csv');
+data = xlsread('segmentationSampleCorner2.csv');
 % data = xlsread('segmentationSampleCabinet.csv');
 % data = xlsread('segmentationSampleBackwall.csv');
-data = xlsread('segmentationSampleTiltedWhiteboard.csv');
+% data = xlsread('segmentationSampleTiltedWhiteboard.csv');
 
 %% Allocate imported array to column variable names
 posX = reshape(data(:,1),[640 480])';
@@ -85,9 +85,13 @@ if(count > 500)
     hold all
     plot(samples(locs), pks, '*');
     
+    mindist = 10000000*ones(480,640);
     for j=1:length(locs)
        pkcenter = samples(locs(j));
-       segments(mask & (abs(pkcenter - segmentDistances) < 0.01)) = j;
+       dtoplane = abs(pkcenter - segmentDistances);
+       match = mask & (dtoplane < 0.01) & (dtoplane < mindist);
+       segments(match) = j;
+       mindist(match) = dtoplane(match);
        
     end
 
@@ -98,6 +102,7 @@ if(count > 500)
     normals = zeros(length(locs),3);
     counts = zeros(length(locs),1);
     centroids = zeros(length(locs),3);
+    curvatures = zeros(length(locs),1);
     for j=1:length(locs)
         points = [posX(segments == j) posY(segments == j) posZ(segments == j)];
         if(size(points,1) > 300)
@@ -105,14 +110,9 @@ if(count > 500)
         cm = mean(points,1);
         points0 = bsxfun(@minus, points, cm);
         
-        [U,S,V] = svd(points0,0);
-        
-        disp('Normals:')
-        normal = V(:,3);
-        [normalOther curvature] = calcNormal(points0);
-        normal'
-        normalOther'
+        [normal curvature eigs] = calcNormal(points0);
         curvature
+        eigs
         
         
         if(normal(3) < 0.0)
@@ -122,6 +122,7 @@ if(count > 500)
         counts(j) = size(points,1);
         distances(j) = dot(normal,cm);
         centroids(j,:) = cm;
+        curvatures(j) = curvature;
         
         end
     end
@@ -129,10 +130,10 @@ if(count > 500)
     
     
     avgnorm = sum(bsxfun(@times, counts, normals),1)/sum(counts);
-    avgnorm = avgnorm./sqrt(sum(avgnorm.^2))
+    avgnorm = avgnorm./sqrt(sum(avgnorm.^2));
     
-    acosd(normals(1,:)*avgnorm')
-    avgnorm = normals(1,:)
+    acosd(normals(1,:)*avgnorm');
+    avgnorm = normals(1,:);
     newprojection = mask.*(posX*avgnorm(1) + posY*avgnorm(2)+ posZ*avgnorm(3));
     newprojection(newprojection == 0) = nan;
     

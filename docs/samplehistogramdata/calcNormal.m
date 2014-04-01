@@ -1,4 +1,4 @@
-function [v curve] = calcNormal(points ,A)
+function [v curve eigs] = calcNormal(points ,A)
 
 if(nargin < 2)
     A = points'*points;
@@ -49,3 +49,4 @@ if(min(norms) == 0)
 end
 v = N(:,i)./norms(i);
 curve = eig3/(eig1+eig2+eig3);
+eigs = [eig1 eig2 eig3];

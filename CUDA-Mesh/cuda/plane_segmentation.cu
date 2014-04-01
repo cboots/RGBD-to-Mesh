@@ -29,14 +29,14 @@ __device__ glm::vec3 normalFrom3x3Covar(glm::mat3 A, float& curvature) {
 		// theoretically -1 <= r <= 1, but clamp in case of numeric error
 		float phi;
 		if (r <= -1) {
-			phi = PI / 3;
+			phi = PI_F / 3;
 		} else if (r >= 1) { 
 			phi = 0;
 		} else {
 			phi = glm::acos(r)/3;
 		}
 		eigs[0] = q + 2*p*glm::cos(phi);
-		eigs[2] = q + 2*p*glm::cos(phi + 2*PI/3);
+		eigs[2] = q + 2*p*glm::cos(phi + 2*PI_F/3);
 		eigs[1] = 3*q - eigs[0] - eigs[2];
 
 	}
@@ -450,7 +450,8 @@ __host__ void normalHistogramPrimaryPeakDetection(int* histogram, int xBins, int
 
 #pragma region Segmentation Two-D
 
-__global__ void segmentNormals2DKernel(Float3SOA rawNormals, Float3SOA rawPositions, int* normalSegments, float* projectedDistance,
+__global__ void segmentNormals2DKernel(Float3SOA rawNormals, Float3SOA rawPositions, 
+									   int* normalSegments, float* projectedDistance,
 									   int imageWidth, int imageHeight, 
 									   int* histogram, int xBins, int yBins, 
 									   Float3SOA peaks, int maxPeaks, float maxAngleRange)
@@ -472,8 +473,8 @@ __global__ void segmentNormals2DKernel(Float3SOA rawNormals, Float3SOA rawPositi
 
 		if(xi >= 0.0f && yi >= 0.0f){
 			
-			y = cosf(PI*yi/float(yBins));
-			x = cosf(PI*xi/float(xBins)) * sqrtf(1.0f-y*y);
+			y = cosf(PI_F*yi/float(yBins));
+			x = cosf(PI_F*xi/float(xBins)) * sqrtf(1.0f-y*y);
 			z = sqrtf(1.0f-x*x-y*y);
 		}
 

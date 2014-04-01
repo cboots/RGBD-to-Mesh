@@ -256,7 +256,7 @@ void MeshTracker::buildNMapSimple()
 }
 
 
-void MeshTracker::buildNMapAverageGradient(int windowRadius)
+void MeshTracker::buildNMapAverageGradient()
 {
 	//Assemble gradient images.
 

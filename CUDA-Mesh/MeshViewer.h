@@ -3,6 +3,7 @@
 //Generic includes
 #include "Utils.h"
 #include "CudaUtils.h"
+#include <boost/timer/timer.hpp>
 
 //CUDA GL Includes
 #include "cuda_runtime.h"
@@ -45,7 +46,8 @@ enum DisplayModes
 	DISPLAY_MODE_IMAGE,
 	DISPLAY_MODE_HISTOGRAM_COMPARE,
 	DISPLAY_MODE_VMAP_DEBUG,
-	DISPLAY_MODE_NMAP_DEBUG
+	DISPLAY_MODE_NMAP_DEBUG,
+	DISPLAY_MODE_NONE
 };
 
 enum NormalMode

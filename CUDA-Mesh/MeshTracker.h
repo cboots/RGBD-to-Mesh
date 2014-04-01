@@ -113,7 +113,7 @@ public:
 	void buildVMapBilateralFilter(float maxDepth, float sigma_t);
 
 	void buildNMapSimple();
-	void buildNMapAverageGradient(int windowRadius);
+	void buildNMapAverageGradient();
 
 	void GPUSimpleSegmentation();
 	void subsamplePyramids();

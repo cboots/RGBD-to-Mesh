@@ -822,13 +822,12 @@ void MeshViewer::display()
 		seconds = seconds2;
 	}
 
-	stringstream title;
-	title << "RGBD to Mesh Visualization | " << (int)fps  << "FPS";
-	glutSetWindowTitle(title.str().c_str());
 
 
 	cudaDeviceSynchronize();
 	checkCUDAError("Loop Error Clear");
+
+
 
 	//=====Tracker Pipeline=====
 	//Check if log playback has restarted (special edge case)
@@ -842,6 +841,8 @@ void MeshViewer::display()
 	//Check if we have a new frame
 	if(mLatestTime > mLastSubmittedTime)
 	{
+		boost::timer::cpu_timer t;
+
 		//Now we have new data, so run pipeline
 		mLastSubmittedTime = mLatestTime;
 
@@ -877,7 +878,7 @@ void MeshViewer::display()
 			mMeshTracker->buildNMapSimple();
 			break;
 		case AVERAGE_GRADIENT_NORMALS:
-			mMeshTracker->buildNMapAverageGradient(4);
+			mMeshTracker->buildNMapAverageGradient();
 			break;
 		}
 
@@ -887,8 +888,17 @@ void MeshViewer::display()
 
 		mMeshTracker->GPUSimpleSegmentation();
 
+		cudaDeviceSynchronize();
+
+		int millisec = t.elapsed().wall / 1000000;
+		//Update title
+		stringstream title;
+		title << "RGBD to Mesh Visualization | (" << millisec << " ms)  " << (int)fps  << "FPS";
+		glutSetWindowTitle(title.str().c_str());
 
 	}//=====End of pipeline code=====
+
+
 
 
 	//=====RENDERING======
@@ -952,6 +962,9 @@ void MeshViewer::display()
 			drawQuad(vmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 VMap
 			drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL Original depth
 			break;
+		case DISPLAY_MODE_NONE:
+		default:
+			break;
 		}
 
 		glutSwapBuffers();
@@ -1002,6 +1015,9 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		break;
 	case '6':
 		mViewState = DISPLAY_MODE_NMAP_DEBUG;
+		break;
+	case '0':
+		mViewState = DISPLAY_MODE_NONE;
 		break;
 	case('r'):
 		cout << "Reloading Shaders" <<endl;
