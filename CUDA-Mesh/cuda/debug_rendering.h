@@ -35,3 +35,5 @@ __host__ void drawNormalVoxelsToPBO(float4* pbo, int* voxels, int pboXRes, int p
 __host__ void drawDecoupledHistogramsToPBO(float4* pbo, Int3SOA histograms,  int length, int pboXRes, int pboYRes);
 
 __host__ void drawNormalSegmentsToPBO(float4* pbo, int* normalSegments, float* projectedDistanceMap, int xRes, int yRes);
+
+__host__ void drawScaledHistogramToPBO(float4* pbo, int* histogram, glm::vec3 color, int maxValue, int length, int pboXRes, int pboYRes);

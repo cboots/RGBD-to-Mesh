@@ -347,3 +347,38 @@ __host__ void drawNormalSegmentsToPBO(float4* pbo, int* normalSegments, float* p
 	sendSegmentDataToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo,  normalSegments, projectedDistanceMap,
 		xRes, yRes, xRes, yRes);
 }
+
+
+
+
+__global__ void drawScaledHistogramToPBOKernel(float4* pbo, int* hist, glm::vec3 color, float scaleInv, int length, int pboXRes, int pboYRes)
+{
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int pboi = (y * pboXRes) + x;
+
+	if(y < pboYRes && x < length){
+
+		// Each thread writes one pixel location in the texture (textel)
+		pbo[pboi].x = color.x;
+		pbo[pboi].y = color.y;
+		pbo[pboi].z = color.z;
+		pbo[pboi].w = hist[x] * scaleInv;
+	}
+}
+
+
+
+__host__ void drawScaledHistogramToPBO(float4* pbo, int* histogram, glm::vec3 color, int maxValue, int length, int pboXRes, int pboYRes)
+{
+	int tileSize = 16;
+	assert(length < pboXRes);
+
+	dim3 threadsPerBlock(tileSize, tileSize);
+	dim3 fullBlocksPerGrid((int)ceil(float(length)/float(tileSize)), 
+		(int)ceil(float(pboYRes)/float(tileSize)));
+
+
+	drawScaledHistogramToPBOKernel<<<fullBlocksPerGrid,threadsPerBlock>>>(pbo, histogram, color, float(1.0f/maxValue), length, pboXRes, pboYRes);
+}
+

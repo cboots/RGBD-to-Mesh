@@ -137,11 +137,13 @@ public:
 	inline int* getDeviceNormalHistogram() { return dev_normalVoxels;}
 	inline int* getNormalSegments() { return dev_normalSegments;}
 	inline float* getPlaneProjectedDistance() {return dev_planeProjectedDistanceMap;}
+	inline int* getDistanceHistogram(int peak) {return (peak >= 0 && peak < MAX_2D_PEAKS_PER_ROUND)?dev_distanceHistograms[peak]:NULL;}
 #pragma endregion
 
 #pragma region Property Getters
 	inline int getNormalXSubdivisions() { return NUM_NORMAL_X_SUBDIVISIONS; }
 	inline int getNormalYSubdivisions() { return NUM_NORMAL_Y_SUBDIVISIONS; }
+	inline int getDistanceHistogramSize() {return DISTANCE_HIST_COUNT; }
 	//In degrees
 	inline float get2DSegmentationMaxAngle(){return m2DSegmentationMaxAngleFromPeak;}
 	inline void set2DSegmentationMaxAngle(float maxAngleDegrees){

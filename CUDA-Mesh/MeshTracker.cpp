@@ -322,6 +322,7 @@ void MeshTracker::GPUSimpleSegmentation()
 		dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND, m2DSegmentationMaxAngleFromPeak*PI_F/180.0f);
 
 	//Distance histogram generation
+	clearHistogram(dev_distanceHistograms[0], DISTANCE_HIST_COUNT, MAX_2D_PEAKS_PER_ROUND);
 	generateDistanceHistograms(dev_normalSegments, dev_planeProjectedDistanceMap, mXRes, mYRes, dev_distanceHistograms,
 		MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_COUNT, DISTANCE_HIST_MIN, DISTANCE_HIST_MAX);
 

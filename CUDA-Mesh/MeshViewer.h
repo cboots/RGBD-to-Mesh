@@ -47,6 +47,7 @@ enum DisplayModes
 	DISPLAY_MODE_HISTOGRAM_COMPARE,
 	DISPLAY_MODE_VMAP_DEBUG,
 	DISPLAY_MODE_NMAP_DEBUG,
+	DISPLAY_MODE_SEGMENTATION_DEBUG,
 	DISPLAY_MODE_NONE
 };
 
@@ -268,6 +269,7 @@ private:
 	void drawNMaptoTexture(GLuint texture, int level);
 	void drawNormalHistogramtoTexture(GLuint texture);
 	void drawNormalSegmentsToTexture(GLuint texture);
+	void drawDistanceHistogramtoTexture(GLuint texture, vec3 color, int scale, int peak);
 
 #pragma endregion
 

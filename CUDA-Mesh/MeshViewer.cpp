@@ -731,6 +731,36 @@ void MeshViewer::drawNormalHistogramtoTexture(GLuint texture)
 }
 
 
+void MeshViewer::drawDistanceHistogramtoTexture(GLuint texture, vec3 color, int scale, int peak)
+{
+	float4* pbo;
+	cudaGLMapBufferObject((void**)&pbo, imagePBO0);
+
+	clearPBO(pbo, mXRes, mYRes, 0.0f);
+
+	int* d_histPointer = mMeshTracker->getDistanceHistogram(peak);
+	if(d_histPointer == NULL)
+		return;
+
+	drawScaledHistogramToPBO(pbo, d_histPointer, color, scale, mMeshTracker->getDistanceHistogramSize(), mXRes, mYRes);
+
+	cudaGLUnmapBufferObject(imagePBO0);
+
+	//Unpack to textures
+	glActiveTexture(GL_TEXTURE12);
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+		GL_RGBA, GL_FLOAT, NULL);
+
+	//Unbind buffers
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glActiveTexture(GL_TEXTURE0);
+
+}
+
+
 void MeshViewer::drawRGBMaptoTexture(GLuint texture, int level)
 {
 	float4* dptrRGBMap;
@@ -962,6 +992,22 @@ void MeshViewer::display()
 			drawQuad(vmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 VMap
 			drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL Original depth
 			break;
+		case DISPLAY_MODE_SEGMENTATION_DEBUG:
+			drawNormalSegmentsToTexture(texture0);
+			drawQuad(normalsegments_prog, -0.5, 0.5, 0.5, 0.5, 1.0,  &texture0, 1);//UL
+			drawNormalHistogramtoTexture(texture0);
+			drawQuad(histogram_prog, -0.5,  -0.5, 0.5, 0.5, 0.1,  &texture0, 1);//LL
+
+			drawDistanceHistogramtoTexture(texture0, vec3(1,0,0), 10000, 0);
+			drawQuad(barhistogram_prog, 0.5, 0.875, 0.5, 0.125, 1.0, &texture0, 1);//UR
+			drawDistanceHistogramtoTexture(texture0, vec3(0,1,0), 10000, 1);
+			drawQuad(barhistogram_prog, 0.5, 0.625, 0.5, 0.125, 1.0, &texture0, 1);//UR
+			drawDistanceHistogramtoTexture(texture0, vec3(1,1,0), 10000, 2);
+			drawQuad(barhistogram_prog, 0.5, 0.375, 0.5, 0.125, 1.0, &texture0, 1);//UR
+			drawDistanceHistogramtoTexture(texture0, vec3(0,0,1), 10000, 3);
+			drawQuad(barhistogram_prog, 0.5, 0.125, 0.5, 0.125, 1.0, &texture0, 1);//UR
+
+			break;
 		case DISPLAY_MODE_NONE:
 		default:
 			break;
@@ -1015,6 +1061,9 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		break;
 	case '6':
 		mViewState = DISPLAY_MODE_NMAP_DEBUG;
+		break;
+	case '7':
+		mViewState = DISPLAY_MODE_SEGMENTATION_DEBUG;
 		break;
 	case '0':
 		mViewState = DISPLAY_MODE_NONE;
