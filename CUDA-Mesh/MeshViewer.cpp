@@ -265,7 +265,6 @@ void MeshViewer::initShader()
 	const char * depth_frag = "shaders/depthFS.glsl";
 	const char * vmap_frag = "shaders/vmapFS.glsl";
 	const char * nmap_frag = "shaders/nmapFS.glsl";
-	const char * curvature_frag = "shaders/curvatureFS.glsl";
 	const char * histogram_frag = "shaders/histogramFS.glsl";
 	const char * barhistogram_frag = "shaders/barhistogramFS.glsl";
 	const char * normalsegments_frag = "shaders/normalsegmentsFS.glsl";
@@ -284,8 +283,6 @@ void MeshViewer::initShader()
 
 	//NMap display debug shader
 	nmap_prog = glslUtility::createProgram(pass_vert, NULL, nmap_frag, quadAttributeLocations, 2);
-
-	curvemap_prog = glslUtility::createProgram(pass_vert, NULL, curvature_frag, quadAttributeLocations, 2);
 
 	histogram_prog = glslUtility::createProgram(pass_vert, NULL, histogram_frag, quadAttributeLocations, 2);
 
@@ -707,29 +704,6 @@ void MeshViewer::drawNMaptoTexture(GLuint texture, int level)
 
 }
 
-void MeshViewer::drawCurvaturetoTexture(GLuint texture)
-{
-	float4* dptrNMap;
-	cudaGLMapBufferObject((void**)&dptrNMap, imagePBO0);
-
-	clearPBO(dptrNMap, mXRes, mYRes, 0.0f);
-	drawCurvaturetoPBO(dptrNMap, mMeshTracker->getCurvature(), mXRes, mYRes);
-
-	cudaGLUnmapBufferObject(imagePBO0);
-
-	//Unpack to textures
-	glActiveTexture(GL_TEXTURE12);
-	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
-		GL_RGBA, GL_FLOAT, NULL);
-
-	//Unbind buffers
-	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glActiveTexture(GL_TEXTURE0);
-}
-
 
 void MeshViewer::drawNormalHistogramtoTexture(GLuint texture)
 {
@@ -901,14 +875,9 @@ void MeshViewer::display()
 		{
 		case SIMPLE_NORMALS:
 			mMeshTracker->buildNMapSimple();
-			mMeshTracker->estimateCurvatureFromNormals();
 			break;
 		case AVERAGE_GRADIENT_NORMALS:
 			mMeshTracker->buildNMapAverageGradient(4);
-			mMeshTracker->estimateCurvatureFromNormals();
-			break;
-		case PCA_NORMALS:
-			mMeshTracker->buildNMapPCA(0.03f); 
 			break;
 		}
 
@@ -983,18 +952,6 @@ void MeshViewer::display()
 			drawQuad(vmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 VMap
 			drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL Original depth
 			break;
-		case DISPLAY_MODE_CURVATURE_DEBUG:
-
-			drawDepthImageBufferToTexture(texture0);
-			drawColorImageBufferToTexture(texture1);
-			drawNMaptoTexture(texture2, 0);
-			drawCurvaturetoTexture(texture3);
-
-			drawQuad(depth_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR depth
-			drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0,  &texture1, 1);//LR color
-			drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL normal 
-			drawQuad(curvemap_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL curvature
-			break;
 		}
 
 		glutSwapBuffers();
@@ -1040,14 +997,11 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	case '4':
 		mViewState = DISPLAY_MODE_HISTOGRAM_COMPARE;
 		break;
-	case '6':
+	case '5':
 		mViewState = DISPLAY_MODE_VMAP_DEBUG;
 		break;
-	case '7':
+	case '6':
 		mViewState = DISPLAY_MODE_NMAP_DEBUG;
-		break;
-	case '8':
-		mViewState = DISPLAY_MODE_CURVATURE_DEBUG;
 		break;
 	case('r'):
 		cout << "Reloading Shaders" <<endl;
@@ -1226,18 +1180,14 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		mNormalMode = SIMPLE_NORMALS;
 		cout << "Simple Normals Mode"<< endl;
 		break;
-	case '/':
-		mNormalMode = PCA_NORMALS;
-		cout << "PCA Normals Mode" << endl;
-		break;
-		case 'H':
+	case 'H':
 		{
 			ofstream arrayData("segmentationSample.csv"); 
 
 			int* dev_segements = mMeshTracker->getNormalSegments();
 			float* dev_segDistance = mMeshTracker->getPlaneProjectedDistance();
 
-			
+
 			float* dev_rgbX = mMeshTracker->getRGBMapSOA().x[0];
 			float* dev_rgbY = mMeshTracker->getRGBMapSOA().y[0];
 			float* dev_rgbZ = mMeshTracker->getRGBMapSOA().z[0];
@@ -1255,7 +1205,7 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 			int* segmentIndex = new int[mXRes*mYRes];
 			float* segDistance = new float[mXRes*mYRes];
 
-			
+
 			float* rgbX = new float[mXRes*mYRes];
 			float* rgbY = new float[mXRes*mYRes];
 			float* rgbZ = new float[mXRes*mYRes];
@@ -1270,7 +1220,7 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 
 			cudaMemcpy(segmentIndex,  dev_segements, mXRes*mYRes*sizeof(int), cudaMemcpyDeviceToHost);
 			cudaMemcpy(segDistance, dev_segDistance, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
-			
+
 			cudaMemcpy(rgbX, dev_rgbX, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
 			cudaMemcpy(rgbY, dev_rgbY, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
 			cudaMemcpy(rgbZ, dev_rgbZ, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
@@ -1351,7 +1301,7 @@ void MeshViewer::mouse_move(int x, int y) {
 		float delX = x-drag_x_last;
 		float delY = y-drag_y_last;
 
-		float rotSpeed = 0.1f*PI/180.0f;
+		float rotSpeed = 0.1f*PI_F/180.0f;
 
 		vec3 Up = mCamera.up;
 		vec3 Right = normalize(cross(mCamera.view, -mCamera.up));

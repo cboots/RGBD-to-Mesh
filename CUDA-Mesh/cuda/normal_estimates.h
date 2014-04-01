@@ -6,6 +6,7 @@
 #include "RGBDFrame.h"
 #include <glm/glm.hpp>
 #include "math.h"
+#include "Utils.h"
 
 __host__ void simpleNormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, int numLevels, int xRes, int yRes);
 

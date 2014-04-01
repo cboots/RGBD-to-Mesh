@@ -1,7 +1,8 @@
-function [v curve] = calcNormal(points)
+function [v curve] = calcNormal(points ,A)
 
-A = points'*points;
-
+if(nargin < 2)
+    A = points'*points;
+end
 
 p1 = A(1,2)^2 + A(1,3)^2 + A(2,3)^2;
 if (p1 == 0) 
@@ -38,6 +39,7 @@ mineig = min([eig1 eig2 eig3]);
 [V D] = eig(A);
 
 N = (A-eye(3)*eig1)*(A(:,1)-[1;0;0]*eig2);
+
 
 
 norms = sqrt(sum(N.^2,1));

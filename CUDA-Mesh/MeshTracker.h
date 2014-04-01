@@ -59,8 +59,6 @@ private:
 	Float3SOAPyramid dev_vmapSOA;
 	Float3SOAPyramid dev_nmapSOA;
 
-	float* dev_curvature;
-
 	int* dev_normalVoxels;
 
 	int* dev_normalSegments;
@@ -116,10 +114,7 @@ public:
 
 	void buildNMapSimple();
 	void buildNMapAverageGradient(int windowRadius);
-	void buildNMapPCA(float radiusMeters);
 
-
-	void estimateCurvatureFromNormals();
 	void GPUSimpleSegmentation();
 	void subsamplePyramids();
 
@@ -131,7 +126,6 @@ public:
 	inline Float3SOAPyramid getVMapPyramid() { return dev_vmapSOA;}
 	inline Float3SOAPyramid getNMapPyramid() { return dev_nmapSOA;}
 	inline Float3SOAPyramid getRGBMapSOA() { return dev_rgbSOA;}
-	inline float* getCurvature() {return dev_curvature;}
 	inline int* getDeviceNormalHistogram() { return dev_normalVoxels;}
 	inline int* getNormalSegments() { return dev_normalSegments;}
 	inline float* getPlaneProjectedDistance() {return dev_planeProjectedDistanceMap;}

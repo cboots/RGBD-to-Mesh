@@ -43,6 +43,7 @@ const int testArraySizeX = 640;
 const int testArraySizeY = 2;
 float host_onesArray[testArraySizeY][testArraySizeX];
 
+
 int main(int argc, char** argv)
 {
 	boost::filesystem::path full_path( boost::filesystem::current_path() );

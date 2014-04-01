@@ -1,6 +1,65 @@
 #include "plane_segmentation.h"
 
 
+__device__ glm::vec3 normalFrom3x3Covar(glm::mat3 A, float& curvature) {
+	// Given a (real, symmetric) 3x3 covariance matrix A, returns the eigenvector corresponding to the min eigenvalue
+	// (see: http://en.wikipedia.org/wiki/Eigenvalue_algorithm#3.C3.973_matrices)
+	glm::vec3 eigs;
+	glm::vec3 normal = glm::vec3(0.0f);
+
+	float p1 = A[0][1]*A[0][1] + A[0][2]*A[0][2] + A[1][2]*A[1][2];
+	if (abs(p1) < 0.00001f) { // A is diagonal
+		eigs = glm::vec3(A[0][0], A[1][1], A[2][2]);
+
+		float tmp;
+		int i, eig_i;
+		// sorting: swap first pair if necessary, then second pair, then first pair again
+		for (i=0; i<3; i++) {
+			eig_i = i%2;
+			tmp = eigs[eig_i];
+			eigs[eig_i] = glm::max(tmp, eigs[eig_i+1]);
+			eigs[eig_i+1] = glm::min(tmp, eigs[eig_i+1]);
+		}
+	} else {
+		float q = (A[0][0] + A[1][1] + A[2][2])/3.0f; // mean(trace(A))
+		float p2 = (A[0][0]-q)*(A[0][0]-q) + (A[1][1]-q)*(A[1][1]-q) + (A[2][2]-q)*(A[2][2]-q)+ 2*p1;
+		float p = sqrt(p2/6);
+		glm::mat3 B = (1/p) * (A-q*glm::mat3(1.0f));
+		float r = glm::determinant(B)/2;
+		// theoretically -1 <= r <= 1, but clamp in case of numeric error
+		float phi;
+		if (r <= -1) {
+			phi = PI / 3;
+		} else if (r >= 1) { 
+			phi = 0;
+		} else {
+			phi = glm::acos(r)/3;
+		}
+		eigs[0] = q + 2*p*glm::cos(phi);
+		eigs[2] = q + 2*p*glm::cos(phi + 2*PI/3);
+		eigs[1] = 3*q - eigs[0] - eigs[2];
+
+	}
+
+
+
+	//N = (A-eye(3)*eig1)*(A(:,1)-[1;0;0]*eig2);
+	glm::mat3 Aeig1 = A;
+	Aeig1[0][0] -= eigs[0];
+	Aeig1[1][1] -= eigs[0];
+	Aeig1[2][2] -= eigs[0];
+	normal = Aeig1*(A[0] - glm::vec3(eigs[1],0.0f,0.0f));
+
+	// check if point cloud region is "flat" enough
+	curvature = eigs[2]/(eigs[0]+eigs[1]+eigs[2]);
+
+
+	float length = glm::length(normal);
+	normal /= length;
+	return normal;
+}
+
+
 #pragma region Histogram Two-D
 
 __global__ void normalHistogramKernel(float* normX, float* normY, int* histogram, int xRes, int yRes, int xBins, int yBins)

@@ -45,15 +45,13 @@ enum DisplayModes
 	DISPLAY_MODE_IMAGE,
 	DISPLAY_MODE_HISTOGRAM_COMPARE,
 	DISPLAY_MODE_VMAP_DEBUG,
-	DISPLAY_MODE_NMAP_DEBUG,
-	DISPLAY_MODE_CURVATURE_DEBUG
+	DISPLAY_MODE_NMAP_DEBUG
 };
 
 enum NormalMode
 {
 	SIMPLE_NORMALS,
-	AVERAGE_GRADIENT_NORMALS,
-	PCA_NORMALS
+	AVERAGE_GRADIENT_NORMALS
 };
 
 class MeshViewer : public RGBDDevice::NewRGBDFrameListener
@@ -165,7 +163,6 @@ private:
 	GLuint abs_prog;//Useful for debuging normals or world space coords
 	GLuint vmap_prog;
 	GLuint nmap_prog;
-	GLuint curvemap_prog;
 	GLuint histogram_prog;
 	GLuint barhistogram_prog;
 	GLuint normalsegments_prog;
@@ -267,7 +264,6 @@ private:
 
 	void drawVMaptoTexture(GLuint texture, int level);
 	void drawNMaptoTexture(GLuint texture, int level);
-	void drawCurvaturetoTexture(GLuint texture);
 	void drawNormalHistogramtoTexture(GLuint texture);
 	void drawNormalSegmentsToTexture(GLuint texture);
 

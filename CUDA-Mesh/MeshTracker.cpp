@@ -41,9 +41,6 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 	//Normal Map Pyramid SOA. 
 	createFloat3SOAPyramid(dev_nmapSOA, xRes, yRes);
 
-	//Curvature
-	cudaMalloc((void**) &dev_curvature,		xRes*yRes*sizeof(float));
-
 	//2D Normal Histogram
 	cudaMalloc((void**) &dev_normalVoxels,	NUM_NORMAL_X_SUBDIVISIONS*NUM_NORMAL_Y_SUBDIVISIONS*sizeof(int));
 
@@ -79,8 +76,6 @@ void MeshTracker::cleanupBuffers()
 	freeFloat3SOAPyramid(dev_rgbSOA);
 	freeFloat3SOAPyramid(dev_vmapSOA);
 	freeFloat3SOAPyramid(dev_nmapSOA);
-
-	cudaFree(dev_curvature);
 
 	cudaFree(dev_normalVoxels);
 
@@ -290,16 +285,6 @@ void MeshTracker::buildNMapAverageGradient(int windowRadius)
 
 }
 
-void MeshTracker::buildNMapPCA(float radiusMeters)
-{
-	computePCANormals(dev_vmapSOA, dev_nmapSOA, dev_curvature, mXRes, mYRes, radiusMeters);	
-}
-
-void MeshTracker::estimateCurvatureFromNormals()
-{
-	curvatureEstimate(dev_nmapSOA, dev_curvature, mXRes, mYRes);
-}
-
 void MeshTracker::GPUSimpleSegmentation()
 {
 	//Clear and init 2D histogram
@@ -326,7 +311,7 @@ void MeshTracker::GPUSimpleSegmentation()
 	//
 	segmentNormals2D(normals, positions, dev_normalSegments, dev_planeProjectedDistanceMap, mXRes, mYRes, 
 		dev_normalVoxels, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS, 
-		dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND, m2DSegmentationMaxAngleFromPeak*PI/180.0f);
+		dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND, m2DSegmentationMaxAngleFromPeak*PI_F/180.0f);
 
 
 
