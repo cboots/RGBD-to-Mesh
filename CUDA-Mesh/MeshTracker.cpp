@@ -50,6 +50,12 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 
 	createFloat3SOA(dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND);
 
+	//Projected distance histograms
+	cudaMalloc((void**) &(dev_distanceHistograms[0]), MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_COUNT*sizeof(int));
+	for(int i = 1; i < MAX_2D_PEAKS_PER_ROUND; i++)//Update other pointers
+		dev_distanceHistograms[i] = dev_distanceHistograms[i-1] + DISTANCE_HIST_COUNT;
+
+
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
 		createFloat1SOAPyramid(dev_float1PyramidBuffers[i], xRes, yRes);
@@ -83,6 +89,8 @@ void MeshTracker::cleanupBuffers()
 	cudaFree(dev_planeProjectedDistanceMap);
 
 	freeFloat3SOA(dev_normalPeaks);
+
+	cudaFree(dev_distanceHistograms[0]);
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -308,12 +316,14 @@ void MeshTracker::GPUSimpleSegmentation()
 	positions.y = dev_vmapSOA.y[0];
 	positions.z = dev_vmapSOA.z[0];
 
-	//
+	//Tight tolerance angle segmentation
 	segmentNormals2D(normals, positions, dev_normalSegments, dev_planeProjectedDistanceMap, mXRes, mYRes, 
 		dev_normalVoxels, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS, 
 		dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND, m2DSegmentationMaxAngleFromPeak*PI_F/180.0f);
 
-
+	//Distance histogram generation
+	generateDistanceHistograms(dev_normalSegments, dev_planeProjectedDistanceMap, mXRes, mYRes, dev_distanceHistograms,
+		MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_COUNT, DISTANCE_HIST_MIN, DISTANCE_HIST_MAX);
 
 }
 

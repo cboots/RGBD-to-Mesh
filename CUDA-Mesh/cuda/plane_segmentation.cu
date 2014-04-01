@@ -472,7 +472,7 @@ __global__ void segmentNormals2DKernel(Float3SOA rawNormals, Float3SOA rawPositi
 		float z = 0.0f;
 
 		if(xi >= 0.0f && yi >= 0.0f){
-			
+
 			y = cosf(PI_F*yi/float(yBins));
 			x = cosf(PI_F*xi/float(xBins)) * sqrtf(1.0f-y*y);
 			z = sqrtf(1.0f-x*x-y*y);
@@ -512,12 +512,12 @@ __global__ void segmentNormals2DKernel(Float3SOA rawNormals, Float3SOA rawPositi
 		{
 			//Peak found, compute projection
 			projectedD = s_peaksX[bestPeak]*rawPositions.x[index] 
-				+ s_peaksY[bestPeak]*rawPositions.y[index] 
-				+ s_peaksZ[bestPeak]*rawPositions.z[index];
+			+ s_peaksY[bestPeak]*rawPositions.y[index] 
+			+ s_peaksZ[bestPeak]*rawPositions.z[index];
 
 		}
 
-			
+
 		//Writeback
 		normalSegments[index] = bestPeak;
 		projectedDistance[index] = projectedD;
@@ -542,5 +542,62 @@ __host__ void segmentNormals2D(Float3SOA rawNormals, Float3SOA rawPositions,
 		imageWidth, imageHeight, normalHistogram, xBins, yBins, peaks, maxPeaks, maxAngleRange);
 }
 
+
+#pragma endregion
+
+#pragma region Distance Histograms
+
+__global__ void distanceHistogramKernel(int* dev_normalSegments, float* dev_planeProjectedDistanceMap, int xRes, int yRes,
+										 int* dev_distanceHistograms, int numMaxNormalSegments, 
+										 int histcount, float histMinDist, float histMaxDist)
+{
+	extern __shared__ int s_temp[];
+	int* s_hist = s_temp;
+
+	int index = threadIdx.x + blockIdx.x*blockDim.x;
+
+	int segment = dev_normalSegments[index];
+	float dist = dev_planeProjectedDistanceMap[index];
+	int histI = -1;
+	if(segment >= 0)
+	{
+		if(dist < histMaxDist && dist >= histMinDist) 
+			histI = (dist - histMinDist)*histcount/(histMaxDist-histMinDist);
+	}
+
+	//Each thread has locally stored values.
+	for(int peak = 0; peak < numMaxNormalSegments; ++peak)
+	{
+		//reset histogram
+		s_temp[threadIdx.x] = 0;
+		__syncthreads();
+
+		if(segment == peak && histI >= 0)
+		{
+			atomicAdd(&s_hist[histI], 1);
+		}
+	
+		__syncthreads();
+
+		atomicAdd(&(dev_distanceHistograms[peak*histcount + threadIdx.x]), s_hist[threadIdx.x]);
+	}
+}
+
+__host__ void generateDistanceHistograms(int* dev_normalSegments, float* dev_planeProjectedDistanceMap, int xRes, int yRes,
+										 int** dev_distanceHistograms, int numMaxNormalSegments, 
+										 int histcount, float histMinDist, float histMaxDist)
+{
+	int blockLength = histcount;
+
+	assert(xRes*yRes % blockLength == 0);//Assert even division, otherwise kernel will crash.
+
+	dim3 threads(blockLength);
+	dim3 blocks((int)(ceil(float(xRes*yRes)/float(blockLength))));
+
+	int sharedSize = histcount * sizeof(int);
+
+	distanceHistogramKernel<<<blocks,threads,sharedSize>>>(dev_normalSegments, dev_planeProjectedDistanceMap, xRes, yRes, 
+		dev_distanceHistograms[0], numMaxNormalSegments, histcount, histMinDist, histMaxDist);
+}
 
 #pragma endregion

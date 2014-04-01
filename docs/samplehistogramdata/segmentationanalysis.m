@@ -4,9 +4,9 @@ if (~exist('segmentDistances'))
    
 %% Import the data
 % data = xlsread('segmentationSampleCorner2.csv');
-% data = xlsread('segmentationSampleCabinet.csv');
+data = xlsread('segmentationSampleCabinet.csv');
 % data = xlsread('segmentationSampleBackwall.csv');
-data = xlsread('segmentationSampleTiltedWhiteboard.csv');
+% data = xlsread('segmentationSampleTiltedWhiteboard.csv');
 
 %% Allocate imported array to column variable names
 posX = reshape(data(:,1),[640 480])';

@@ -26,10 +26,11 @@ using namespace rgbd::framework;
 #define MIN_2D_PEAK_COUNT			500
 #define PEAK_2D_EXCLUSION_RADIUS	8
 
+#define DISTANCE_HIST_MAX_PEAKS	8
 #define DISTANCE_HIST_COUNT	512
 #define DISTANCE_HIST_MIN	0.1f
 #define DISTANCE_HIST_MAX	5.0f
-
+#define DISTANCE_HIST_RESOLUTION  ((DISTANCE_HIST_MAX-DISTANCE_HIST_MIN)/DISTANCE_HIST_COUNT)
 
 enum FilterMode
 {
@@ -69,7 +70,7 @@ private:
 	int* dev_normalSegments;//Normal Segmentation Buffer
 	float* dev_planeProjectedDistanceMap;//Projetd Distance Buffer
 
-	float* 
+	int* dev_distanceHistograms[MAX_2D_PEAKS_PER_ROUND];
 
 
 
