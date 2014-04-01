@@ -175,20 +175,18 @@ __device__ glm::vec3 normalFrom3x3Covar(glm::mat3 A, float& curvature) {
 		eigs[1] = 3*q - eigs[0] - eigs[2];
 
 	}
-	float tmp;
-	int i, eig_i;
-	// sorting: swap first pair if necessary, then second pair, then first pair again
-#pragma unroll
-	for (i=0; i<3; i++) {
-		eig_i = i%2;
-		tmp = eigs[eig_i];
-		eigs[eig_i] = glm::min(tmp, eigs[eig_i+1]);
-		eigs[eig_i+1] = glm::max(tmp, eigs[eig_i+1]);
-	}
+
+	//N = (A-eye(3)*eig1)*(A(:,1)-[1;0;0]*eig2);
+	glm::mat3 Aeig1 = A;
+	Aeig1[0][0] -= eigs[0];
+	Aeig1[1][1] -= eigs[0];
+	Aeig1[2][2] -= eigs[0];
+	normal = Aeig1*(A[0] - glm::vec3(eigs[1],0.0f,0.0f));
 
 	// check if point cloud region is "flat" enough
-	curvature = eigs[0]/(eigs[0]+eigs[1]+eigs[2]);
-	normal = glm::cross(A[0] - glm::vec3(eigs[0], 0.0f, 0.0f), A[1] - glm::vec3(0.0f, eigs[0], 0.0f));
+	curvature = eigs[2]/(eigs[0]+eigs[1]+eigs[2]);
+
+
 	float length = glm::length(normal);
 	normal /= length;
 	return normal;

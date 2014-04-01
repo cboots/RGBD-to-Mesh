@@ -3,9 +3,10 @@ close all
 if (~exist('segmentDistances'))
    
 %% Import the data
-data = xlsread('segmentationSampleCorner2.csv');
+% data = xlsread('segmentationSampleCorner2.csv');
 % data = xlsread('segmentationSampleCabinet.csv');
 % data = xlsread('segmentationSampleBackwall.csv');
+data = xlsread('segmentationSampleTiltedWhiteboard.csv');
 
 %% Allocate imported array to column variable names
 posX = reshape(data(:,1),[640 480])';
@@ -86,7 +87,7 @@ if(count > 500)
     
     for j=1:length(locs)
        pkcenter = samples(locs(j));
-       segments(mask & (abs(pkcenter - segmentDistances) < 0.015)) = j;
+       segments(mask & (abs(pkcenter - segmentDistances) < 0.01)) = j;
        
     end
 
@@ -99,6 +100,8 @@ if(count > 500)
     centroids = zeros(length(locs),3);
     for j=1:length(locs)
         points = [posX(segments == j) posY(segments == j) posZ(segments == j)];
+        if(size(points,1) > 300)
+            
         cm = mean(points,1);
         points0 = bsxfun(@minus, points, cm);
         
@@ -119,12 +122,34 @@ if(count > 500)
         counts(j) = size(points,1);
         distances(j) = dot(normal,cm);
         centroids(j,:) = cm;
+        
+        end
     end
     
-    normals;
-    counts;
-    distances;
-    centroids;
+    
+    
+    avgnorm = sum(bsxfun(@times, counts, normals),1)/sum(counts);
+    avgnorm = avgnorm./sqrt(sum(avgnorm.^2))
+    
+    acosd(normals(1,:)*avgnorm')
+    avgnorm = normals(1,:)
+    newprojection = mask.*(posX*avgnorm(1) + posY*avgnorm(2)+ posZ*avgnorm(3));
+    newprojection(newprojection == 0) = nan;
+    
+    figure
+    subplot(2,1,1)
+    surf(newprojection);
+    view([0 0])
+    
+    counts = hist(newprojection(:), samples);
+    subplot(2,1,2)
+    plot(samples, counts);
+    
+    
+    %%
+    
+    
+    %%
     
     anglethresh =  cos(2.5*pi/180.0);
     distthresh = 0.02;
@@ -153,17 +178,6 @@ if(count > 500)
     figure
     imagesc(finalsegments);
     
-    newprojection = mask.*(posX*normals(1,1) + posY*normals(1,2)+ posZ*normals(1,3));
-    newprojection(newprojection == 0) = nan;
-    
-    figure
-    subplot(2,1,1)
-    surf(newprojection);
-    view([0 0])
-    
-    counts = hist(newprojection(:), samples);
-    subplot(2,1,2)
-    plot(samples, counts);
     
     
     %% Compute final segmentation
@@ -195,18 +209,18 @@ if(count > 500)
         distmask = abs(dist - d) < distthresh; 
         
         
-        figure
-        subplot(2,2,1)
-        imagesc(normdotprod);
-        
-        subplot(2,2,2)
-        imagesc(abs(dist-d));
-        
-        subplot(2,2,3);
-        imagesc(anglemask);
-        
-        subplot(2,2,4);
-        imagesc(distmask);
+%         figure
+%         subplot(2,2,1)
+%         imagesc(normdotprod);
+%         
+%         subplot(2,2,2)
+%         imagesc(abs(dist-d));
+%         
+%         subplot(2,2,3);
+%         imagesc(anglemask);
+%         
+%         subplot(2,2,4);
+%         imagesc(distmask);
             
         %%Don't overwrite previous segments
         fullImageSegmentation(anglemask & distmask & (fullImageSegmentation == 0)) = j;
