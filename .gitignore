@@ -98,3 +98,6 @@
 /Recorder-Viewer/logs/emptygraspfield
 /Recorder-Viewer/logs/foamboxesgraspfield
 /Recorder-Viewer/logs/naograspfield
+/docs/samplehistogramdata/*.asv
+/CUDA-Mesh.psess
+/CUDA-Mesh/CUDA-Mesh.vcxproj.collin.nvuser
