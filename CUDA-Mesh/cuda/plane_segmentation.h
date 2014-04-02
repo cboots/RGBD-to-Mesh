@@ -9,13 +9,11 @@
 #include "Utils.h"
 #include "math.h"
 
-__host__ void computeNormalHistogram(float* normX, float* normY, int* histogram, int xRes, int yRes, int xBins, int yBins);
+__host__ void computeNormalHistogram(float* normX, float* normY, float* normZ, int* histogram, int xRes, int yRes, int xBins, int yBins);
 __host__ void clearHistogram(int* histogram, int xBins, int yBins);
 
 
 __host__ void ACosHistogram(float* cosineValue, int* histogram, int valueCount, int numBins);
-
-__host__ void gaussianSubtractionPeakDetection(Int3SOA decoupledHist, Int3SOA peakIndex, int histSize, int maxPeaks, int minPeakCount, glm::vec3 sigmas);
 
 
 __host__ void normalHistogramPrimaryPeakDetection(int* histogram, int xBins, int yBins, Float3SOA peaks, int maxPeaks, 

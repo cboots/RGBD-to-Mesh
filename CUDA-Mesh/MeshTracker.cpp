@@ -309,7 +309,7 @@ void MeshTracker::GPUSimpleSegmentation()
 {
 	//Clear and init 2D histogram
 	clearHistogram(dev_normalVoxels, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS);
-	computeNormalHistogram(dev_nmapSOA.x[0], dev_nmapSOA.y[0], dev_normalVoxels, mXRes, mYRes, 
+	computeNormalHistogram(dev_nmapSOA.x[0], dev_nmapSOA.y[0], dev_nmapSOA.z[0], dev_normalVoxels, mXRes, mYRes, 
 		NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS);
 	
 	//Future LOOP Start
