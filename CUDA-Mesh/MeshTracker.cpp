@@ -341,23 +341,6 @@ void MeshTracker::GPUSimpleSegmentation()
 		DISTANCE_HIST_MAX_PEAKS, int(2.0f*mDistPeakThresholdTight/DISTANCE_HIST_RESOLUTION), 
 		mMinDistPeakCount, DISTANCE_HIST_MIN, DISTANCE_HIST_MAX);
 
-	float* debugPeaks = new float[DISTANCE_HIST_MAX_PEAKS*MAX_2D_PEAKS_PER_ROUND];
-
-	cudaMemcpy(debugPeaks, dev_distPeaks[0], DISTANCE_HIST_MAX_PEAKS*MAX_2D_PEAKS_PER_ROUND*sizeof(float), cudaMemcpyDeviceToHost);
-
-	for(int i = 0; i < MAX_2D_PEAKS_PER_ROUND; ++i)
-	{
-		cout << i << ":";
-		for(int j = 0; j < DISTANCE_HIST_MAX_PEAKS; ++j)
-		{
-			float peak = debugPeaks[j + i * DISTANCE_HIST_MAX_PEAKS];
-			if(peak > 0)
-				cout << peak << ",";
-		}
-		cout << endl;
-	}
-
-	delete debugPeaks;
 }
 
 
