@@ -246,13 +246,15 @@ void MeshTracker::buildVMapNoFilter(float maxDepth)
 
 void MeshTracker::buildVMapGaussianFilter(float maxDepth)
 {
+	flipDepthImageXAxis(dev_depthImageBuffer, mXRes, mYRes);
 	buildVMapGaussianFilterCUDA(dev_depthImageBuffer, dev_vmapSOA, mXRes, mYRes, mIntr, maxDepth);
 
 }
 
 void MeshTracker::buildVMapBilateralFilter(float maxDepth, float sigma_t)
 {
-
+	
+	flipDepthImageXAxis(dev_depthImageBuffer, mXRes, mYRes);
 	buildVMapBilateralFilterCUDA(dev_depthImageBuffer, dev_vmapSOA, mXRes, mYRes, 
 		mIntr, maxDepth, sigma_t);
 

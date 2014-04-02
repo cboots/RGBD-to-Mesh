@@ -29,3 +29,5 @@ __host__ void buildVMapGaussianFilterCUDA(rgbd::framework::DPixel* dev_depthBuff
 
 __host__ void buildVMapBilateralFilterCUDA(rgbd::framework::DPixel* dev_depthBuffer, Float3SOAPyramid vmapSOA, int xRes, int yRes, 
 										  rgbd::framework::Intrinsics intr, float maxDepth, float sigma_t);
+
+__host__ void flipDepthImageXAxis(rgbd::framework::DPixel* dev_depthBuffer, int xRes, int yRes);

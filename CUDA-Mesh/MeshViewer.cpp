@@ -938,7 +938,7 @@ void MeshViewer::display()
 		switch(mViewState)
 		{
 		case DISPLAY_MODE_DEPTH:
-			drawDepthImageBufferToTexture(texture0);
+			drawVMaptoTexture(texture0, 0);
 
 			drawQuad(depth_prog, 0, 0, 1, 1, 1.0, &texture0, 1);
 			break;
@@ -948,8 +948,8 @@ void MeshViewer::display()
 			drawQuad(color_prog, 0, 0, 1, 1, 1.0, &texture1, 1);
 			break;
 		case DISPLAY_MODE_OVERLAY:
-			drawDepthImageBufferToTexture(texture0);
-			drawColorImageBufferToTexture(texture1);
+			drawVMaptoTexture(texture0, 0);
+			drawRGBMaptoTexture(texture1, 0);
 
 
 			drawQuad(color_prog, 0, 0, 1, 1, 1.0, &texture1, 1);
