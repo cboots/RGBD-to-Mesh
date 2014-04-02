@@ -177,6 +177,14 @@ __host__ void ACosHistogram(float* cosineValue, int* histogram, int valueCount, 
 
 #pragma region Histogram Peak Detection Two-D
 
+__device__ int mod_pos (int a, int b)
+{
+   int ret = a % b;
+   if(ret < 0)
+     ret+=b;
+   return ret;
+}
+
 __global__ void normalHistogramPrimaryPeakDetectionKernel(int* histogram, int xBins, int yBins, Float3SOA peaks, int maxPeaks, 
 														  int exclusionRadius, int minPeakHeight)
 {	
@@ -191,68 +199,30 @@ __global__ void normalHistogramPrimaryPeakDetectionKernel(int* histogram, int xB
 	__syncthreads();
 
 
-	//Find local maxima
-	bool localMax = false;
-
-	if(s_hist[index] > minPeakHeight)
-	{
-		localMax = true;
-		if(threadIdx.x > 0)
-			if(s_hist[index - 1] > s_hist[index])
-				localMax = false;
-
-
-		if(threadIdx.x < xBins-1)
-			if(s_hist[index + 1] > s_hist[index])
-				localMax = false;
-
-		if(threadIdx.y > 0)
-			if(s_hist[index - xBins] > s_hist[index])
-				localMax = false;
-
-		if(threadIdx.y > yBins-1)
-			if(s_hist[index + xBins] > s_hist[index])
-				localMax = false;
-	}
-
 	float totalCount = 0.0f;
 	float xPos = 0.0f;
 	float yPos = 0.0f;
-	if(localMax)
+	for(int x = -1; x <= 1; ++x)
 	{
-
-		for(int x = -1; x <= 1; ++x)
+		int tx = threadIdx.x + x;
+		for(int y = -1; y <= 1; ++y)
 		{
-			int tx = threadIdx.x + x;
-			for(int y = -1; y <= 1; ++y)
-			{
-				int ty = threadIdx.y + y;
-				if(tx >= 0 && tx < xBins && ty >= 0 && ty < yBins)
-				{
-					int binCount = s_hist[tx + ty*xBins];
-					totalCount += binCount;
-					xPos += binCount*tx;
-					yPos += binCount*ty;
-
-				}
-			}
+			int ty = threadIdx.y + y;
+			int binCount = s_hist[mod_pos(tx, xBins) + mod_pos(ty, yBins)*xBins];//wrap histogram index
+			totalCount += binCount;
+			xPos += binCount*tx;
+			yPos += binCount*ty;
 
 		}
+
+	}
+
+	if(totalCount > 0)
+	{
 		xPos /= totalCount;
 		yPos /= totalCount;
-
 	}
 
-	__syncthreads();
-
-	if(!localMax)
-	{
-		s_hist[index] = 0;//clear all non-local max histograms
-
-		//DEBUG
-		//histogram[index] = 0;
-	}
-	__syncthreads();
 	//Preprocessing complete
 
 	//=========Peak detection Loop===========
@@ -297,12 +267,12 @@ __global__ void normalHistogramPrimaryPeakDetectionKernel(int* histogram, int xB
 
 		if(s_max[0] < minPeakHeight)
 		{
-			//Fill remaining slots with -1
+			//Fill remaining slots with NAN
 			if(index >= peakNum && index < maxPeaks)
 			{
-				peaks.x[index] = -1;
-				peaks.y[index] = -1;
-				peaks.z[index] = -1;
+				peaks.x[index] = CUDART_NAN_F;
+				peaks.y[index] = CUDART_NAN_F;
+				peaks.z[index] = 0;
 			}
 			break;
 		}
@@ -311,14 +281,18 @@ __global__ void normalHistogramPrimaryPeakDetectionKernel(int* histogram, int xB
 		{
 			peaks.x[peakNum] = xPos;
 			peaks.y[peakNum] = yPos;
-			peaks.z[peakNum] = s_hist[index];
+			peaks.z[peakNum] = totalCount;
 			//DEBUG
 			histogram[index] = -(peakNum+1);
 		}
 
+
 		//Distance to max
-		int dx = (s_maxI[0] % xBins) - threadIdx.x;
-		int dy = (s_maxI[0] / yBins) - threadIdx.y;
+		int px = (s_maxI[0] % xBins);//x index of peak
+		int py = (s_maxI[0] / yBins);//y index of peak
+		int dx = min(mod_pos((px - threadIdx.x), xBins), mod_pos((threadIdx.x - px),xBins));//shortest path to peak (wraps around)
+		int dy = min(mod_pos((py - threadIdx.y), yBins), mod_pos((threadIdx.y - py),yBins));//shortest path to peak (wraps around)
+
 
 		if(dx*dx+dy*dy < exclusionRadius*exclusionRadius)
 		{
@@ -377,11 +351,11 @@ __global__ void segmentNormals2DKernel(Float3SOA rawNormals, Float3SOA rawPositi
 		//int xI = azimuth*PI_INV_F*xBins;
 		//int yI = acosf(-y)*PI_INV_F*yBins;
 
-		if(xi >= 0.0f && yi >= 0.0f){
+		if(xi == xi && yi == yi){
 
 			float azimuth = PI_F*xi/float(xBins);
 			float elv = PI_F*yi/float(yBins);
-			
+
 			x = -cosf(azimuth)*sinf(elv);
 			z = -sinf(azimuth)*sinf(elv);
 			y = -cosf(elv);
