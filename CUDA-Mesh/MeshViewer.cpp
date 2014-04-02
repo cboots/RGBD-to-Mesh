@@ -943,7 +943,7 @@ void MeshViewer::display()
 			drawQuad(depth_prog, 0, 0, 1, 1, 1.0, &texture0, 1);
 			break;
 		case DISPLAY_MODE_IMAGE:
-			drawColorImageBufferToTexture(texture1);
+			drawRGBMaptoTexture(texture1, 0);
 
 			drawQuad(color_prog, 0, 0, 1, 1, 1.0, &texture1, 1);
 			break;

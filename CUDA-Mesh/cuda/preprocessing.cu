@@ -447,11 +447,11 @@ __global__ void rgbAOSToSOAKernel(rgbd::framework::ColorPixel* dev_colorPixels,
 	if(u < xRes && v < yRes) 
 	{
 		int i = (v * xRes) + u;
-
+		int i2 = (v * xRes) + (xRes - 1 - u);
 		rgbd::framework::ColorPixel color = dev_colorPixels[i];
-		rgbSOA.x[0][i] = color.r / 255.0f;
-		rgbSOA.y[0][i] = color.g / 255.0f;
-		rgbSOA.z[0][i] = color.b / 255.0f;
+		rgbSOA.x[0][i2] = color.r / 255.0f;
+		rgbSOA.y[0][i2] = color.g / 255.0f;
+		rgbSOA.z[0][i2] = color.b / 255.0f;
 	}
 
 }

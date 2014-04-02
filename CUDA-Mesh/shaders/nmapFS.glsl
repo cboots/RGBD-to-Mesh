@@ -13,7 +13,7 @@ void main()
 {
 	//Just pass through for now
 	vec4 norm = texture(u_Texture0, fs_texCoord*u_TextureScale);
-	FragColor = abs(norm);
+	FragColor = -norm;//abs(norm);
 	FragColor.a = 1.0;
 	
 	/*

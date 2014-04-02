@@ -299,7 +299,7 @@ void MeshTracker::buildNMapAverageGradient()
 		dev_float3PyramidBuffers[1].x[0], dev_float3PyramidBuffers[1].y[0], dev_float3PyramidBuffers[1].z[0],
 		mXRes, mYRes);
 
-	computeAverageGradientNormals(dev_float3PyramidBuffers[0], dev_float3PyramidBuffers[1], dev_nmapSOA, mXRes, mYRes);
+	computeAverageGradientNormals(dev_float3PyramidBuffers[0], dev_float3PyramidBuffers[1], dev_vmapSOA, dev_nmapSOA, mXRes, mYRes);
 
 }
 

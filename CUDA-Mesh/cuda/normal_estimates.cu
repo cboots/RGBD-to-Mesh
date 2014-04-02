@@ -37,7 +37,9 @@ __global__ void simpleNormalsKernel(float* x_vert, float* y_vert, float* z_vert,
 			norm.y = dz1*dx2-dx1*dz2;
 			norm.z = dx1*dy2-dy1*dx2;
 
-			if(norm.z < 0.0f)
+			
+			//if n dot p > 0, flip towards viewpoint
+			if(norm.x*x_vert[i] + norm.y*y_vert[i] + norm.z * z_vert[i] > 0.0f)
 			{
 				//Flip towards camera
 				norm = -norm;
@@ -77,6 +79,7 @@ __host__ void simpleNormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, int nu
 
 __global__ void normalsFromGradientKernel(float* horizontalGradientX, float* horizontalGradientY, float* horizontalGradientZ,
 										  float* vertGradientX, float* vertGradientY, float* vertGradientZ,
+										  float* x_vert, float* y_vert, float* z_vert, 
 										  float* x_norm, float* y_norm, float* z_norm,
 										  int xRes, int yRes)
 {
@@ -91,8 +94,9 @@ __global__ void normalsFromGradientKernel(float* horizontalGradientX, float* hor
 
 		
 		glm::vec3 norm = glm::cross(vertGradient, horGradient);
-
-		if(norm.z < 0.0f)
+		
+		//if n dot p > 0, flip towards viewpoint
+		if(norm.x*x_vert[i] + norm.y*y_vert[i] + norm.z * z_vert[i] > 0.0f)
 		{
 			//Flip towards camera
 			norm = -norm;
@@ -112,7 +116,7 @@ __global__ void normalsFromGradientKernel(float* horizontalGradientX, float* hor
 }
 
 __host__ void computeAverageGradientNormals(Float3SOAPyramid horizontalGradient, Float3SOAPyramid vertGradient, 
-											Float3SOAPyramid nmap, int xRes, int yRes)
+											Float3SOAPyramid vmap, Float3SOAPyramid nmap, int xRes, int yRes)
 {
 	int tileSize = 16;
 	dim3 threadsPerBlock(tileSize, tileSize);
@@ -122,6 +126,7 @@ __host__ void computeAverageGradientNormals(Float3SOAPyramid horizontalGradient,
 
 	normalsFromGradientKernel<<<fullBlocksPerGrid,threadsPerBlock>>>(horizontalGradient.x[0], horizontalGradient.y[0], horizontalGradient.z[0],
 		vertGradient.x[0], vertGradient.y[0], vertGradient.z[0],
+		vmap.x[0], vmap.y[0], vmap.z[0],
 		nmap.x[0], nmap.y[0], nmap.z[0],
 		xRes, yRes);
 }

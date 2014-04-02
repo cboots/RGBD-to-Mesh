@@ -11,7 +11,7 @@
 __host__ void simpleNormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, int numLevels, int xRes, int yRes);
 
 
-__host__ void computeAverageGradientNormals(Float3SOAPyramid horizontalGradient, Float3SOAPyramid vertGradient, Float3SOAPyramid nmap, int xRes, int yRes);
+__host__ void computeAverageGradientNormals(Float3SOAPyramid horizontalGradient, Float3SOAPyramid vertGradient, Float3SOAPyramid vmap, Float3SOAPyramid nmap, int xRes, int yRes);
 
 __host__ void computePCANormals(Float3SOAPyramid vmap, Float3SOAPyramid nmap, float* curvature, int xRes, int yRes, float radiusMeters);
 

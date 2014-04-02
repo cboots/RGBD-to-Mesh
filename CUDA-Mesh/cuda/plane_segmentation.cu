@@ -497,7 +497,7 @@ __global__ void segmentNormals2DKernel(Float3SOA rawNormals, Float3SOA rawPositi
 			for(int peakNum = 0; peakNum < maxPeaks; ++peakNum)
 			{
 				float dotprod = normal.x*s_peaksX[peakNum] + normal.y*s_peaksY[peakNum] + normal.z*s_peaksZ[peakNum];
-				float angle = acosf(dotprod);
+				float angle = acosf(abs(dotprod));
 
 				if(angle < maxAngleRange)
 				{
@@ -511,9 +511,9 @@ __global__ void segmentNormals2DKernel(Float3SOA rawNormals, Float3SOA rawPositi
 		if(bestPeak >= 0)
 		{
 			//Peak found, compute projection
-			projectedD = s_peaksX[bestPeak]*rawPositions.x[index] 
+			projectedD = abs(s_peaksX[bestPeak]*rawPositions.x[index] 
 			+ s_peaksY[bestPeak]*rawPositions.y[index] 
-			+ s_peaksZ[bestPeak]*rawPositions.z[index];
+			+ s_peaksZ[bestPeak]*rawPositions.z[index]);
 
 		}
 
