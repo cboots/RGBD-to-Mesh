@@ -30,3 +30,7 @@ __host__ void segmentNormals2D(Float3SOA rawNormals, Float3SOA rawPositions,
 __host__ void generateDistanceHistograms(int* dev_normalSegments, float* dev_planeProjectedDistanceMap, int xRes, int yRes,
 										 int** dev_distanceHistograms, int numMaxNormalSegments, 
 										 int histcount, float histMinDist, float histMaxDist);
+
+
+__host__ void distanceHistogramPrimaryPeakDetection(int* histogram, int length, int numHistograms, float* distPeaks, int maxDistPeaks, 
+												  int exclusionRadius, int minPeakHeight, float minHistDist, float maxHistDist);

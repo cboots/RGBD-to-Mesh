@@ -10,6 +10,9 @@ MeshTracker::MeshTracker(int xResolution, int yResolution, Intrinsics intr)
 
 	//Setup default configuration
 	m2DSegmentationMaxAngleFromPeak = 5.0f;
+	
+	mDistPeakThresholdTight = 0.01;
+	mMinDistPeakCount = 350;
 
 	initBuffers(mXRes, mYRes);
 
@@ -55,6 +58,11 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 	for(int i = 1; i < MAX_2D_PEAKS_PER_ROUND; i++)//Update other pointers
 		dev_distanceHistograms[i] = dev_distanceHistograms[i-1] + DISTANCE_HIST_COUNT;
 
+	cudaMalloc((void**) &(dev_distPeaks[0]), MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(float));
+	for(int i = 1; i < MAX_2D_PEAKS_PER_ROUND; i++)//Update other pointers
+		dev_distPeaks[i] = dev_distPeaks[i-1] + DISTANCE_HIST_COUNT;
+
+
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -91,6 +99,8 @@ void MeshTracker::cleanupBuffers()
 	freeFloat3SOA(dev_normalPeaks);
 
 	cudaFree(dev_distanceHistograms[0]);
+	cudaFree(dev_distPeaks[0]);
+
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -326,6 +336,28 @@ void MeshTracker::GPUSimpleSegmentation()
 	generateDistanceHistograms(dev_normalSegments, dev_planeProjectedDistanceMap, mXRes, mYRes, dev_distanceHistograms,
 		MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_COUNT, DISTANCE_HIST_MIN, DISTANCE_HIST_MAX);
 
+
+	distanceHistogramPrimaryPeakDetection(dev_distanceHistograms[0], DISTANCE_HIST_COUNT, MAX_2D_PEAKS_PER_ROUND, dev_distPeaks[0], 
+		DISTANCE_HIST_MAX_PEAKS, int(2.0f*mDistPeakThresholdTight/DISTANCE_HIST_RESOLUTION), 
+		mMinDistPeakCount, DISTANCE_HIST_MIN, DISTANCE_HIST_MAX);
+
+	float* debugPeaks = new float[DISTANCE_HIST_MAX_PEAKS*MAX_2D_PEAKS_PER_ROUND];
+
+	cudaMemcpy(debugPeaks, dev_distPeaks[0], DISTANCE_HIST_MAX_PEAKS*MAX_2D_PEAKS_PER_ROUND*sizeof(float), cudaMemcpyDeviceToHost);
+
+	for(int i = 0; i < MAX_2D_PEAKS_PER_ROUND; ++i)
+	{
+		cout << i << ":";
+		for(int j = 0; j < DISTANCE_HIST_MAX_PEAKS; ++j)
+		{
+			float peak = debugPeaks[j + i * DISTANCE_HIST_MAX_PEAKS];
+			if(peak > 0)
+				cout << peak << ",";
+		}
+		cout << endl;
+	}
+
+	delete debugPeaks;
 }
 
 

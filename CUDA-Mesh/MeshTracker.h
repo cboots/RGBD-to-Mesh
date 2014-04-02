@@ -53,6 +53,9 @@ private:
 	int mYRes;
 	Intrinsics mIntr;
 	float m2DSegmentationMaxAngleFromPeak;
+
+	float mDistPeakThresholdTight;
+	float mMinDistPeakCount;
 #pragma region
 
 #pragma region Pipeline Buffer Device Pointers
@@ -71,6 +74,7 @@ private:
 	float* dev_planeProjectedDistanceMap;//Projetd Distance Buffer
 
 	int* dev_distanceHistograms[MAX_2D_PEAKS_PER_ROUND];
+	float* dev_distPeaks[MAX_2D_PEAKS_PER_ROUND];
 
 
 

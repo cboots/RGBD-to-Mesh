@@ -600,4 +600,108 @@ __host__ void generateDistanceHistograms(int* dev_normalSegments, float* dev_pla
 		dev_distanceHistograms[0], numMaxNormalSegments, histcount, histMinDist, histMaxDist);
 }
 
+
+
+__global__ void distHistogramPeakDetectionKernel(int* histogram, int length, int numHistograms, float* distPeaks, int maxDistPeaks, 
+												  int exclusionRadius, int minPeakHeight, float minHistDist, float maxHistDist)
+{	
+	extern __shared__ int s_temp[];
+	int* s_hist = s_temp;
+	int* s_max = s_hist + length;
+	int* s_maxI = s_max + (length)/2;
+
+	int index = threadIdx.x;
+	int histOffset = blockIdx.x*length;
+	int peaksOffset = blockIdx.x*maxDistPeaks;
+	//Load histogram
+	s_hist[index] = histogram[index+histOffset];
+	__syncthreads();
+	
+	float dist = (index*(maxHistDist-minHistDist)/float(length)) + minHistDist;
+	
+	//=========Peak detection Loop===========
+	for(int peakNum = 0; peakNum < maxDistPeaks; ++peakNum)
+	{
+
+#pragma region Maximum Finder
+		//========Compute maximum=======
+		//First step loads from main hist, so do outside loop
+		int halfpoint = length >> 1;
+		int thread2 = index + halfpoint;
+		if(index < halfpoint)
+		{
+			int temp = s_hist[thread2];
+			bool leftSmaller = (s_hist[index] < temp);
+			s_max[index] = leftSmaller?temp:s_hist[index];
+			s_maxI[index] = leftSmaller?thread2:index;
+		}
+		__syncthreads();
+		while(halfpoint > 0)
+		{
+			halfpoint >>= 1;
+			if(index < halfpoint)
+			{
+				thread2 = index + halfpoint;
+				int temp = s_max[thread2];
+				if (temp > s_max[index]) {
+					s_max[index] = temp;
+					s_maxI[index] = s_maxI[thread2];
+				}
+			}
+			__syncthreads();
+		}
+
+		//========Compute maximum End=======
+#pragma endregion
+
+
+
+		//s_maxI[0] now holds the maximum index
+		if(s_max[0] < minPeakHeight)
+		{
+			//Fill remaining slots with -1
+			if(index >= peakNum && index < maxDistPeaks)
+			{
+				distPeaks[peaksOffset + index] = -1;
+			}
+			break;
+		}
+
+		if(s_maxI[0] == index)
+		{
+			distPeaks[peaksOffset + peakNum] = dist;
+		}
+
+		//Distance to max
+		int dx = s_maxI[0] - threadIdx.x;
+
+		if(abs(dx) <= exclusionRadius)
+		{
+			s_hist[index] = 0;
+		}
+
+
+		__syncthreads();
+	}
+}
+
+
+__host__ void distanceHistogramPrimaryPeakDetection(int* histogram, int length, int numHistograms, float* distPeaks, int maxDistPeaks, 
+												  int exclusionRadius, int minPeakHeight, float minHistDist, float maxHistDist)
+{
+	assert(length <= 1024);//For now enforce strict limit. Might be expandable in future, but most efficient like this
+	assert(!(length  & (length  - 1))); //Assert is power of two
+
+
+
+	dim3 threads(length);
+	dim3 blocks(numHistograms);
+
+	int sharedMem = length*2*sizeof(int);
+
+	distHistogramPeakDetectionKernel<<<blocks,threads,sharedMem>>>(histogram, length, numHistograms, 
+				distPeaks, maxDistPeaks, exclusionRadius, minPeakHeight, minHistDist, maxHistDist);
+}
+
+
 #pragma endregion

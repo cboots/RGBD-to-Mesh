@@ -3,8 +3,8 @@ close all
 if (~exist('segmentDistances'))
    
 %% Import the data
-% data = xlsread('segmentationSampleCorner2.csv');
-data = xlsread('segmentationSampleCabinet.csv');
+data = xlsread('segmentationSampleCorner2.csv');
+% data = xlsread('segmentationSampleCabinet.csv');
 % data = xlsread('segmentationSampleBackwall.csv');
 % data = xlsread('segmentationSampleTiltedWhiteboard.csv');
 
@@ -70,7 +70,7 @@ if(count > 500)
 
     pks = [];
     locs = [];
-    windowr = 3;
+    windowr = 2;
     KSCopy = KS;
     while(max(KSCopy) > 350)
        [peak loc] = max(KSCopy);

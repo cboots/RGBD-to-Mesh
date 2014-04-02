@@ -18,7 +18,7 @@ void main()
 	FragColor = vec4(seg & 1, seg & 2, seg & 4, 1.0);
 	
 	//Distance
-	FragColor *= vec4(segments.y)/5.0;	
+	//FragColor *= vec4(segments.y)/5.0;	
 	FragColor.a = 1.0;
 	
 }
