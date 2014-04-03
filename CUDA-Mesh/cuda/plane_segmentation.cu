@@ -1,10 +1,9 @@
 #include "plane_segmentation.h"
 
 
-__device__ glm::vec3 normalFrom3x3Covar(glm::mat3 A, float& curvature) {
+__device__ glm::vec3 normalFrom3x3Covar(glm::mat3 A, glm::vec3& eigs) {
 	// Given a (real, symmetric) 3x3 covariance matrix A, returns the eigenvector corresponding to the min eigenvalue
 	// (see: http://en.wikipedia.org/wiki/Eigenvalue_algorithm#3.C3.973_matrices)
-	glm::vec3 eigs;
 	glm::vec3 normal = glm::vec3(0.0f);
 
 	float p1 = A[0][1]*A[0][1] + A[0][2]*A[0][2] + A[1][2]*A[1][2];
@@ -49,10 +48,6 @@ __device__ glm::vec3 normalFrom3x3Covar(glm::mat3 A, float& curvature) {
 	Aeig1[1][1] -= eigs[0];
 	Aeig1[2][2] -= eigs[0];
 	normal = Aeig1*(A[0] - glm::vec3(eigs[1],0.0f,0.0f));
-
-	// check if point cloud region is "flat" enough
-	curvature = eigs[2]/(eigs[0]+eigs[1]+eigs[2]);
-
 
 	float length = glm::length(normal);
 	normal /= length;
@@ -737,6 +732,101 @@ __host__ void clearPlaneStats(PlaneStats planeStats, int numNormalPeaks, int num
 	dim3 blocks(1);
 
 	clearPlaneStatsKernel<<<blocks,threads>>>(planeStats, numNormalPeaks, numDistPeaks);
+}
+
+__global__ void finalizePlanesKernel(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks, float mergeAngleThresh, float mergeDistThresh)
+{
+
+	extern __shared__ float s_mem[];
+	float* s_counts = s_mem;
+	float* s_centroidX = s_counts    + numDistPeaks*numNormalPeaks;
+	float* s_centroidY = s_centroidX + numDistPeaks*numNormalPeaks;
+	float* s_centroidZ = s_centroidY + numDistPeaks*numNormalPeaks;
+	float* s_NormalX = s_centroidZ    + numDistPeaks*numNormalPeaks;
+	float* s_NormalY = s_NormalX + numDistPeaks*numNormalPeaks;
+	float* s_NormalZ = s_NormalY + numDistPeaks*numNormalPeaks;
+	float* s_Eig1 = s_NormalZ    + numDistPeaks*numNormalPeaks;
+	float* s_Eig2 = s_Eig1 + numDistPeaks*numNormalPeaks;
+	float* s_Eig3 = s_Eig2 + numDistPeaks*numNormalPeaks;
+	float* s_Sxx	= s_Eig3 + numDistPeaks*numNormalPeaks;
+	float* s_Syy	= s_Sxx + numDistPeaks*numNormalPeaks;
+	float* s_Szz	= s_Syy + numDistPeaks*numNormalPeaks;
+	float* s_Sxy	= s_Szz + numDistPeaks*numNormalPeaks;
+	float* s_Syz	= s_Sxy + numDistPeaks*numNormalPeaks;
+	float* s_Sxz	= s_Syz + numDistPeaks*numNormalPeaks;
+
+	//Now that all these pointers have been initialized....
+	//Load shared memory
+	int index = threadIdx.x + threadIdx.y*numDistPeaks;
+
+	int count = planeStats.count[index];
+	s_counts[index] = count;
+
+	s_centroidX[index] = planeStats.centroids.x[index]/count;
+	s_centroidY[index] = planeStats.centroids.y[index]/count;
+	s_centroidZ[index] = planeStats.centroids.z[index]/count;
+
+	s_Sxx[index] = planeStats.Sxx[index];
+	s_Syy[index] = planeStats.Syy[index];
+	s_Szz[index] = planeStats.Szz[index];
+	s_Sxy[index] = planeStats.Sxy[index];
+	s_Syz[index] = planeStats.Syz[index];
+	s_Sxz[index] = planeStats.Sxz[index];
+
+	glm::mat3 S1 = glm::mat3(glm::vec3(s_Sxx[index], s_Sxy[index], s_Sxz[index]), 
+		glm::vec3(s_Sxy[index], s_Syy[index], s_Syz[index]),
+		glm::vec3(s_Sxz[index], s_Syz[index], s_Szz[index]));
+	glm::mat3 S2 = glm::mat3(
+		glm::vec3(s_centroidX[index]*s_centroidX[index], s_centroidX[index]*s_centroidY[index], s_centroidX[index]*s_centroidZ[index]), 
+		glm::vec3(s_centroidY[index]*s_centroidX[index], s_centroidY[index]*s_centroidY[index], s_centroidY[index]*s_centroidZ[index]), 
+		glm::vec3(s_centroidZ[index]*s_centroidX[index], s_centroidZ[index]*s_centroidY[index], s_centroidZ[index]*s_centroidZ[index]));
+
+	glm::vec3 eigs;
+
+	glm::vec3 norm = normalFrom3x3Covar(S1 + s_counts[index] * S2, eigs);
+	s_NormalX[index] = norm.x;
+	s_NormalY[index] = norm.y;
+	s_NormalZ[index] = norm.z;
+	s_Eig1[index] = eigs.x;//Largest
+	s_Eig2[index] = eigs.y;//
+	s_Eig3[index] = eigs.z;//Smallest
+
+	//Individual planes calculated, do merging now.
+
+
+
+
+	//=======Save final planes (WRITEBACK)======
+	planeStats.count[index] = s_counts[index];
+
+	planeStats.centroids.x[index] = s_centroidX[index];
+	planeStats.centroids.y[index] = s_centroidY[index];
+	planeStats.centroids.z[index] = s_centroidZ[index];
+	planeStats.norms.x[index] = s_NormalX[index];
+	planeStats.norms.y[index] = s_NormalY[index];
+	planeStats.norms.z[index] = s_NormalZ[index];
+	planeStats.eigs.x[index] = s_Eig1[index];
+	planeStats.eigs.y[index] = s_Eig2[index];
+	planeStats.eigs.z[index] = s_Eig3[index];
+	planeStats.Sxx[index] = s_Sxx[index];
+	planeStats.Syy[index] = s_Syy[index];
+	planeStats.Szz[index] = s_Szz[index];
+	planeStats.Sxy[index] = s_Sxy[index];
+	planeStats.Syz[index] = s_Syz[index];
+	planeStats.Sxz[index] = s_Sxz[index];
+
+
+}
+
+__host__ void finalizePlanes(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks, float mergeAngleThresh, float mergeDistThresh)
+{
+	assert(numNormalPeaks*numDistPeaks < 1024);
+	dim3 threads(numDistPeaks, numNormalPeaks);
+	dim3 blocks(1);
+	int sharedCount = numDistPeaks*numNormalPeaks*(1 + 3 + 3 + 3 + 6);
+
+	finalizePlanesKernel<<<blocks,threads, sharedCount*sizeof(float)>>>(planeStats, numNormalPeaks, numDistPeaks, 
+		mergeAngleThresh, mergeDistThresh);
 }
 
 #pragma endregion

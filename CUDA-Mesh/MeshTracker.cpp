@@ -10,6 +10,8 @@ MeshTracker::MeshTracker(int xResolution, int yResolution, Intrinsics intr)
 
 	//Setup default configuration
 	m2DSegmentationMaxAngleFromPeak = 5.0f;
+	mPlaneMergeAngleThresh = 2.5f;
+	mPlaneMergeDistThresh = 0.02f;
 	
 	mDistPeakThresholdTight = 0.01;
 	mMinDistPeakCount = 350;
@@ -72,6 +74,7 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 	cudaMalloc((void**) &dev_planeStats.Sxz,   MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(float));
 	createFloat3SOA(dev_planeStats.centroids, MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS);
 	createFloat3SOA(dev_planeStats.norms, MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS);
+	createFloat3SOA(dev_planeStats.eigs, MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS);
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -120,6 +123,7 @@ void MeshTracker::cleanupBuffers()
 	cudaFree(dev_planeStats.Sxz);
 	freeFloat3SOA(dev_planeStats.centroids);
 	freeFloat3SOA(dev_planeStats.norms);
+	freeFloat3SOA(dev_planeStats.eigs);
 
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
@@ -363,10 +367,13 @@ void MeshTracker::GPUSimpleSegmentation()
 		DISTANCE_HIST_MAX_PEAKS, int(2.0f*mDistPeakThresholdTight/DISTANCE_HIST_RESOLUTION), 
 		mMinDistPeakCount, DISTANCE_HIST_MIN, DISTANCE_HIST_MAX);
 	
+	//Segment by distance and assemble plane stats for segments
 	clearPlaneStats(dev_planeStats, MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_MAX_PEAKS);
 	fineDistanceSegmentation(dev_distPeaks[0], MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_MAX_PEAKS, 
 		positions, dev_planeStats, dev_normalSegments, dev_planeProjectedDistanceMap, mXRes, mYRes, mDistPeakThresholdTight);
 
+	//Process stats and calculate merges
+	finalizePlanes(dev_planeStats, MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_MAX_PEAKS, mPlaneMergeAngleThresh*PI_F/180.0f, mPlaneMergeDistThresh);
 }
 
 

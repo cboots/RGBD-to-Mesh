@@ -44,6 +44,7 @@ struct Float3SOAPyramid{
 struct PlaneStats{
 	float* count;
 	Float3SOA norms;
+	Float3SOA eigs;
 	Float3SOA centroids;
 	//Scatter matrix decoupled
 	float* Sxx;

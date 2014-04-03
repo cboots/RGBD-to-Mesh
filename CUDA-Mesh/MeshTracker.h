@@ -56,6 +56,8 @@ private:
 
 	float mDistPeakThresholdTight;
 	float mMinDistPeakCount;
+	float mPlaneMergeAngleThresh;
+	float mPlaneMergeDistThresh;
 #pragma region
 
 #pragma region Pipeline Buffer Device Pointers
