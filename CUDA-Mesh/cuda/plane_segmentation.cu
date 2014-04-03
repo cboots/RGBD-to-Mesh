@@ -798,6 +798,7 @@ __global__ void finalizePlanesKernel(PlaneStats planeStats, int numNormalPeaks, 
 	s_Eig2[index] = eigs.y;//
 	s_Eig3[index] = eigs.z;//Smallest
 
+	__syncthreads();
 	//Individual planes calculated, do merging now.
 	for(int startPeak = 0; startPeak < numDistPeaks; ++startPeak)
 	{
@@ -810,7 +811,7 @@ __global__ void finalizePlanesKernel(PlaneStats planeStats, int numNormalPeaks, 
 				if(s_counts[ti] > 0)
 				{
 					//Two valid planes. Check merging criteria
-					float angleDot = abs(s_NormalX[si]*s_NormalY[ti] + s_NormalY[si]*s_NormalZ[ti] + s_NormalZ[si]*s_NormalZ[ti]);
+					float angleDot = abs(s_NormalX[si]*s_NormalX[ti] + s_NormalY[si]*s_NormalY[ti] + s_NormalZ[si]*s_NormalZ[ti]);
 
 					if(angleDot > mergeAngleThreshCos)
 					{
