@@ -58,6 +58,8 @@ private:
 	float mMinDistPeakCount;
 	float mPlaneMergeAngleThresh;
 	float mPlaneMergeDistThresh;
+	float mPlaneFinalAngleThresh;
+	float mPlaneFinalDistThresh;
 #pragma region
 
 #pragma region Pipeline Buffer Device Pointers
@@ -79,6 +81,10 @@ private:
 	float* dev_distPeaks[MAX_2D_PEAKS_PER_ROUND];
 
 	PlaneStats dev_planeStats;
+
+	int* dev_finalSegmentsBuffer;
+	float* dev_finalDistanceToPlaneBuffer;
+
 
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
 	Float1SOAPyramid dev_float1PyramidBuffers[NUM_FLOAT1_PYRAMID_BUFFERS];

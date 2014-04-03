@@ -13,6 +13,9 @@ MeshTracker::MeshTracker(int xResolution, int yResolution, Intrinsics intr)
 	mPlaneMergeAngleThresh = 2.5f;
 	mPlaneMergeDistThresh = 0.02f;
 	
+	mPlaneFinalAngleThresh = 25.0f;
+	mPlaneFinalDistThresh = 0.025;
+	
 	mDistPeakThresholdTight = 0.01;
 	mMinDistPeakCount = 350;
 
@@ -76,6 +79,11 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 	createFloat3SOA(dev_planeStats.norms, MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS);
 	createFloat3SOA(dev_planeStats.eigs, MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS);
 
+	
+	cudaMalloc((void**) &dev_finalSegmentsBuffer, xRes*yRes*sizeof(int));
+	cudaMalloc((void**) &dev_finalDistanceToPlaneBuffer, xRes*yRes*sizeof(float));
+
+
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
 		createFloat1SOAPyramid(dev_float1PyramidBuffers[i], xRes, yRes);
@@ -124,7 +132,9 @@ void MeshTracker::cleanupBuffers()
 	freeFloat3SOA(dev_planeStats.centroids);
 	freeFloat3SOA(dev_planeStats.norms);
 	freeFloat3SOA(dev_planeStats.eigs);
-
+	
+	cudaFree(dev_finalSegmentsBuffer);
+	cudaFree(dev_finalDistanceToPlaneBuffer);
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -374,6 +384,10 @@ void MeshTracker::GPUSimpleSegmentation()
 
 	//Process stats and calculate merges
 	finalizePlanes(dev_planeStats, MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_MAX_PEAKS, mPlaneMergeAngleThresh*PI_F/180.0f, mPlaneMergeDistThresh);
+
+	fitFinalPlanes(dev_planeStats, MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS, 
+							normals, positions,  dev_finalSegmentsBuffer, dev_finalDistanceToPlaneBuffer, mXRes, mYRes,
+							 mPlaneFinalAngleThresh*PI_F/180.0f, mPlaneFinalDistThresh, 0);//Iteration 0 always for now
 }
 
 

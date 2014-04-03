@@ -41,3 +41,7 @@ __host__ void fineDistanceSegmentation(float* distPeaks, int numNormalPeaks,  in
 __host__ void clearPlaneStats(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks);
 
 __host__ void finalizePlanes(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks, float mergeAngleThresh, float mergeDistThresh);
+
+__host__ void fitFinalPlanes(PlaneStats planeStats, int numPlanes, 
+							  Float3SOA norms, Float3SOA positions, int* finalSegmentsBuffer, float* distToPlaneBuffer, int xRes, int yRes,
+							 float fitAngleThresh, float fitDistThresh, int iteration);

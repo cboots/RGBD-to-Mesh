@@ -815,7 +815,6 @@ __global__ void finalizePlanesKernel(PlaneStats planeStats, int numNormalPeaks, 
 	planeStats.Syz[index] = s_Syz[index];
 	planeStats.Sxz[index] = s_Sxz[index];
 
-
 }
 
 __host__ void finalizePlanes(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks, float mergeAngleThresh, float mergeDistThresh)
@@ -827,6 +826,97 @@ __host__ void finalizePlanes(PlaneStats planeStats, int numNormalPeaks, int numD
 
 	finalizePlanesKernel<<<blocks,threads, sharedCount*sizeof(float)>>>(planeStats, numNormalPeaks, numDistPeaks, 
 		mergeAngleThresh, mergeDistThresh);
+}
+
+
+__global__ void fitFinalPlanesKernel(PlaneStats planeStats, int numPlanes, 
+									 Float3SOA norms, Float3SOA positions, int* finalSegmentsBuffer, float* distToPlaneBuffer, 
+									 int xRes, int yRes,
+									 float fitAngleThreshCos, float fitDistThresh, int iteration)
+{
+	extern __shared__ float s_mem[];
+	float* s_normX = s_mem;
+	float* s_normY = s_normX + numPlanes;
+	float* s_normZ = s_normY + numPlanes;
+	float* s_dist  = s_normZ + numPlanes;
+
+	if(threadIdx.x < numPlanes)
+	{
+		int count = planeStats.count[threadIdx.x];
+		float validityMultiplier = (count > 0)?1.0f:CUDART_NAN_F;
+
+		s_normX[threadIdx.x] = validityMultiplier*planeStats.norms.x[threadIdx.x];
+		s_normY[threadIdx.x] = validityMultiplier*planeStats.norms.y[threadIdx.x];
+		s_normZ[threadIdx.x] = validityMultiplier*planeStats.norms.z[threadIdx.x];
+
+		float cx = planeStats.centroids.x[threadIdx.x];
+		float cy = planeStats.centroids.y[threadIdx.x];
+		float cz = planeStats.centroids.z[threadIdx.x];
+
+		//n dot c = planar offset
+		s_dist[threadIdx.x] = validityMultiplier*abs(cx*s_normX[threadIdx.x] + cy*s_normY[threadIdx.x] + cz*s_normZ[threadIdx.x]);
+
+	}
+
+	__syncthreads();
+
+	int index = threadIdx.x + blockIdx.x*blockDim.x;
+
+	float minDist = 1000000.0f;
+	float bestPlane = -1;
+	if(iteration > 0)
+	{
+		//If not first iteration, load previous values from segment buffer
+		bestPlane = finalSegmentsBuffer[index];
+		minDist = distToPlaneBuffer[index];
+	}
+
+	float nx = norms.x[index];
+	float ny = norms.y[index];
+	float nz = norms.z[index];
+	float px = positions.x[index];
+	float py = positions.y[index];
+	float pz = positions.z[index];
+
+	for(int plane = 0; plane < numPlanes; ++plane)
+	{
+		if(s_dist[plane] == s_dist[plane])//Skip non-valid planes
+		{
+			float dotprod = abs(nx*s_normX[plane] + ny*s_normY[plane] + nz*s_normZ[plane]);
+			if(dotprod > fitAngleThreshCos)
+			{
+				float dist = abs(px*s_normX[plane] + py*s_normY[plane] + pz*s_normZ[plane]);
+				if(dist < fitDistThresh && dist < minDist)
+				{
+					minDist = dist;
+					bestPlane = plane;
+				}
+			}
+		}
+	}
+
+	//WRITEBACK
+	finalSegmentsBuffer[index] = bestPlane;
+	distToPlaneBuffer[index] = minDist;
+
+}
+
+
+__host__ void fitFinalPlanes(PlaneStats planeStats, int numPlanes, 
+							 Float3SOA norms, Float3SOA positions, int* finalSegmentsBuffer, float* distToPlaneBuffer, int xRes, int yRes,
+							 float fitAngleThresh, float fitDistThresh, int iteration)
+{
+	int blockLength = 512;
+	assert(blockLength > numPlanes);
+	int sharedCount = (3 + 1)*numPlanes*sizeof(float);
+
+	dim3 blocks((int)ceil(float(xRes*yRes)/float(blockLength)));
+	dim3 threads(blockLength);
+
+
+	fitFinalPlanesKernel<<<blocks,threads,sharedCount>>>(planeStats, numPlanes, 
+		norms, positions, finalSegmentsBuffer, distToPlaneBuffer, xRes, yRes,
+		cos(fitAngleThresh), fitDistThresh, iteration);
 }
 
 #pragma endregion
