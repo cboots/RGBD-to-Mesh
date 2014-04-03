@@ -889,11 +889,13 @@ __global__ void fitFinalPlanesKernel(PlaneStats planeStats, int numPlanes,
 				if(dist < fitDistThresh && dist < minDist)
 				{
 					minDist = dist;
-					bestPlane = plane;
+					bestPlane = plane + iteration*numPlanes;
 				}
 			}
 		}
 	}
+
+	
 
 	//WRITEBACK
 	finalSegmentsBuffer[index] = bestPlane;

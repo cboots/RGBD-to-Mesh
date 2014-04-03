@@ -268,6 +268,7 @@ void MeshViewer::initShader()
 	const char * histogram_frag = "shaders/histogramFS.glsl";
 	const char * barhistogram_frag = "shaders/barhistogramFS.glsl";
 	const char * normalsegments_frag = "shaders/normalsegmentsFS.glsl";
+	const char * finalsegments_frag = "shaders/finalsegmentsFS.glsl";
 
 	//Color image shader
 	color_prog = glslUtility::createProgram(pass_vert, NULL, color_frag, quadAttributeLocations, 2);
@@ -289,6 +290,8 @@ void MeshViewer::initShader()
 	barhistogram_prog = glslUtility::createProgram(pass_vert, NULL, barhistogram_frag, quadAttributeLocations, 2);
 
 	normalsegments_prog = glslUtility::createProgram(pass_vert, NULL, normalsegments_frag, quadAttributeLocations, 2);
+
+	finalsegments_prog = glslUtility::createProgram(pass_vert, NULL, finalsegments_frag, quadAttributeLocations, 2);
 }
 
 void MeshViewer::initTextures()
@@ -807,6 +810,31 @@ void MeshViewer::drawNormalSegmentsToTexture(GLuint texture)
 	glActiveTexture(GL_TEXTURE0);
 }
 
+
+
+void MeshViewer::drawFinalSegmentsToTexture(GLuint texture)
+{
+	float4* dptrNormalSegmentsMap;
+	cudaGLMapBufferObject((void**)&dptrNormalSegmentsMap, imagePBO0);
+
+	clearPBO(dptrNormalSegmentsMap, mXRes, mYRes, 0.0f);
+	drawNormalSegmentsToPBO(dptrNormalSegmentsMap, mMeshTracker->getFinalSegments(), mMeshTracker->getFinalFitDistance(), mXRes, mYRes);
+
+	cudaGLUnmapBufferObject(imagePBO0);
+
+	//Unpack to textures
+	glActiveTexture(GL_TEXTURE12);
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+		GL_RGBA, GL_FLOAT, NULL);
+
+	//Unbind buffers
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glActiveTexture(GL_TEXTURE0);
+}
+
 void MeshViewer::resetCamera()
 {
 	mCamera.eye = vec3(0.0f);
@@ -998,6 +1026,7 @@ void MeshViewer::display()
 			drawNormalHistogramtoTexture(texture0);
 			drawQuad(histogram_prog, -0.5,  -0.5, 0.5, 0.5, 0.1,  &texture0, 1);//LL
 
+			//Draw all peak histograms
 			drawDistanceHistogramtoTexture(texture0, vec3(1,0,0), 10000, 0);
 			drawQuad(barhistogram_prog, 0.5, 0.875, 0.5, 0.125, 1.0, &texture0, 1);//UR
 			drawDistanceHistogramtoTexture(texture0, vec3(0,1,0), 10000, 1);
@@ -1006,6 +1035,10 @@ void MeshViewer::display()
 			drawQuad(barhistogram_prog, 0.5, 0.375, 0.5, 0.125, 1.0, &texture0, 1);//UR
 			drawDistanceHistogramtoTexture(texture0, vec3(0,0,1), 10000, 3);
 			drawQuad(barhistogram_prog, 0.5, 0.125, 0.5, 0.125, 1.0, &texture0, 1);//UR
+
+			//Draw final segmentation
+			drawFinalSegmentsToTexture(texture0);
+			drawQuad(finalsegments_prog, 0.5, -0.5, 0.5, 0.5, 1.0,  &texture0, 1);//LR
 
 			break;
 		case DISPLAY_MODE_NONE:

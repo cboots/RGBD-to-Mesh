@@ -169,6 +169,7 @@ private:
 	GLuint histogram_prog;
 	GLuint barhistogram_prog;
 	GLuint normalsegments_prog;
+	GLuint finalsegments_prog;
 #pragma endregion
 
 #pragma region Buffer Object Indecies
@@ -269,6 +270,7 @@ private:
 	void drawNMaptoTexture(GLuint texture, int level);
 	void drawNormalHistogramtoTexture(GLuint texture);
 	void drawNormalSegmentsToTexture(GLuint texture);
+	void drawFinalSegmentsToTexture(GLuint texture);
 	void drawDistanceHistogramtoTexture(GLuint texture, vec3 color, int scale, int peak);
 
 #pragma endregion
