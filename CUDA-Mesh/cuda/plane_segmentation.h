@@ -36,3 +36,6 @@ __host__ void distanceHistogramPrimaryPeakDetection(int* histogram, int length, 
 __host__ void fineDistanceSegmentation(float* distPeaks, int numNormalPeaks,  int maxDistPeaks, 
 									   Float3SOA positions, PlaneStats planeStats,
 									   int* normalSegments, float* planeProjectedDistanceMap, int xRes, int yRes, float maxDistTolerance);
+
+
+__host__ void clearPlaneStats(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks);

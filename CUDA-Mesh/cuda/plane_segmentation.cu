@@ -709,4 +709,34 @@ __host__ void fineDistanceSegmentation(float* distPeaks, int numNormalPeaks,  in
 		positions, planeStats, normalSegments, planeProjectedDistanceMap, xRes, yRes, maxDistTolerance);
 }
 
+
+__global__ void clearPlaneStatsKernel(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks)
+{
+	int index = threadIdx.x + threadIdx.y*numDistPeaks;
+
+	planeStats.count[index] = 0.0f;
+	planeStats.centroids.x[index] = 0.0f;
+	planeStats.centroids.y[index] = 0.0f;
+	planeStats.centroids.z[index] = 0.0f;
+	planeStats.norms.x[index] = 0.0f;
+	planeStats.norms.y[index] = 0.0f;
+	planeStats.norms.z[index] = 0.0f;
+	planeStats.Sxx[index] = 0.0f;
+	planeStats.Syy[index] = 0.0f;
+	planeStats.Szz[index] = 0.0f;
+	planeStats.Sxy[index] = 0.0f;
+	planeStats.Syz[index] = 0.0f;
+	planeStats.Sxz[index] = 0.0f;
+
+}
+
+__host__ void clearPlaneStats(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks)
+{
+	assert(numNormalPeaks*numDistPeaks < 1024);
+	dim3 threads(numDistPeaks, numNormalPeaks);
+	dim3 blocks(1);
+
+	clearPlaneStatsKernel<<<blocks,threads>>>(planeStats, numNormalPeaks, numDistPeaks);
+}
+
 #pragma endregion

@@ -363,9 +363,10 @@ void MeshTracker::GPUSimpleSegmentation()
 		DISTANCE_HIST_MAX_PEAKS, int(2.0f*mDistPeakThresholdTight/DISTANCE_HIST_RESOLUTION), 
 		mMinDistPeakCount, DISTANCE_HIST_MIN, DISTANCE_HIST_MAX);
 	
-
+	clearPlaneStats(dev_planeStats, MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_MAX_PEAKS);
 	fineDistanceSegmentation(dev_distPeaks[0], MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_MAX_PEAKS, 
 		positions, dev_planeStats, dev_normalSegments, dev_planeProjectedDistanceMap, mXRes, mYRes, mDistPeakThresholdTight);
+
 }
 
 
