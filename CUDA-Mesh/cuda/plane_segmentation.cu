@@ -734,7 +734,15 @@ __host__ void clearPlaneStats(PlaneStats planeStats, int numNormalPeaks, int num
 	clearPlaneStatsKernel<<<blocks,threads>>>(planeStats, numNormalPeaks, numDistPeaks);
 }
 
-__global__ void finalizePlanesKernel(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks, float mergeAngleThresh, float mergeDistThresh)
+__device__ glm::mat3 outerProduct(float x, float y, float z)
+{
+	return glm::mat3(x*x, x*y, x*z,
+					y*x, y*y, y*z,
+					z*x, z*y, z*z);
+}
+
+__global__ void finalizePlanesKernel(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks, 
+									 float mergeAngleThreshCos, float mergeDistThresh)
 {
 
 	extern __shared__ float s_mem[];
@@ -766,24 +774,23 @@ __global__ void finalizePlanesKernel(PlaneStats planeStats, int numNormalPeaks, 
 	s_centroidY[index] = planeStats.centroids.y[index]/count;
 	s_centroidZ[index] = planeStats.centroids.z[index]/count;
 
-	s_Sxx[index] = planeStats.Sxx[index];
-	s_Syy[index] = planeStats.Syy[index];
-	s_Szz[index] = planeStats.Szz[index];
-	s_Sxy[index] = planeStats.Sxy[index];
-	s_Syz[index] = planeStats.Syz[index];
-	s_Sxz[index] = planeStats.Sxz[index];
+	//Normalize scatter matrix
+	s_Sxx[index] = planeStats.Sxx[index]/count;
+	s_Syy[index] = planeStats.Syy[index]/count;
+	s_Szz[index] = planeStats.Szz[index]/count;
+	s_Sxy[index] = planeStats.Sxy[index]/count;
+	s_Syz[index] = planeStats.Syz[index]/count;
+	s_Sxz[index] = planeStats.Sxz[index]/count;
 
-	glm::mat3 S1 = glm::mat3(glm::vec3(s_Sxx[index], s_Sxy[index], s_Sxz[index]), 
+	glm::mat3 S1_n = glm::mat3(glm::vec3(s_Sxx[index], s_Sxy[index], s_Sxz[index]), 
 		glm::vec3(s_Sxy[index], s_Syy[index], s_Syz[index]),
 		glm::vec3(s_Sxz[index], s_Syz[index], s_Szz[index]));
-	glm::mat3 S2 = glm::mat3(
-		glm::vec3(s_centroidX[index]*s_centroidX[index], s_centroidX[index]*s_centroidY[index], s_centroidX[index]*s_centroidZ[index]), 
-		glm::vec3(s_centroidY[index]*s_centroidX[index], s_centroidY[index]*s_centroidY[index], s_centroidY[index]*s_centroidZ[index]), 
-		glm::vec3(s_centroidZ[index]*s_centroidX[index], s_centroidZ[index]*s_centroidY[index], s_centroidZ[index]*s_centroidZ[index]));
+
+	glm::mat3 S2 = outerProduct(s_centroidX[index], s_centroidY[index], s_centroidZ[index]);
 
 	glm::vec3 eigs;
 
-	glm::vec3 norm = normalFrom3x3Covar(S1*(1.0f/s_counts[index]) - S2, eigs);
+	glm::vec3 norm = normalFrom3x3Covar(S1_n - S2, eigs);//S1_n is normalized
 	s_NormalX[index] = norm.x;
 	s_NormalY[index] = norm.y;
 	s_NormalZ[index] = norm.z;
@@ -792,8 +799,109 @@ __global__ void finalizePlanesKernel(PlaneStats planeStats, int numNormalPeaks, 
 	s_Eig3[index] = eigs.z;//Smallest
 
 	//Individual planes calculated, do merging now.
+	for(int startPeak = 0; startPeak < numDistPeaks; ++startPeak)
+	{
+		int si = threadIdx.y*numDistPeaks + startPeak;
+		if(s_counts[si] > 0)
+		{
+			for(int testPeak = startPeak + 1; testPeak < numDistPeaks; ++testPeak)
+			{
+				int ti = threadIdx.y*numDistPeaks + testPeak;
+				if(s_counts[ti] > 0)
+				{
+					//Two valid planes. Check merging criteria
+					float angleDot = abs(s_NormalX[si]*s_NormalY[ti] + s_NormalY[si]*s_NormalZ[ti] + s_NormalZ[si]*s_NormalZ[ti]);
+
+					if(angleDot > mergeAngleThreshCos)
+					{
+						//Angle match. Check distance
+						glm::vec3 centroidDist = glm::vec3(s_centroidX[si] - s_centroidX[ti],
+							s_centroidY[si] - s_centroidY[ti],
+							s_centroidZ[si] - s_centroidZ[ti]);
+
+						float d1 = abs(s_NormalX[si]*centroidDist.x + s_NormalY[si]*centroidDist.y + s_NormalZ[si]*centroidDist.z);
+						float d2 = abs(s_NormalX[ti]*centroidDist.x + s_NormalY[ti]*centroidDist.y + s_NormalZ[ti]*centroidDist.z);
+						float delt = min(d1, d2);
+						if(delt < mergeDistThresh)
+						{
+#pragma region Merge Planes
+							//============Merge Planes==============
+							//Combine counts
+							float count_m = s_counts[si] + s_counts[ti];
+							//Weighted centroid average
+							glm::vec3 mergedCentroid = 1.0f/count_m * 
+								glm::vec3(s_counts[si]*s_centroidX[si] + s_counts[ti]*s_centroidX[ti],
+								s_counts[si]*s_centroidY[si] + s_counts[ti]*s_centroidY[ti],
+								s_counts[si]*s_centroidZ[si] + s_counts[ti]*s_centroidZ[ti]);
+							//Merged S2 centroid component
+							glm::mat3 Sm2 = outerProduct(mergedCentroid.x, mergedCentroid.y, mergedCentroid.z);
+
+							//Construct S1 for both planes
+							glm::mat3 S1_ns = glm::mat3(glm::vec3(s_Sxx[si], s_Sxy[si], s_Sxz[si]), 
+								glm::vec3(s_Sxy[si], s_Syy[si], s_Syz[si]),
+								glm::vec3(s_Sxz[si], s_Syz[si], s_Szz[si]));
+
+							glm::mat3 S1_nt = glm::mat3(glm::vec3(s_Sxx[ti], s_Sxy[ti], s_Sxz[ti]), 
+								glm::vec3(s_Sxy[ti], s_Syy[ti], s_Syz[ti]),
+								glm::vec3(s_Sxz[ti], s_Syz[ti], s_Szz[ti]));
 
 
+							//Compute merged S1_n
+							glm::mat3 Sm1_n = s_counts[si]/count_m * S1_ns + s_counts[ti]/count_m * S1_nt;
+
+							//Compute combined normalized scatter matrix and find normals
+							norm = normalFrom3x3Covar(Sm1_n - Sm2, eigs);
+							
+							//=====MERGE DONE, WRITEBACK=====
+							s_counts[si] = count_m;
+							s_counts[ti] = 0.0f;
+							
+							s_centroidX[si] = mergedCentroid.x;
+							s_centroidY[si] = mergedCentroid.y;
+							s_centroidZ[si] = mergedCentroid.z;
+
+							s_centroidX[ti] = 0.0f;
+							s_centroidY[ti] = 0.0f;
+							s_centroidZ[ti] = 0.0f;
+
+							s_Sxx[si] = Sm1_n[0][0];
+							s_Syy[si] = Sm1_n[1][1];
+							s_Szz[si] = Sm1_n[2][2];
+							s_Sxy[si] = Sm1_n[0][1];
+							s_Syz[si] = Sm1_n[1][2];
+							s_Sxz[si] = Sm1_n[0][2];
+
+							s_Sxx[ti] = 0.0f;
+							s_Syy[ti] = 0.0f;
+							s_Szz[ti] = 0.0f;
+							s_Sxy[ti] = 0.0f;
+							s_Syz[ti] = 0.0f;
+							s_Sxz[ti] = 0.0f;
+
+							s_NormalX[si] = norm.x;
+							s_NormalY[si] = norm.y;
+							s_NormalZ[si] = norm.z;
+							s_Eig1[si] = eigs.x;//Largest
+							s_Eig2[si] = eigs.y;//
+							s_Eig3[si] = eigs.z;//Smallest
+
+							s_NormalX[ti] = 0.0f;
+							s_NormalY[ti] = 0.0f;
+							s_NormalZ[ti] = 0.0f;
+							s_Eig1[ti] = 0.0f;//Largest
+							s_Eig2[ti] = 0.0f;//
+							s_Eig3[ti] = 0.0f;//Smallest
+
+
+
+							//============End Merge Planes==========
+#pragma endregion
+						}
+					}
+				}
+			}
+		}
+	}
 
 
 	//=======Save final planes (WRITEBACK)======
@@ -825,7 +933,7 @@ __host__ void finalizePlanes(PlaneStats planeStats, int numNormalPeaks, int numD
 	int sharedCount = numDistPeaks*numNormalPeaks*(1 + 3 + 3 + 3 + 6);
 
 	finalizePlanesKernel<<<blocks,threads, sharedCount*sizeof(float)>>>(planeStats, numNormalPeaks, numDistPeaks, 
-		mergeAngleThresh, mergeDistThresh);
+		cos(mergeAngleThresh), mergeDistThresh);
 }
 
 
@@ -896,7 +1004,7 @@ __global__ void fitFinalPlanesKernel(PlaneStats planeStats, int numPlanes,
 		}
 	}
 
-	
+
 
 	//WRITEBACK
 	finalSegmentsBuffer[index] = bestPlane;
