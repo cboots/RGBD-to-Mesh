@@ -78,18 +78,20 @@ __global__ void normalHistogramKernel(float* normX, float* normY, float* normZ, 
 			//int xI = acos(x)*PI_INV_F*xBins;
 			//int yI = acos(y)*PI_INV_F*yBins;
 
-			//Original Normals are all viewpoint oriented. However, since we want to project them down into a unit hemisphere
-			//only -z values will be allowed. So if z is positive, flip normal
-			if(z > 0.0f)
+			//Original Normals are all viewpoint oriented (most will have -z values). 
+			//However, since we want to project them down into a unit hemisphere
+			//only z values will be allowed. So if z is negative, flip normal
+			//Original normals will be 
+			if(z < 0.0f)
 			{
 				x = -x;
 				y = -y;
 				z = -z;
 			}
 			//Projected space is well behaved w.r.t indexing when 0 <= z <= 1
-			float azimuth = atan2f(-z,-x);
+			float azimuth = atan2f(z,x);
 			int xI = azimuth*PI_INV_F*xBins;
-			int yI = acosf(-y)*PI_INV_F*yBins;
+			int yI = acosf(y)*PI_INV_F*yBins;
 
 			atomicAdd(&histogram[yI*xBins + xI], 1);
 		}
@@ -356,9 +358,9 @@ __global__ void segmentNormals2DKernel(Float3SOA rawNormals, Float3SOA rawPositi
 			float azimuth = PI_F*xi/float(xBins);
 			float elv = PI_F*yi/float(yBins);
 
-			x = -cosf(azimuth)*sinf(elv);
-			z = -sinf(azimuth)*sinf(elv);
-			y = -cosf(elv);
+			x = cosf(azimuth)*sinf(elv);
+			z = sinf(azimuth)*sinf(elv);
+			y = cosf(elv);
 		}
 
 		s_peaksX[threadIdx.x] = x;
