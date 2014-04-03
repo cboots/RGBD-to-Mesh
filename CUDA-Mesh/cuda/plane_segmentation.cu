@@ -669,6 +669,22 @@ __global__ void fineDistanceSegmentationKernel(float* distPeaks, int numNormalPe
 			normalSegments[index] = bestPlaneIndex;
 		}
 	}
+
+	__syncthreads();
+
+	if(threadIdx.x < numNormalPeaks*maxDistPeaks)
+	{
+		atomicAdd(&planeStats.count[threadIdx.x], s_counts[threadIdx.x]);
+		atomicAdd(&planeStats.centroids.x[threadIdx.x], s_centroidX[threadIdx.x]);
+		atomicAdd(&planeStats.centroids.y[threadIdx.x], s_centroidY[threadIdx.x]);
+		atomicAdd(&planeStats.centroids.z[threadIdx.x], s_centroidZ[threadIdx.x]);
+		atomicAdd(&planeStats.Sxx[threadIdx.x], s_Sxx[threadIdx.x]);
+		atomicAdd(&planeStats.Syy[threadIdx.x], s_Syy[threadIdx.x]);
+		atomicAdd(&planeStats.Szz[threadIdx.x], s_Szz[threadIdx.x]);
+		atomicAdd(&planeStats.Sxy[threadIdx.x], s_Sxy[threadIdx.x]);
+		atomicAdd(&planeStats.Syz[threadIdx.x], s_Syz[threadIdx.x]);
+		atomicAdd(&planeStats.Sxz[threadIdx.x], s_Sxz[threadIdx.x]);
+	}
 }
 
 __host__ void fineDistanceSegmentation(float* distPeaks, int numNormalPeaks,  int maxDistPeaks, 
