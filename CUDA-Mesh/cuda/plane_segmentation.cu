@@ -783,7 +783,7 @@ __global__ void finalizePlanesKernel(PlaneStats planeStats, int numNormalPeaks, 
 
 	glm::vec3 eigs;
 
-	glm::vec3 norm = normalFrom3x3Covar(S1 + s_counts[index] * S2, eigs);
+	glm::vec3 norm = normalFrom3x3Covar(S1*(1.0f/s_counts[index]) - S2, eigs);
 	s_NormalX[index] = norm.x;
 	s_NormalY[index] = norm.y;
 	s_NormalZ[index] = norm.z;
@@ -886,6 +886,7 @@ __global__ void fitFinalPlanesKernel(PlaneStats planeStats, int numPlanes,
 			if(dotprod > fitAngleThreshCos)
 			{
 				float dist = abs(px*s_normX[plane] + py*s_normY[plane] + pz*s_normZ[plane]);
+				dist = abs(dist - s_dist[plane]);
 				if(dist < fitDistThresh && dist < minDist)
 				{
 					minDist = dist;
