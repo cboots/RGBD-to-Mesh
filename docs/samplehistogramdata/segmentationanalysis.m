@@ -70,7 +70,7 @@ if(count > 500)
 
     pks = [];
     locs = [];
-    windowr = 2;
+    windowr = 3;
     KSCopy = KS;
     while(max(KSCopy) > 350)
        [peak loc] = max(KSCopy);
@@ -89,7 +89,7 @@ if(count > 500)
     for j=1:length(locs)
        pkcenter = samples(locs(j));
        dtoplane = abs(pkcenter - segmentDistances);
-       match = mask & (dtoplane < 0.01) & (dtoplane < mindist);
+       match = mask & (dtoplane < 0.015);
        segments(match) = j;
        mindist(match) = dtoplane(match);
        

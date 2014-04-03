@@ -32,3 +32,7 @@ __host__ void generateDistanceHistograms(int* dev_normalSegments, float* dev_pla
 
 __host__ void distanceHistogramPrimaryPeakDetection(int* histogram, int length, int numHistograms, float* distPeaks, int maxDistPeaks, 
 												  int exclusionRadius, int minPeakHeight, float minHistDist, float maxHistDist);
+
+__host__ void fineDistanceSegmentation(float* distPeaks, int numNormalPeaks,  int maxDistPeaks, 
+									   Float3SOA positions, PlaneStats planeStats,
+									   int* normalSegments, float* planeProjectedDistanceMap, int xRes, int yRes, float maxDistTolerance);

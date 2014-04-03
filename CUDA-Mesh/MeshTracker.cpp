@@ -62,7 +62,16 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 	for(int i = 1; i < MAX_2D_PEAKS_PER_ROUND; i++)//Update other pointers
 		dev_distPeaks[i] = dev_distPeaks[i-1] + DISTANCE_HIST_COUNT;
 
-
+	//Plane stats buffers
+	cudaMalloc((void**) &dev_planeStats.count, MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(float));
+	cudaMalloc((void**) &dev_planeStats.Sxx,   MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(float));
+	cudaMalloc((void**) &dev_planeStats.Syy,   MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(float));
+	cudaMalloc((void**) &dev_planeStats.Szz,   MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(float));
+	cudaMalloc((void**) &dev_planeStats.Sxy,   MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(float));
+	cudaMalloc((void**) &dev_planeStats.Syz,   MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(float));
+	cudaMalloc((void**) &dev_planeStats.Sxz,   MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(float));
+	createFloat3SOA(dev_planeStats.centroids, MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS);
+	createFloat3SOA(dev_planeStats.norms, MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS);
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -100,6 +109,17 @@ void MeshTracker::cleanupBuffers()
 
 	cudaFree(dev_distanceHistograms[0]);
 	cudaFree(dev_distPeaks[0]);
+
+	
+	cudaFree(dev_planeStats.count);
+	cudaFree(dev_planeStats.Sxx);
+	cudaFree(dev_planeStats.Syy);
+	cudaFree(dev_planeStats.Szz);
+	cudaFree(dev_planeStats.Sxy);
+	cudaFree(dev_planeStats.Syz);
+	cudaFree(dev_planeStats.Sxz);
+	freeFloat3SOA(dev_planeStats.centroids);
+	freeFloat3SOA(dev_planeStats.norms);
 
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
@@ -342,7 +362,29 @@ void MeshTracker::GPUSimpleSegmentation()
 	distanceHistogramPrimaryPeakDetection(dev_distanceHistograms[0], DISTANCE_HIST_COUNT, MAX_2D_PEAKS_PER_ROUND, dev_distPeaks[0], 
 		DISTANCE_HIST_MAX_PEAKS, int(2.0f*mDistPeakThresholdTight/DISTANCE_HIST_RESOLUTION), 
 		mMinDistPeakCount, DISTANCE_HIST_MIN, DISTANCE_HIST_MAX);
+	
+	//Debug
+	float* debugPeaks = new float[DISTANCE_HIST_MAX_PEAKS*MAX_2D_PEAKS_PER_ROUND];
 
+	cudaMemcpy(debugPeaks, dev_distPeaks[0], DISTANCE_HIST_MAX_PEAKS*MAX_2D_PEAKS_PER_ROUND*sizeof(float), cudaMemcpyDeviceToHost);
+
+	for(int i = 0; i < MAX_2D_PEAKS_PER_ROUND; ++i)
+	{
+		cout << i << ":";
+		for(int j = 0; j < DISTANCE_HIST_MAX_PEAKS; ++j)
+		{
+			float peak = debugPeaks[j + i * DISTANCE_HIST_MAX_PEAKS];
+			if(peak > 0)
+				cout << peak << ",";
+		}
+		cout << endl;
+	}
+
+	delete debugPeaks;
+	//End debug
+
+	fineDistanceSegmentation(dev_distPeaks[0], MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_MAX_PEAKS, 
+		positions, dev_planeStats, dev_normalSegments, dev_planeProjectedDistanceMap, mXRes, mYRes, mDistPeakThresholdTight);
 }
 
 

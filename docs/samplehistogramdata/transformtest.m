@@ -16,7 +16,7 @@ plot(x, azimuth);
 
 x2 = cos(azimuth)*sin(elv);
 z2 = sin(azimuth)*sin(elv);
-y2 = cos(azimuth);
+y2 = cos(elv);
 figure
 plot(azimuth,x2);
 hold all

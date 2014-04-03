@@ -76,7 +76,7 @@ private:
 	int* dev_distanceHistograms[MAX_2D_PEAKS_PER_ROUND];
 	float* dev_distPeaks[MAX_2D_PEAKS_PER_ROUND];
 
-
+	PlaneStats dev_planeStats;
 
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
 	Float1SOAPyramid dev_float1PyramidBuffers[NUM_FLOAT1_PYRAMID_BUFFERS];

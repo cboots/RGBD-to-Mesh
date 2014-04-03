@@ -181,10 +181,10 @@ __host__ void ACosHistogram(float* cosineValue, int* histogram, int valueCount, 
 
 __device__ int mod_pos (int a, int b)
 {
-   int ret = a % b;
-   if(ret < 0)
-     ret+=b;
-   return ret;
+	int ret = a % b;
+	if(ret < 0)
+		ret+=b;
+	return ret;
 }
 
 __global__ void normalHistogramPrimaryPeakDetectionKernel(int* histogram, int xBins, int yBins, Float3SOA peaks, int maxPeaks, 
@@ -544,10 +544,10 @@ __global__ void distHistogramPeakDetectionKernel(int* histogram, int length, int
 		//s_maxI[0] now holds the maximum index
 		if(s_max[0] < minPeakHeight)
 		{
-			//Fill remaining slots with -1
+			//Fill remaining slots with NaN
 			if(index >= peakNum && index < maxDistPeaks)
 			{
-				distPeaks[peaksOffset + index] = -1;
+				distPeaks[peaksOffset + index] = CUDART_NAN_F;
 			}
 			break;
 		}
@@ -588,5 +588,109 @@ __host__ void distanceHistogramPrimaryPeakDetection(int* histogram, int length, 
 		distPeaks, maxDistPeaks, exclusionRadius, minPeakHeight, minHistDist, maxHistDist);
 }
 
+
+#pragma endregion
+
+
+#pragma region Distance Segmentation
+
+__global__ void fineDistanceSegmentationKernel(float* distPeaks, int numNormalPeaks, int maxDistPeaks, 
+											   Float3SOA positions, PlaneStats planeStats,
+											   int* normalSegments, float* planeProjectedDistanceMap, 
+											   int xRes, int yRes, float maxDistTolerance)
+{
+	//Assemble
+	extern __shared__ float s_mem[];
+	float* s_distPeaks = s_mem;
+	float* s_counts = s_distPeaks + maxDistPeaks*numNormalPeaks;
+	float* s_centroidX = s_counts    + maxDistPeaks*numNormalPeaks;
+	float* s_centroidY = s_centroidX + maxDistPeaks*numNormalPeaks;
+	float* s_centroidZ = s_centroidY + maxDistPeaks*numNormalPeaks;
+	float* s_Sxx	= s_centroidZ + maxDistPeaks*numNormalPeaks;
+	float* s_Syy	= s_Sxx + maxDistPeaks*numNormalPeaks;
+	float* s_Szz	= s_Syy + maxDistPeaks*numNormalPeaks;
+	float* s_Sxy	= s_Szz + maxDistPeaks*numNormalPeaks;
+	float* s_Syz	= s_Sxy + maxDistPeaks*numNormalPeaks;
+	float* s_Sxz	= s_Syz + maxDistPeaks*numNormalPeaks;
+
+	int index = threadIdx.x + blockIdx.x*blockDim.x;
+
+	//Zero out shared memory
+	if(threadIdx.x < numNormalPeaks*maxDistPeaks*(1+3+6+1))
+	{
+		s_mem[threadIdx.x] = 0.0f;
+	}
+
+	if(threadIdx.x < numNormalPeaks*maxDistPeaks)
+	{
+		s_distPeaks[threadIdx.x] = distPeaks[threadIdx.x];
+	}
+	__syncthreads();
+
+
+	if(index < xRes*yRes)
+	{
+		int normalSeg = normalSegments[index];
+		if(normalSeg >= 0)
+		{
+
+			float planeD = abs(planeProjectedDistanceMap[index]);
+			float px = positions.x[index];
+			float py = positions.y[index];
+			float pz = positions.z[index];
+
+			//Has a normal segment assignment
+			int bestPlaneIndex = -1;
+			for(int distPeak = 0; distPeak < maxDistPeaks; ++distPeak)
+			{
+				int planeIndex = normalSeg*maxDistPeaks + distPeak;
+				if(abs(s_distPeaks[planeIndex] - planeD) < maxDistTolerance)
+				{
+					bestPlaneIndex = planeIndex;
+					break;
+				}
+			}
+
+			if(bestPlaneIndex >= 0)
+			{
+				//Found a match. Compute stats
+				atomicAdd(&s_counts[bestPlaneIndex], 1);//Add one
+				atomicAdd(&s_centroidX[bestPlaneIndex], px);
+				atomicAdd(&s_centroidY[bestPlaneIndex], py);
+				atomicAdd(&s_centroidZ[bestPlaneIndex], pz);
+				atomicAdd(&s_Sxx[bestPlaneIndex], px*px);
+				atomicAdd(&s_Syy[bestPlaneIndex], py*py);
+				atomicAdd(&s_Szz[bestPlaneIndex], pz*pz);
+				atomicAdd(&s_Sxy[bestPlaneIndex], px*py);
+				atomicAdd(&s_Syz[bestPlaneIndex], py*pz);
+				atomicAdd(&s_Sxz[bestPlaneIndex], px*pz);
+			}
+
+			normalSegments[index] = bestPlaneIndex;
+		}
+	}
+}
+
+__host__ void fineDistanceSegmentation(float* distPeaks, int numNormalPeaks,  int maxDistPeaks, 
+									   Float3SOA positions, PlaneStats planeStats,
+									   int* normalSegments, float* planeProjectedDistanceMap, int xRes, int yRes, float maxDistTolerance)
+{
+
+	//Stats accum buffers
+	//3x float centroid
+	//6x float Decoupled S matrix
+	//1x float count
+	//1x peak distances
+	int sharedCount = maxDistPeaks*numNormalPeaks*(3 + 6 + 1 + 1);
+	int blockLength = 512;
+	assert(blockLength > sharedCount);
+
+	dim3 blocks((int) ceil(float(xRes*yRes)/float(blockLength)));
+	dim3 threads(blockLength);
+
+
+	fineDistanceSegmentationKernel<<<blocks, threads, sizeof(float)*sharedCount>>>(distPeaks, numNormalPeaks, maxDistPeaks, 
+		positions, planeStats, normalSegments, planeProjectedDistanceMap, xRes, yRes, maxDistTolerance);
+}
 
 #pragma endregion
