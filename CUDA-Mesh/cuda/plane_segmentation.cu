@@ -737,8 +737,8 @@ __host__ void clearPlaneStats(PlaneStats planeStats, int numNormalPeaks, int num
 __device__ glm::mat3 outerProduct(float x, float y, float z)
 {
 	return glm::mat3(x*x, x*y, x*z,
-					y*x, y*y, y*z,
-					z*x, z*y, z*z);
+		y*x, y*y, y*z,
+		z*x, z*y, z*z);
 }
 
 __global__ void finalizePlanesKernel(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks, 
@@ -852,11 +852,11 @@ __global__ void finalizePlanesKernel(PlaneStats planeStats, int numNormalPeaks, 
 
 							//Compute combined normalized scatter matrix and find normals
 							norm = normalFrom3x3Covar(Sm1_n - Sm2, eigs);
-							
+
 							//=====MERGE DONE, WRITEBACK=====
 							s_counts[si] = count_m;
 							s_counts[ti] = 0.0f;
-							
+
 							s_centroidX[si] = mergedCentroid.x;
 							s_centroidY[si] = mergedCentroid.y;
 							s_centroidZ[si] = mergedCentroid.z;
@@ -1032,3 +1032,51 @@ __host__ void fitFinalPlanes(PlaneStats planeStats, int numPlanes,
 }
 
 #pragma endregion
+
+
+__global__ void realignPeaksKernel(PlaneStats planeStats, Float3SOA normalPeaks, int numNormPeaks, int numDistPeaks, int xBins, int yBins)
+{
+	int planeIndex = threadIdx.x + threadIdx.y*numDistPeaks;
+	if(threadIdx.x == 0)//Align to plane with largest peak
+	{
+		float xI = CUDART_NAN_F;
+		float yI = CUDART_NAN_F;
+		float count = 0;
+		if(planeStats.count[planeIndex] > 0)
+		{
+			//Peaks are in histogram format
+
+
+			float x = planeStats.norms.x[planeIndex];
+			float y = planeStats.norms.y[planeIndex];
+			float z = planeStats.norms.z[planeIndex];
+			count = planeStats.count[planeIndex];
+
+
+
+			if(z < 0.0f)
+			{
+				x = -x;
+				y = -y;
+				z = -z;
+			}
+			//Projected space is well behaved w.r.t indexing when 0 <= z <= 1
+			float azimuth = atan2f(z,x);
+			xI = azimuth*PI_INV_F*xBins;
+			yI = acosf(y)*PI_INV_F*yBins;
+		}
+
+		normalPeaks.x[threadIdx.y] = xI;
+		normalPeaks.y[threadIdx.y] = yI;
+		normalPeaks.z[threadIdx.y] = count;
+
+	}
+}
+
+__host__ void realignPeaks(PlaneStats planeStats, Float3SOA normalPeaks, int numNormPeaks, int numDistPeaks, int xBins, int yBins)
+{
+	dim3 threads(numDistPeaks, numNormPeaks);
+	dim3 blocks(1);
+
+	realignPeaksKernel<<<blocks,threads>>>(planeStats, normalPeaks, numNormPeaks, numDistPeaks, xBins, yBins);
+}

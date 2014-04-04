@@ -70,7 +70,7 @@ if(count > 500)
 
     pks = [];
     locs = [];
-    windowr = 3;
+    windowr = 2;
     KSCopy = KS;
     while(max(KSCopy) > 350)
        [peak loc] = max(KSCopy);
@@ -89,7 +89,7 @@ if(count > 500)
     for j=1:length(locs)
        pkcenter = samples(locs(j));
        dtoplane = abs(pkcenter - segmentDistances);
-       match = mask & (dtoplane < 0.015);
+       match = mask & (dtoplane < 0.01);
        segments(match) = j;
        mindist(match) = dtoplane(match);
        
@@ -103,6 +103,7 @@ if(count > 500)
     counts = zeros(length(locs),1);
     centroids = zeros(length(locs),3);
     curvatures = zeros(length(locs),1);
+    eigens = zeros(length(locs),3);
     for j=1:length(locs)
         points = [posX(segments == j) posY(segments == j) posZ(segments == j)];
         if(size(points,1) > 300)
@@ -123,7 +124,7 @@ if(count > 500)
         distances(j) = dot(normal,cm);
         centroids(j,:) = cm;
         curvatures(j) = curvature;
-        
+        eigens(j,:) = eigs;
         end
     end
     
@@ -133,6 +134,20 @@ if(count > 500)
     avgnorm = avgnorm./sqrt(sum(avgnorm.^2));
     
     acosd(normals(1,:)*avgnorm');
+    avgnorm = normals(1,:);
+    newprojection = mask.*(posX*avgnorm(1) + posY*avgnorm(2)+ posZ*avgnorm(3));
+    newprojection(newprojection == 0) = nan;
+    
+    figure
+    subplot(2,1,1)
+    surf(newprojection);
+    view([0 0])
+    
+    counts = hist(newprojection(:), samples);
+    subplot(2,1,2)
+    plot(samples, counts);
+    
+    
     avgnorm = normals(1,:);
     newprojection = mask.*(posX*avgnorm(1) + posY*avgnorm(2)+ posZ*avgnorm(3));
     newprojection(newprojection == 0) = nan;

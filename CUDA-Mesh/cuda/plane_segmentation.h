@@ -45,3 +45,5 @@ __host__ void finalizePlanes(PlaneStats planeStats, int numNormalPeaks, int numD
 __host__ void fitFinalPlanes(PlaneStats planeStats, int numPlanes, 
 							  Float3SOA norms, Float3SOA positions, int* finalSegmentsBuffer, float* distToPlaneBuffer, int xRes, int yRes,
 							 float fitAngleThresh, float fitDistThresh, int iteration);
+
+__host__ void realignPeaks(PlaneStats planeStats, Float3SOA normalPeaks, int numNormPeaks, int numDistPeaks, int xBins, int yBins);

@@ -343,21 +343,59 @@ void MeshTracker::GPUSimpleSegmentation()
 {
 	//Clear and init 2D histogram
 	clearHistogram(dev_normalVoxels, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS);
+
+	//Future LOOP Start
+
+	//======First pass Segmentation, use downsampled segmentation to approixmate======
 	computeNormalHistogram(dev_nmapSOA.x[0], dev_nmapSOA.y[0], dev_nmapSOA.z[0], dev_normalVoxels, mXRes, mYRes, 
 		NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS);
-	
-	//Future LOOP Start
 
 	//Detect peaks
 	normalHistogramPrimaryPeakDetection(dev_normalVoxels, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS, 
 		dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND,  PEAK_2D_EXCLUSION_RADIUS, MIN_2D_PEAK_COUNT);
 	
 	Float3SOA normals;
+	normals.x = dev_nmapSOA.x[1];
+	normals.y = dev_nmapSOA.y[1];
+	normals.z = dev_nmapSOA.z[1];
+
+	Float3SOA positions;
+	positions.x = dev_vmapSOA.x[1];
+	positions.y = dev_vmapSOA.y[1];
+	positions.z = dev_vmapSOA.z[1];
+
+	//Tight tolerance angle segmentation
+	segmentNormals2D(normals, positions, dev_normalSegments, dev_planeProjectedDistanceMap, mXRes>>1, mYRes>>1, 
+		dev_normalVoxels, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS, 
+		dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND, m2DSegmentationMaxAngleFromPeak*PI_F/180.0f);
+
+	//Distance histogram generation
+	clearHistogram(dev_distanceHistograms[0], DISTANCE_HIST_COUNT, MAX_2D_PEAKS_PER_ROUND);
+	generateDistanceHistograms(dev_normalSegments, dev_planeProjectedDistanceMap, mXRes>>1, mYRes>>1, dev_distanceHistograms,
+		MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_COUNT, DISTANCE_HIST_MIN, DISTANCE_HIST_MAX);
+
+
+	distanceHistogramPrimaryPeakDetection(dev_distanceHistograms[0], DISTANCE_HIST_COUNT, MAX_2D_PEAKS_PER_ROUND, dev_distPeaks[0], 
+		DISTANCE_HIST_MAX_PEAKS, int(2.0f*mDistPeakThresholdTight/DISTANCE_HIST_RESOLUTION), 
+		mMinDistPeakCount/4, DISTANCE_HIST_MIN, DISTANCE_HIST_MAX);
+	
+	//Segment by distance and assemble plane stats for segments
+	clearPlaneStats(dev_planeStats, MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_MAX_PEAKS);
+	fineDistanceSegmentation(dev_distPeaks[0], MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_MAX_PEAKS, 
+		positions, dev_planeStats, dev_normalSegments, dev_planeProjectedDistanceMap, mXRes>>1, mYRes>>1, mDistPeakThresholdTight);
+
+	//Process stats and calculate merges
+	finalizePlanes(dev_planeStats, MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_MAX_PEAKS, mPlaneMergeAngleThresh*PI_F/180.0f, mPlaneMergeDistThresh);
+
+	//Use plane stats from first pass to better align peaks, then re-segment at maximum resolution
+	realignPeaks(dev_planeStats, dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_MAX_PEAKS, 
+		NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS);
+
+
 	normals.x = dev_nmapSOA.x[0];
 	normals.y = dev_nmapSOA.y[0];
 	normals.z = dev_nmapSOA.z[0];
 
-	Float3SOA positions;
 	positions.x = dev_vmapSOA.x[0];
 	positions.y = dev_vmapSOA.y[0];
 	positions.z = dev_vmapSOA.z[0];
