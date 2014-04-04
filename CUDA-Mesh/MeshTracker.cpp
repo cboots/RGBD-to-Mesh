@@ -10,6 +10,8 @@ MeshTracker::MeshTracker(int xResolution, int yResolution, Intrinsics intr)
 
 	//Setup default configuration
 	m2DSegmentationMaxAngleFromPeak = 5.0f;
+
+
 	mPlaneMergeAngleThresh = 5.0f;
 	mPlaneMergeDistThresh = 0.025f;
 	
@@ -17,7 +19,8 @@ MeshTracker::MeshTracker(int xResolution, int yResolution, Intrinsics intr)
 	mPlaneFinalDistThresh = 0.025;
 	
 	mDistPeakThresholdTight = 0.025;
-	mMinDistPeakCount = 1000;
+	mMinDistPeakCount = 750;
+	mMinNormalPeakCout = 350;
 
 	initBuffers(mXRes, mYRes);
 
@@ -390,7 +393,7 @@ void MeshTracker::normalHistogramGeneration(int normalHistLevel)
 
 	//Detect peaks
 	normalHistogramPrimaryPeakDetection(dev_normalVoxels, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS, 
-		dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND,  PEAK_2D_EXCLUSION_RADIUS, MIN_2D_PEAK_COUNT/float(1 << normalHistLevel*2));
+		dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND,  PEAK_2D_EXCLUSION_RADIUS, mMinNormalPeakCout/float(1 << normalHistLevel*2));
 }
 void MeshTracker::GPUSimpleSegmentation()
 {

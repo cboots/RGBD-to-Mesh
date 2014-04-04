@@ -23,8 +23,7 @@ using namespace rgbd::framework;
 #define NUM_NORMAL_Y_SUBDIVISIONS		32
 
 #define MAX_2D_PEAKS_PER_ROUND		4
-#define MIN_2D_PEAK_COUNT			500
-#define PEAK_2D_EXCLUSION_RADIUS	8
+#define PEAK_2D_EXCLUSION_RADIUS	6
 
 #define DISTANCE_HIST_MAX_PEAKS	8
 #define DISTANCE_HIST_COUNT	512
@@ -60,6 +59,7 @@ private:
 	float mPlaneMergeDistThresh;
 	float mPlaneFinalAngleThresh;
 	float mPlaneFinalDistThresh;
+	float mMinNormalPeakCout;
 #pragma region
 
 #pragma region Pipeline Buffer Device Pointers

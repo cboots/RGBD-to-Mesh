@@ -12,7 +12,7 @@ out vec4 FragColor;
 void main()
 {
 	float centerval = texture(u_Texture0, fs_texCoord*u_TextureScale).x;
-	FragColor = vec4(centerval/1000.0);
+	FragColor = vec4(centerval/500.0);
 	
 	if(centerval < 0)
 	{
