@@ -25,6 +25,8 @@ using namespace rgbd::framework;
 #define MAX_2D_PEAKS_PER_ROUND		4
 #define PEAK_2D_EXCLUSION_RADIUS	6
 
+#define MAX_SEGMENTATION_ROUNDS		2
+
 #define DISTANCE_HIST_MAX_PEAKS	8
 #define DISTANCE_HIST_COUNT	512
 #define DISTANCE_HIST_MIN	0.1f
@@ -111,8 +113,8 @@ private:
 	void initBuffers(int xRes, int yResolution);
 	void cleanupBuffers();
 
-	void segmentationInnerLoop(int resolutionLevel);
-	void normalHistogramGeneration(int normalHistLevel);
+	void segmentationInnerLoop(int resolutionLevel, int iteration);
+	void normalHistogramGeneration(int normalHistLevel, int iteration);
 #pragma endregion
 
 public:

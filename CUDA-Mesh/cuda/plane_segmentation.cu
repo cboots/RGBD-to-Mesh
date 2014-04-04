@@ -57,7 +57,8 @@ __device__ glm::vec3 normalFrom3x3Covar(glm::mat3 A, glm::vec3& eigs) {
 
 #pragma region Histogram Two-D
 
-__global__ void normalHistogramKernel(float* normX, float* normY, float* normZ, int* histogram, int xRes, int yRes, int xBins, int yBins)
+__global__ void normalHistogramKernel(float* normX, float* normY, float* normZ, int* finalSegmentsBuffer, int* histogram, 
+									  int xRes, int yRes, int xBins, int yBins, bool excludePreviousSegments)
 {
 	int i = threadIdx.x + blockIdx.x*blockDim.x;
 
@@ -66,7 +67,9 @@ __global__ void normalHistogramKernel(float* normX, float* normY, float* normZ, 
 		float x = normX[i];
 		float y = normY[i];
 		float z = normZ[i];
-		if(x == x && y == y && z == z)//Will be false if NaN
+		bool unsegmented = excludePreviousSegments?(finalSegmentsBuffer[i] == -1):true;
+
+		if(x == x && y == y && z == z && unsegmented)//Will be false if NaN
 		{
 			//int xI = (x+1.0f)*0.5f*xBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
 			//int yI = (y+1.0f)*0.5f*yBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
@@ -95,7 +98,8 @@ __global__ void normalHistogramKernel(float* normX, float* normY, float* normZ, 
 
 
 
-__host__ void computeNormalHistogram(float* normX, float* normY, float* normZ, int* histogram, int xRes, int yRes, int xBins, int yBins)
+__host__ void computeNormalHistogram(float* normX, float* normY, float* normZ, int* finalSegmentsBuffer, int* histogram, 
+									 int xRes, int yRes, int xBins, int yBins, bool excludePreviousSegments)
 {
 	int blockLength = 256;
 
@@ -103,7 +107,8 @@ __host__ void computeNormalHistogram(float* normX, float* normY, float* normZ, i
 	dim3 blocks((int)(ceil(float(xRes*yRes)/float(blockLength))));
 
 
-	normalHistogramKernel<<<blocks,threads>>>(normX, normY, normZ,histogram, xRes, yRes, xBins, yBins);
+	normalHistogramKernel<<<blocks,threads>>>(normX, normY, normZ, finalSegmentsBuffer, histogram, 
+		xRes, yRes, xBins, yBins, excludePreviousSegments);
 
 }
 
@@ -592,7 +597,7 @@ __host__ void distanceHistogramPrimaryPeakDetection(int* histogram, int length, 
 __global__ void fineDistanceSegmentationKernel(float* distPeaks, int numNormalPeaks, int maxDistPeaks, 
 											   Float3SOA positions, PlaneStats planeStats,
 											   int* normalSegments, float* planeProjectedDistanceMap, 
-											   int xRes, int yRes, float maxDistTolerance)
+											   int xRes, int yRes, float maxDistTolerance, int iteration)
 {
 	//Assemble
 	extern __shared__ float s_mem[];
@@ -609,6 +614,7 @@ __global__ void fineDistanceSegmentationKernel(float* distPeaks, int numNormalPe
 	float* s_Sxz	= s_Syz + maxDistPeaks*numNormalPeaks;
 
 	int index = threadIdx.x + blockIdx.x*blockDim.x;
+	int planeOffset = iteration*numNormalPeaks*maxDistPeaks;
 
 	//Zero out shared memory
 	if(threadIdx.x < numNormalPeaks*maxDistPeaks*(1+3+6+1))
@@ -669,22 +675,23 @@ __global__ void fineDistanceSegmentationKernel(float* distPeaks, int numNormalPe
 
 	if(threadIdx.x < numNormalPeaks*maxDistPeaks)
 	{
-		atomicAdd(&planeStats.count[threadIdx.x], s_counts[threadIdx.x]);
-		atomicAdd(&planeStats.centroids.x[threadIdx.x], s_centroidX[threadIdx.x]);
-		atomicAdd(&planeStats.centroids.y[threadIdx.x], s_centroidY[threadIdx.x]);
-		atomicAdd(&planeStats.centroids.z[threadIdx.x], s_centroidZ[threadIdx.x]);
-		atomicAdd(&planeStats.Sxx[threadIdx.x], s_Sxx[threadIdx.x]);
-		atomicAdd(&planeStats.Syy[threadIdx.x], s_Syy[threadIdx.x]);
-		atomicAdd(&planeStats.Szz[threadIdx.x], s_Szz[threadIdx.x]);
-		atomicAdd(&planeStats.Sxy[threadIdx.x], s_Sxy[threadIdx.x]);
-		atomicAdd(&planeStats.Syz[threadIdx.x], s_Syz[threadIdx.x]);
-		atomicAdd(&planeStats.Sxz[threadIdx.x], s_Sxz[threadIdx.x]);
+		atomicAdd(&planeStats.count[threadIdx.x+planeOffset], s_counts[threadIdx.x]);
+		atomicAdd(&planeStats.centroids.x[threadIdx.x+planeOffset], s_centroidX[threadIdx.x]);
+		atomicAdd(&planeStats.centroids.y[threadIdx.x+planeOffset], s_centroidY[threadIdx.x]);
+		atomicAdd(&planeStats.centroids.z[threadIdx.x+planeOffset], s_centroidZ[threadIdx.x]);
+		atomicAdd(&planeStats.Sxx[threadIdx.x+planeOffset], s_Sxx[threadIdx.x]);
+		atomicAdd(&planeStats.Syy[threadIdx.x+planeOffset], s_Syy[threadIdx.x]);
+		atomicAdd(&planeStats.Szz[threadIdx.x+planeOffset], s_Szz[threadIdx.x]);
+		atomicAdd(&planeStats.Sxy[threadIdx.x+planeOffset], s_Sxy[threadIdx.x]);
+		atomicAdd(&planeStats.Syz[threadIdx.x+planeOffset], s_Syz[threadIdx.x]);
+		atomicAdd(&planeStats.Sxz[threadIdx.x+planeOffset], s_Sxz[threadIdx.x]);
 	}
 }
 
 __host__ void fineDistanceSegmentation(float* distPeaks, int numNormalPeaks,  int maxDistPeaks, 
 									   Float3SOA positions, PlaneStats planeStats,
-									   int* normalSegments, float* planeProjectedDistanceMap, int xRes, int yRes, float maxDistTolerance)
+									   int* normalSegments, float* planeProjectedDistanceMap, 
+									   int xRes, int yRes, float maxDistTolerance, int iteration)
 {
 
 	//Stats accum buffers
@@ -701,13 +708,13 @@ __host__ void fineDistanceSegmentation(float* distPeaks, int numNormalPeaks,  in
 
 
 	fineDistanceSegmentationKernel<<<blocks, threads, sizeof(float)*sharedCount>>>(distPeaks, numNormalPeaks, maxDistPeaks, 
-		positions, planeStats, normalSegments, planeProjectedDistanceMap, xRes, yRes, maxDistTolerance);
+		positions, planeStats, normalSegments, planeProjectedDistanceMap, xRes, yRes, maxDistTolerance, iteration);
 }
 
 
-__global__ void clearPlaneStatsKernel(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks)
+__global__ void clearPlaneStatsKernel(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks, int iteration)
 {
-	int index = threadIdx.x + threadIdx.y*numDistPeaks;
+	int index = threadIdx.x + threadIdx.y*numDistPeaks + iteration*(numNormalPeaks*numDistPeaks);
 
 	planeStats.count[index] = 0.0f;
 	planeStats.centroids.x[index] = 0.0f;
@@ -725,13 +732,20 @@ __global__ void clearPlaneStatsKernel(PlaneStats planeStats, int numNormalPeaks,
 
 }
 
-__host__ void clearPlaneStats(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks)
+__host__ void clearPlaneStats(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks, int maxRounds, int iteration)
 {
 	assert(numNormalPeaks*numDistPeaks < 1024);
 	dim3 threads(numDistPeaks, numNormalPeaks);
 	dim3 blocks(1);
 
-	clearPlaneStatsKernel<<<blocks,threads>>>(planeStats, numNormalPeaks, numDistPeaks);
+	if(iteration < 0)
+	{
+		for(int i = 0; i < maxRounds; i++)
+			clearPlaneStatsKernel<<<blocks,threads>>>(planeStats, numNormalPeaks, numDistPeaks, i);
+
+	}else{
+		clearPlaneStatsKernel<<<blocks,threads>>>(planeStats, numNormalPeaks, numDistPeaks, iteration);
+	}
 }
 
 __device__ glm::mat3 outerProduct(float x, float y, float z)
@@ -742,7 +756,7 @@ __device__ glm::mat3 outerProduct(float x, float y, float z)
 }
 
 __global__ void finalizePlanesKernel(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks, 
-									 float mergeAngleThreshCos, float mergeDistThresh)
+									 float mergeAngleThreshCos, float mergeDistThresh, int iteration)
 {
 
 	extern __shared__ float s_mem[];
@@ -766,21 +780,22 @@ __global__ void finalizePlanesKernel(PlaneStats planeStats, int numNormalPeaks, 
 	//Now that all these pointers have been initialized....
 	//Load shared memory
 	int index = threadIdx.x + threadIdx.y*numDistPeaks;
+	int planeOffset = iteration*numDistPeaks*numNormalPeaks;
 
-	int count = planeStats.count[index];
+	int count = planeStats.count[index+planeOffset];
 	s_counts[index] = count;
 
-	s_centroidX[index] = planeStats.centroids.x[index]/count;
-	s_centroidY[index] = planeStats.centroids.y[index]/count;
-	s_centroidZ[index] = planeStats.centroids.z[index]/count;
+	s_centroidX[index] = planeStats.centroids.x[index+planeOffset]/count;
+	s_centroidY[index] = planeStats.centroids.y[index+planeOffset]/count;
+	s_centroidZ[index] = planeStats.centroids.z[index+planeOffset]/count;
 
 	//Normalize scatter matrix
-	s_Sxx[index] = planeStats.Sxx[index]/count;
-	s_Syy[index] = planeStats.Syy[index]/count;
-	s_Szz[index] = planeStats.Szz[index]/count;
-	s_Sxy[index] = planeStats.Sxy[index]/count;
-	s_Syz[index] = planeStats.Syz[index]/count;
-	s_Sxz[index] = planeStats.Sxz[index]/count;
+	s_Sxx[index] = planeStats.Sxx[index+planeOffset]/count;
+	s_Syy[index] = planeStats.Syy[index+planeOffset]/count;
+	s_Szz[index] = planeStats.Szz[index+planeOffset]/count;
+	s_Sxy[index] = planeStats.Sxy[index+planeOffset]/count;
+	s_Syz[index] = planeStats.Syz[index+planeOffset]/count;
+	s_Sxz[index] = planeStats.Sxz[index+planeOffset]/count;
 
 	glm::mat3 S1_n = glm::mat3(glm::vec3(s_Sxx[index], s_Sxy[index], s_Sxz[index]), 
 		glm::vec3(s_Sxy[index], s_Syy[index], s_Syz[index]),
@@ -906,27 +921,28 @@ __global__ void finalizePlanesKernel(PlaneStats planeStats, int numNormalPeaks, 
 
 
 	//=======Save final planes (WRITEBACK)======
-	planeStats.count[index] = s_counts[index];
+	planeStats.count[index+planeOffset] = s_counts[index];
 
-	planeStats.centroids.x[index] = s_centroidX[index];
-	planeStats.centroids.y[index] = s_centroidY[index];
-	planeStats.centroids.z[index] = s_centroidZ[index];
-	planeStats.norms.x[index] = s_NormalX[index];
-	planeStats.norms.y[index] = s_NormalY[index];
-	planeStats.norms.z[index] = s_NormalZ[index];
-	planeStats.eigs.x[index] = s_Eig1[index];
-	planeStats.eigs.y[index] = s_Eig2[index];
-	planeStats.eigs.z[index] = s_Eig3[index];
-	planeStats.Sxx[index] = s_Sxx[index];
-	planeStats.Syy[index] = s_Syy[index];
-	planeStats.Szz[index] = s_Szz[index];
-	planeStats.Sxy[index] = s_Sxy[index];
-	planeStats.Syz[index] = s_Syz[index];
-	planeStats.Sxz[index] = s_Sxz[index];
+	planeStats.centroids.x[index+planeOffset] = s_centroidX[index];
+	planeStats.centroids.y[index+planeOffset] = s_centroidY[index];
+	planeStats.centroids.z[index+planeOffset] = s_centroidZ[index];
+	planeStats.norms.x[index+planeOffset] = s_NormalX[index];
+	planeStats.norms.y[index+planeOffset] = s_NormalY[index];
+	planeStats.norms.z[index+planeOffset] = s_NormalZ[index];
+	planeStats.eigs.x[index+planeOffset] = s_Eig1[index];
+	planeStats.eigs.y[index+planeOffset] = s_Eig2[index];
+	planeStats.eigs.z[index+planeOffset] = s_Eig3[index];
+	planeStats.Sxx[index+planeOffset] = s_Sxx[index];
+	planeStats.Syy[index+planeOffset] = s_Syy[index];
+	planeStats.Szz[index+planeOffset] = s_Szz[index];
+	planeStats.Sxy[index+planeOffset] = s_Sxy[index];
+	planeStats.Syz[index+planeOffset] = s_Syz[index];
+	planeStats.Sxz[index+planeOffset] = s_Sxz[index];
 
 }
 
-__host__ void finalizePlanes(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks, float mergeAngleThresh, float mergeDistThresh)
+__host__ void finalizePlanes(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks, 
+							 float mergeAngleThresh, float mergeDistThresh, int iteration)
 {
 	assert(numNormalPeaks*numDistPeaks < 1024);
 	dim3 threads(numDistPeaks, numNormalPeaks);
@@ -934,7 +950,7 @@ __host__ void finalizePlanes(PlaneStats planeStats, int numNormalPeaks, int numD
 	int sharedCount = numDistPeaks*numNormalPeaks*(1 + 3 + 3 + 3 + 6);
 
 	finalizePlanesKernel<<<blocks,threads, sharedCount*sizeof(float)>>>(planeStats, numNormalPeaks, numDistPeaks, 
-		cos(mergeAngleThresh), mergeDistThresh);
+		cos(mergeAngleThresh), mergeDistThresh, iteration);
 }
 
 
@@ -949,18 +965,19 @@ __global__ void fitFinalPlanesKernel(PlaneStats planeStats, int numPlanes,
 	float* s_normZ = s_normY + numPlanes;
 	float* s_dist  = s_normZ + numPlanes;
 
+	int planeOffset = iteration*numPlanes;
 	if(threadIdx.x < numPlanes)
 	{
-		int count = planeStats.count[threadIdx.x];
+		int count = planeStats.count[threadIdx.x + planeOffset];
 		float validityMultiplier = (count > 0)?1.0f:CUDART_NAN_F;
 
-		s_normX[threadIdx.x] = validityMultiplier*planeStats.norms.x[threadIdx.x];
-		s_normY[threadIdx.x] = validityMultiplier*planeStats.norms.y[threadIdx.x];
-		s_normZ[threadIdx.x] = validityMultiplier*planeStats.norms.z[threadIdx.x];
+		s_normX[threadIdx.x] = validityMultiplier*planeStats.norms.x[threadIdx.x + planeOffset];
+		s_normY[threadIdx.x] = validityMultiplier*planeStats.norms.y[threadIdx.x + planeOffset];
+		s_normZ[threadIdx.x] = validityMultiplier*planeStats.norms.z[threadIdx.x + planeOffset];
 
-		float cx = planeStats.centroids.x[threadIdx.x];
-		float cy = planeStats.centroids.y[threadIdx.x];
-		float cz = planeStats.centroids.z[threadIdx.x];
+		float cx = planeStats.centroids.x[threadIdx.x + planeOffset];
+		float cy = planeStats.centroids.y[threadIdx.x + planeOffset];
+		float cz = planeStats.centroids.z[threadIdx.x + planeOffset];
 
 		//n dot c = planar offset
 		s_dist[threadIdx.x] = validityMultiplier*abs(cx*s_normX[threadIdx.x] + cy*s_normY[threadIdx.x] + cz*s_normZ[threadIdx.x]);
@@ -1034,9 +1051,10 @@ __host__ void fitFinalPlanes(PlaneStats planeStats, int numPlanes,
 #pragma endregion
 
 
-__global__ void realignPeaksKernel(PlaneStats planeStats, Float3SOA normalPeaks, int numNormPeaks, int numDistPeaks, int xBins, int yBins)
+__global__ void realignPeaksKernel(PlaneStats planeStats, Float3SOA normalPeaks, int numNormPeaks, int numDistPeaks, 
+								   int xBins, int yBins, int iteration)
 {
-	int planeIndex = threadIdx.x + threadIdx.y*numDistPeaks;
+	int planeIndex = threadIdx.x + threadIdx.y*numDistPeaks + iteration*numNormPeaks*numDistPeaks;
 	if(threadIdx.x == 0)//Align to plane with largest peak
 	{
 		float xI = CUDART_NAN_F;
@@ -1073,10 +1091,11 @@ __global__ void realignPeaksKernel(PlaneStats planeStats, Float3SOA normalPeaks,
 	}
 }
 
-__host__ void realignPeaks(PlaneStats planeStats, Float3SOA normalPeaks, int numNormPeaks, int numDistPeaks, int xBins, int yBins)
+__host__ void realignPeaks(PlaneStats planeStats, Float3SOA normalPeaks, int numNormPeaks, int numDistPeaks, 
+						   int xBins, int yBins, int iteration)
 {
 	dim3 threads(numDistPeaks, numNormPeaks);
 	dim3 blocks(1);
 
-	realignPeaksKernel<<<blocks,threads>>>(planeStats, normalPeaks, numNormPeaks, numDistPeaks, xBins, yBins);
+	realignPeaksKernel<<<blocks,threads>>>(planeStats, normalPeaks, numNormPeaks, numDistPeaks, xBins, yBins, iteration);
 }
