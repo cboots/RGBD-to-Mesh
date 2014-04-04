@@ -990,7 +990,7 @@ void MeshViewer::display()
 			drawNormalHistogramtoTexture(texture0);
 			drawNMaptoTexture(texture1, 0);
 			drawFinalSegmentsToTexture(texture2);
-			drawColorImageBufferToTexture(texture3);
+			drawRGBMaptoTexture(texture3,0);
 
 			drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture0, 1);//UL histogram
 			drawQuad(nmap_prog,		 0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR
