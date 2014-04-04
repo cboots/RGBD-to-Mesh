@@ -406,10 +406,10 @@ void MeshTracker::GPUSimpleSegmentation()
 	clearPlaneStats(dev_planeStats, MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_MAX_PEAKS, MAX_SEGMENTATION_ROUNDS, -1);
 
 	//Future LOOP Start
-	for(int iter = 0; iter < MAX_SEGMENTATION_ROUNDS; ++iter)
+	for(int iter = 0; iter < 1; ++iter)
 	{
 		//Generate normal histogram
-		normalHistogramGeneration(2, iter);
+		normalHistogramGeneration(2, iter);//Won't work for iterations higher than 0 at resolution levels higher than 0
 		
 		segmentationInnerLoop(2, iter);
 		
