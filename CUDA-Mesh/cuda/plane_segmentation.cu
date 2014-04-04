@@ -71,11 +71,7 @@ __global__ void normalHistogramKernel(float* normX, float* normY, float* normZ, 
 
 		if(x == x && y == y && z == z && unsegmented)//Will be false if NaN
 		{
-			//int xI = (x+1.0f)*0.5f*xBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
-			//int yI = (y+1.0f)*0.5f*yBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
-			//int xI = acos(x)*PI_INV_F*xBins;
-			//int yI = acos(y)*PI_INV_F*yBins;
-
+			
 			//Original Normals are all viewpoint oriented (most will have -z values). 
 			//However, since we want to project them down into a unit hemisphere
 			//only z values will be allowed. So if z is negative, flip normal
@@ -86,10 +82,16 @@ __global__ void normalHistogramKernel(float* normX, float* normY, float* normZ, 
 				y = -y;
 				z = -z;
 			}
+
+			int xI = (x+1.0f)*0.5f*xBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
+			int yI = (y+1.0f)*0.5f*yBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
+			//int xI = acos(x)*PI_INV_F*xBins;
+			//int yI = acos(y)*PI_INV_F*yBins;
+
 			//Projected space is well behaved w.r.t indexing when 0 <= z <= 1
-			float azimuth = atan2f(z,x);
-			int xI = azimuth*PI_INV_F*xBins;
-			int yI = acosf(y)*PI_INV_F*yBins;
+			//float azimuth = atan2f(z,x);
+			//int xI = azimuth*PI_INV_F*xBins;
+			//int yI = acosf(y)*PI_INV_F*yBins;
 
 			atomicAdd(&histogram[yI*xBins + xI], 1);
 		}
@@ -349,18 +351,22 @@ __global__ void segmentNormals2DKernel(Float3SOA rawNormals, Float3SOA rawPositi
 		float y = 0.0f;
 		float z = 0.0f;
 
-		//float azimuth = atan2f(z,x);
-		//int xI = azimuth*PI_INV_F*xBins;
-		//int yI = acosf(-y)*PI_INV_F*yBins;
-
 		if(xi == xi && yi == yi){
-
+			/*
 			float azimuth = PI_F*xi/float(xBins);
 			float elv = PI_F*yi/float(yBins);
+			
 
 			x = cosf(azimuth)*sinf(elv);
 			z = sinf(azimuth)*sinf(elv);
 			y = cosf(elv);
+			*/
+			
+			//int xI = (x+1.0f)*0.5f*xBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
+			//int yI = (y+1.0f)*0.5f*yBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
+			x = xi/float(xBins)*2.0f - 1.0f;
+			y = yi/float(yBins)*2.0f - 1.0f;
+			z = sqrt(1-x*x-y*y);
 		}
 
 		s_peaksX[threadIdx.x] = x;
@@ -441,8 +447,13 @@ __global__ void distanceHistogramKernel(int* dev_normalSegments, float* dev_plan
 
 	int index = threadIdx.x + blockIdx.x*blockDim.x;
 
-	int segment = dev_normalSegments[index];
-	float dist = dev_planeProjectedDistanceMap[index];
+	int segment = -1;
+	float dist = CUDART_NAN_F;
+	if(index < xRes*yRes){
+		segment = dev_normalSegments[index];
+		dist = dev_planeProjectedDistanceMap[index];
+	}
+
 	int histI = -1;
 	if(segment >= 0)
 	{
@@ -474,8 +485,7 @@ __host__ void generateDistanceHistograms(int* dev_normalSegments, float* dev_pla
 {
 	int blockLength = histcount;
 
-	assert(xRes*yRes % blockLength == 0);//Assert even division, otherwise kernel will crash.
-
+	
 	dim3 threads(blockLength);
 	dim3 blocks((int)(ceil(float(xRes*yRes)/float(blockLength))));
 
@@ -1079,9 +1089,8 @@ __global__ void realignPeaksKernel(PlaneStats planeStats, Float3SOA normalPeaks,
 				z = -z;
 			}
 			//Projected space is well behaved w.r.t indexing when 0 <= z <= 1
-			float azimuth = atan2f(z,x);
-			xI = azimuth*PI_INV_F*xBins;
-			yI = acosf(y)*PI_INV_F*yBins;
+			xI = (x+1.0f)*0.5f*xBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
+			yI = (y+1.0f)*0.5f*yBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
 		}
 
 		normalPeaks.x[threadIdx.y] = xI;

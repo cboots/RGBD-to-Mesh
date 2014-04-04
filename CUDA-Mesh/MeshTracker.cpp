@@ -9,7 +9,7 @@ MeshTracker::MeshTracker(int xResolution, int yResolution, Intrinsics intr)
 	mIntr = intr;
 
 	//Setup default configuration
-	m2DSegmentationMaxAngleFromPeak = 5.0f;
+	m2DSegmentationMaxAngleFromPeak = 7.5f;
 
 
 	mPlaneMergeAngleThresh = 5.0f;
