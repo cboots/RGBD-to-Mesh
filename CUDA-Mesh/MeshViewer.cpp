@@ -989,13 +989,15 @@ void MeshViewer::display()
 		case DISPLAY_MODE_HISTOGRAM_COMPARE:
 			drawNormalHistogramtoTexture(texture0);
 			drawNMaptoTexture(texture1, 0);
-			drawNormalSegmentsToTexture(texture2);
+			drawFinalSegmentsToTexture(texture2);
 			drawColorImageBufferToTexture(texture3);
 
 			drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture0, 1);//UL histogram
 			drawQuad(nmap_prog,		 0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR
-			drawQuad(normalsegments_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL
+			drawQuad(finalsegments_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL
 			drawQuad(color_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture3, 1);//UR
+
+
 			break;
 		case DISPLAY_MODE_NMAP_DEBUG:
 			drawNMaptoTexture(texture0, 0);

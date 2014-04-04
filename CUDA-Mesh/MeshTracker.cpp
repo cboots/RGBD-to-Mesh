@@ -401,14 +401,14 @@ void MeshTracker::GPUSimpleSegmentation()
 
 	//Generate normal histogram
 	normalHistogramGeneration(2);
-
+	
 	segmentationInnerLoop(2);
 
 	//Use plane stats from first pass to better align peaks, then re-segment at max resolution
 	realignPeaks(dev_planeStats, dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_MAX_PEAKS, 
 		NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS);
 
-	segmentationInnerLoop(0);
+	segmentationInnerLoop(1);
 
 
 	Float3SOA normals;
