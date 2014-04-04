@@ -10,14 +10,14 @@ MeshTracker::MeshTracker(int xResolution, int yResolution, Intrinsics intr)
 
 	//Setup default configuration
 	m2DSegmentationMaxAngleFromPeak = 5.0f;
-	mPlaneMergeAngleThresh = 2.5f;
-	mPlaneMergeDistThresh = 0.02f;
+	mPlaneMergeAngleThresh = 5.0f;
+	mPlaneMergeDistThresh = 0.025f;
 	
-	mPlaneFinalAngleThresh = 25.0f;
+	mPlaneFinalAngleThresh = 15.0f;
 	mPlaneFinalDistThresh = 0.025;
 	
-	mDistPeakThresholdTight = 0.01;
-	mMinDistPeakCount = 350;
+	mDistPeakThresholdTight = 0.025;
+	mMinDistPeakCount = 1000;
 
 	initBuffers(mXRes, mYRes);
 

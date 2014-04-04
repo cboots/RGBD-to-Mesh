@@ -15,5 +15,5 @@ void main()
 	vec4 segments = texture(u_Texture0, fs_texCoord*u_TextureScale);
 	
 	int seg = int(segments.x+1.0);
-	FragColor = vec4(seg)/32;
+	FragColor = vec4(seg & 3, (seg>>2) & 3, (seg>>4) & 3, 1.0)/8.0;
 }
