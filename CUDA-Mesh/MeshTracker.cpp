@@ -16,7 +16,7 @@ MeshTracker::MeshTracker(int xResolution, int yResolution, Intrinsics intr)
 	mPlaneMergeDistThresh = 0.025f;
 	
 	mPlaneFinalAngleThresh = 15.0f;
-	mPlaneFinalDistThresh = 0.025;
+	mPlaneFinalDistThresh = 0.015;
 	
 	mDistPeakThresholdTight = 0.025;
 	mMinDistPeakCount = 750;
