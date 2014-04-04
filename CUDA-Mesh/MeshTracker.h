@@ -110,6 +110,9 @@ private:
 
 	void initBuffers(int xRes, int yResolution);
 	void cleanupBuffers();
+
+	void segmentationInnerLoop(int resolutionLevel);
+	void normalHistogramGeneration(int normalHistLevel);
 #pragma endregion
 
 public:
