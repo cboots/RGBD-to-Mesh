@@ -23,7 +23,7 @@ using namespace rgbd::framework;
 #define NUM_NORMAL_Y_SUBDIVISIONS		32
 
 #define MAX_2D_PEAKS_PER_ROUND		4
-#define PEAK_2D_EXCLUSION_RADIUS	6
+#define PEAK_2D_EXCLUSION_RADIUS	8
 
 #define MAX_SEGMENTATION_ROUNDS		2
 
