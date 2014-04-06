@@ -19,7 +19,7 @@ __host__ void ACosHistogram(float* cosineValue, int* histogram, int valueCount, 
 
 
 __host__ void normalHistogramPrimaryPeakDetection(int* histogram, int xBins, int yBins, Float3SOA peaks, int maxPeaks, 
-												  int exclusionRadius, int minPeakHeight);
+												  int exclusionRadius, int minPeakHeight, float previousPeaksClearRadius);
 
 
 __host__ void segmentNormals2D(Float3SOA rawNormals, Float3SOA rawPositions,

@@ -397,7 +397,8 @@ void MeshTracker::normalHistogramGeneration(int normalHistLevel, int iteration)
 
 	//Detect peaks
 	normalHistogramPrimaryPeakDetection(dev_normalVoxels, NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS, 
-		dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND,  PEAK_2D_EXCLUSION_RADIUS, mMinNormalPeakCout/float(1 << normalHistLevel*2));
+		dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND,  PEAK_2D_EXCLUSION_RADIUS, mMinNormalPeakCout/float(1 << normalHistLevel*2),
+		(iteration>0)?PEAK_2D_EXCLUSION_RADIUS/2:0);
 }
 
 void MeshTracker::GPUSimpleSegmentation()
@@ -406,7 +407,7 @@ void MeshTracker::GPUSimpleSegmentation()
 	clearPlaneStats(dev_planeStats, MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_MAX_PEAKS, MAX_SEGMENTATION_ROUNDS, -1);
 
 	//Future LOOP Start
-	for(int iter = 0; iter < 2; ++iter)
+	for(int iter = 0; iter < MAX_SEGMENTATION_ROUNDS; ++iter)
 	{
 		//Generate normal histogram
 		normalHistogramGeneration(0, iter);//Won't work for iterations higher than 0 at resolution levels higher than 0

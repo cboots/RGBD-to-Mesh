@@ -190,7 +190,7 @@ __device__ int mod_pos (int a, int b)
 }
 
 __global__ void normalHistogramPrimaryPeakDetectionKernel(int* histogram, int xBins, int yBins, Float3SOA peaks, int maxPeaks, 
-														  int exclusionRadius, int minPeakHeight)
+														  int exclusionRadius, int minPeakHeight, float previousPeaksClearRadius)
 {	
 	extern __shared__ int s_temp[];
 	int* s_hist = s_temp;
@@ -200,6 +200,21 @@ __global__ void normalHistogramPrimaryPeakDetectionKernel(int* histogram, int xB
 	int index = threadIdx.x + threadIdx.y*xBins;
 	//Load histogram
 	s_hist[index] = histogram[index];
+
+	for(int p = 0; p < maxPeaks; ++p)
+	{
+		int px = peaks.x[p];//x index of peak
+		int py = peaks.y[p];//y index of peak
+		int dx = min(mod_pos((px - threadIdx.x), xBins), mod_pos((threadIdx.x - px),xBins));//shortest path to peak (wraps around)
+		int dy = min(mod_pos((py - threadIdx.y), yBins), mod_pos((threadIdx.y - py),yBins));//shortest path to peak (wraps around)
+
+
+		if(dx*dx+dy*dy <= previousPeaksClearRadius*previousPeaksClearRadius)
+		{
+			s_hist[index] = 0;
+		}
+	}
+
 	__syncthreads();
 
 
@@ -310,7 +325,7 @@ __global__ void normalHistogramPrimaryPeakDetectionKernel(int* histogram, int xB
 
 
 __host__ void normalHistogramPrimaryPeakDetection(int* histogram, int xBins, int yBins, Float3SOA peaks, int maxPeaks, 
-												  int exclusionRadius, int minPeakHeight)
+												  int exclusionRadius, int minPeakHeight, float previousPeaksClearRadius)
 {
 	assert(xBins*yBins <= 1024);//For now enforce strict limit. Might be expandable in future, but most efficient like this
 	assert(!(xBins*yBins  & (xBins*yBins  - 1))); //Assert is power of two
@@ -323,7 +338,7 @@ __host__ void normalHistogramPrimaryPeakDetection(int* histogram, int xBins, int
 	int sharedMem = xBins*yBins*2*sizeof(int);
 
 	normalHistogramPrimaryPeakDetectionKernel<<<blocks,threads,sharedMem>>>(histogram, xBins, yBins, peaks, 
-		maxPeaks, exclusionRadius, minPeakHeight);
+		maxPeaks, exclusionRadius, minPeakHeight, previousPeaksClearRadius);
 }
 
 #pragma endregion
