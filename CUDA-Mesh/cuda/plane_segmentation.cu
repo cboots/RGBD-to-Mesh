@@ -83,10 +83,10 @@ __global__ void normalHistogramKernel(float* normX, float* normY, float* normZ, 
 				z = -z;
 			}
 
-			int xI = (x+1.0f)*0.5f*xBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
-			int yI = (y+1.0f)*0.5f*yBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
-			//int xI = acos(x)*PI_INV_F*xBins;
-			//int yI = acos(y)*PI_INV_F*yBins;
+			//int xI = (x+1.0f)*0.5f*xBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
+			//int yI = (y+1.0f)*0.5f*yBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
+			int xI = acos(x)*PI_INV_F*xBins;
+			int yI = acos(y)*PI_INV_F*yBins;
 
 			//Projected space is well behaved w.r.t indexing when 0 <= z <= 1
 			//float azimuth = atan2f(z,x);
@@ -367,20 +367,11 @@ __global__ void segmentNormals2DKernel(Float3SOA rawNormals, Float3SOA rawPositi
 		float z = 0.0f;
 
 		if(xi == xi && yi == yi){
-			/*
-			float azimuth = PI_F*xi/float(xBins);
-			float elv = PI_F*yi/float(yBins);
-
-
-			x = cosf(azimuth)*sinf(elv);
-			z = sinf(azimuth)*sinf(elv);
-			y = cosf(elv);
-			*/
-
-			//int xI = (x+1.0f)*0.5f*xBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
-			//int yI = (y+1.0f)*0.5f*yBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
-			x = xi/float(xBins)*2.0f - 1.0f;
-			y = yi/float(yBins)*2.0f - 1.0f;
+			//x = xi/float(xBins)*2.0f - 1.0f;
+			//y = yi/float(yBins)*2.0f - 1.0f;
+			
+			x = cosf(xi*PI_F/xBins);
+			y = cosf(yi*PI_F/yBins);
 			z = sqrt(1-x*x-y*y);
 		}
 
@@ -1230,8 +1221,11 @@ __global__ void realignPeaksKernel(PlaneStats planeStats, Float3SOA normalPeaks,
 				z = -z;
 			}
 			//Projected space is well behaved w.r.t indexing when 0 <= z <= 1
-			xI = (x+1.0f)*0.5f*xBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
-			yI = (y+1.0f)*0.5f*yBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
+			//xI = (x+1.0f)*0.5f*xBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
+			//yI = (y+1.0f)*0.5f*yBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
+			
+			xI = acos(x)*PI_INV_F*xBins;
+			yI = acos(y)*PI_INV_F*yBins;
 		}
 
 		normalPeaks.x[threadIdx.y] = xI;
