@@ -71,7 +71,7 @@ __global__ void normalHistogramKernel(float* normX, float* normY, float* normZ, 
 
 		if(x == x && y == y && z == z && unsegmented)//Will be false if NaN
 		{
-			
+
 			//Original Normals are all viewpoint oriented (most will have -z values). 
 			//However, since we want to project them down into a unit hemisphere
 			//only z values will be allowed. So if z is negative, flip normal
@@ -355,13 +355,13 @@ __global__ void segmentNormals2DKernel(Float3SOA rawNormals, Float3SOA rawPositi
 			/*
 			float azimuth = PI_F*xi/float(xBins);
 			float elv = PI_F*yi/float(yBins);
-			
+
 
 			x = cosf(azimuth)*sinf(elv);
 			z = sinf(azimuth)*sinf(elv);
 			y = cosf(elv);
 			*/
-			
+
 			//int xI = (x+1.0f)*0.5f*xBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
 			//int yI = (y+1.0f)*0.5f*yBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
 			x = xi/float(xBins)*2.0f - 1.0f;
@@ -485,7 +485,7 @@ __host__ void generateDistanceHistograms(int* dev_normalSegments, float* dev_pla
 {
 	int blockLength = histcount;
 
-	
+
 	dim3 threads(blockLength);
 	dim3 blocks((int)(ceil(float(xRes*yRes)/float(blockLength))));
 
@@ -765,6 +765,104 @@ __device__ glm::mat3 outerProduct(float x, float y, float z)
 		z*x, z*y, z*z);
 }
 
+__device__ bool mergePlanes(int si, int ti, float* s_counts,
+							float* s_NormalX, float* s_NormalY, float* s_NormalZ,
+							float* s_centroidX, float* s_centroidY, float* s_centroidZ,
+							float* s_Sxx, float* s_Syy, float* s_Szz, float* s_Sxy, float* s_Syz, float* s_Sxz,
+							float* s_Eig1, float* s_Eig2, float* s_Eig3,
+							float mergeAngleThreshCos, float mergeDistThresh)
+{
+	//Two valid planes. Check merging criteria
+	float angleDot = abs(s_NormalX[si]*s_NormalX[ti] + s_NormalY[si]*s_NormalY[ti] + s_NormalZ[si]*s_NormalZ[ti]);
+
+	if(angleDot > mergeAngleThreshCos)
+	{
+		//Angle match. Check distance
+		glm::vec3 centroidDist = glm::vec3(s_centroidX[si] - s_centroidX[ti],
+			s_centroidY[si] - s_centroidY[ti],
+			s_centroidZ[si] - s_centroidZ[ti]);
+
+		float d1 = abs(s_NormalX[si]*centroidDist.x + s_NormalY[si]*centroidDist.y + s_NormalZ[si]*centroidDist.z);
+		float d2 = abs(s_NormalX[ti]*centroidDist.x + s_NormalY[ti]*centroidDist.y + s_NormalZ[ti]*centroidDist.z);
+		float delt = min(d1, d2);
+		if(delt < mergeDistThresh)
+		{
+			//============Merge Planes==============
+			//Combine counts
+			float count_m = s_counts[si] + s_counts[ti];
+			//Weighted centroid average
+			glm::vec3 mergedCentroid = 1.0f/count_m * 
+				glm::vec3(s_counts[si]*s_centroidX[si] + s_counts[ti]*s_centroidX[ti],
+				s_counts[si]*s_centroidY[si] + s_counts[ti]*s_centroidY[ti],
+				s_counts[si]*s_centroidZ[si] + s_counts[ti]*s_centroidZ[ti]);
+			//Merged S2 centroid component
+			glm::mat3 Sm2 = outerProduct(mergedCentroid.x, mergedCentroid.y, mergedCentroid.z);
+
+			//Construct S1 for both planes
+			glm::mat3 S1_ns = glm::mat3(glm::vec3(s_Sxx[si], s_Sxy[si], s_Sxz[si]), 
+				glm::vec3(s_Sxy[si], s_Syy[si], s_Syz[si]),
+				glm::vec3(s_Sxz[si], s_Syz[si], s_Szz[si]));
+
+			glm::mat3 S1_nt = glm::mat3(glm::vec3(s_Sxx[ti], s_Sxy[ti], s_Sxz[ti]), 
+				glm::vec3(s_Sxy[ti], s_Syy[ti], s_Syz[ti]),
+				glm::vec3(s_Sxz[ti], s_Syz[ti], s_Szz[ti]));
+
+
+			//Compute merged S1_n
+			glm::mat3 Sm1_n = s_counts[si]/count_m * S1_ns + s_counts[ti]/count_m * S1_nt;
+
+			//Compute combined normalized scatter matrix and find normals
+			glm::vec3 eigs;
+			glm::vec3 norm  = normalFrom3x3Covar(Sm1_n - Sm2, eigs);
+
+			//=====MERGE DONE, WRITEBACK=====
+			s_counts[si] = count_m;
+			s_counts[ti] = 0.0f;
+
+			s_centroidX[si] = mergedCentroid.x;
+			s_centroidY[si] = mergedCentroid.y;
+			s_centroidZ[si] = mergedCentroid.z;
+
+			s_centroidX[ti] = 0.0f;
+			s_centroidY[ti] = 0.0f;
+			s_centroidZ[ti] = 0.0f;
+
+			s_Sxx[si] = Sm1_n[0][0];
+			s_Syy[si] = Sm1_n[1][1];
+			s_Szz[si] = Sm1_n[2][2];
+			s_Sxy[si] = Sm1_n[0][1];
+			s_Syz[si] = Sm1_n[1][2];
+			s_Sxz[si] = Sm1_n[0][2];
+
+			s_Sxx[ti] = 0.0f;
+			s_Syy[ti] = 0.0f;
+			s_Szz[ti] = 0.0f;
+			s_Sxy[ti] = 0.0f;
+			s_Syz[ti] = 0.0f;
+			s_Sxz[ti] = 0.0f;
+
+			s_NormalX[si] = norm.x;
+			s_NormalY[si] = norm.y;
+			s_NormalZ[si] = norm.z;
+			s_Eig1[si] = eigs.x;//Largest
+			s_Eig2[si] = eigs.y;//
+			s_Eig3[si] = eigs.z;//Smallest
+
+			s_NormalX[ti] = 0.0f;
+			s_NormalY[ti] = 0.0f;
+			s_NormalZ[ti] = 0.0f;
+			s_Eig1[ti] = 0.0f;//Largest
+			s_Eig2[ti] = 0.0f;//
+			s_Eig3[ti] = 0.0f;//Smallest
+
+			//============End Merge Planes==========
+			return true;
+		}
+	}
+	return false;
+}
+
+
 __global__ void finalizePlanesKernel(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks, 
 									 float mergeAngleThreshCos, float mergeDistThresh, int iteration)
 {
@@ -824,6 +922,7 @@ __global__ void finalizePlanesKernel(PlaneStats planeStats, int numNormalPeaks, 
 	s_Eig3[index] = eigs.z;//Smallest
 
 	__syncthreads();
+	
 	//Individual planes calculated, do merging now.
 	for(int startPeak = 0; startPeak < numDistPeaks; ++startPeak)
 	{
@@ -835,95 +934,12 @@ __global__ void finalizePlanesKernel(PlaneStats planeStats, int numNormalPeaks, 
 				int ti = threadIdx.y*numDistPeaks + testPeak;
 				if(s_counts[ti] > 0)
 				{
-					//Two valid planes. Check merging criteria
-					float angleDot = abs(s_NormalX[si]*s_NormalX[ti] + s_NormalY[si]*s_NormalY[ti] + s_NormalZ[si]*s_NormalZ[ti]);
-
-					if(angleDot > mergeAngleThreshCos)
-					{
-						//Angle match. Check distance
-						glm::vec3 centroidDist = glm::vec3(s_centroidX[si] - s_centroidX[ti],
-							s_centroidY[si] - s_centroidY[ti],
-							s_centroidZ[si] - s_centroidZ[ti]);
-
-						float d1 = abs(s_NormalX[si]*centroidDist.x + s_NormalY[si]*centroidDist.y + s_NormalZ[si]*centroidDist.z);
-						float d2 = abs(s_NormalX[ti]*centroidDist.x + s_NormalY[ti]*centroidDist.y + s_NormalZ[ti]*centroidDist.z);
-						float delt = min(d1, d2);
-						if(delt < mergeDistThresh)
-						{
-#pragma region Merge Planes
-							//============Merge Planes==============
-							//Combine counts
-							float count_m = s_counts[si] + s_counts[ti];
-							//Weighted centroid average
-							glm::vec3 mergedCentroid = 1.0f/count_m * 
-								glm::vec3(s_counts[si]*s_centroidX[si] + s_counts[ti]*s_centroidX[ti],
-								s_counts[si]*s_centroidY[si] + s_counts[ti]*s_centroidY[ti],
-								s_counts[si]*s_centroidZ[si] + s_counts[ti]*s_centroidZ[ti]);
-							//Merged S2 centroid component
-							glm::mat3 Sm2 = outerProduct(mergedCentroid.x, mergedCentroid.y, mergedCentroid.z);
-
-							//Construct S1 for both planes
-							glm::mat3 S1_ns = glm::mat3(glm::vec3(s_Sxx[si], s_Sxy[si], s_Sxz[si]), 
-								glm::vec3(s_Sxy[si], s_Syy[si], s_Syz[si]),
-								glm::vec3(s_Sxz[si], s_Syz[si], s_Szz[si]));
-
-							glm::mat3 S1_nt = glm::mat3(glm::vec3(s_Sxx[ti], s_Sxy[ti], s_Sxz[ti]), 
-								glm::vec3(s_Sxy[ti], s_Syy[ti], s_Syz[ti]),
-								glm::vec3(s_Sxz[ti], s_Syz[ti], s_Szz[ti]));
-
-
-							//Compute merged S1_n
-							glm::mat3 Sm1_n = s_counts[si]/count_m * S1_ns + s_counts[ti]/count_m * S1_nt;
-
-							//Compute combined normalized scatter matrix and find normals
-							norm = normalFrom3x3Covar(Sm1_n - Sm2, eigs);
-
-							//=====MERGE DONE, WRITEBACK=====
-							s_counts[si] = count_m;
-							s_counts[ti] = 0.0f;
-
-							s_centroidX[si] = mergedCentroid.x;
-							s_centroidY[si] = mergedCentroid.y;
-							s_centroidZ[si] = mergedCentroid.z;
-
-							s_centroidX[ti] = 0.0f;
-							s_centroidY[ti] = 0.0f;
-							s_centroidZ[ti] = 0.0f;
-
-							s_Sxx[si] = Sm1_n[0][0];
-							s_Syy[si] = Sm1_n[1][1];
-							s_Szz[si] = Sm1_n[2][2];
-							s_Sxy[si] = Sm1_n[0][1];
-							s_Syz[si] = Sm1_n[1][2];
-							s_Sxz[si] = Sm1_n[0][2];
-
-							s_Sxx[ti] = 0.0f;
-							s_Syy[ti] = 0.0f;
-							s_Szz[ti] = 0.0f;
-							s_Sxy[ti] = 0.0f;
-							s_Syz[ti] = 0.0f;
-							s_Sxz[ti] = 0.0f;
-
-							s_NormalX[si] = norm.x;
-							s_NormalY[si] = norm.y;
-							s_NormalZ[si] = norm.z;
-							s_Eig1[si] = eigs.x;//Largest
-							s_Eig2[si] = eigs.y;//
-							s_Eig3[si] = eigs.z;//Smallest
-
-							s_NormalX[ti] = 0.0f;
-							s_NormalY[ti] = 0.0f;
-							s_NormalZ[ti] = 0.0f;
-							s_Eig1[ti] = 0.0f;//Largest
-							s_Eig2[ti] = 0.0f;//
-							s_Eig3[ti] = 0.0f;//Smallest
-
-
-
-							//============End Merge Planes==========
-#pragma endregion
-						}
-					}
+					mergePlanes(si, ti, s_counts,
+							s_NormalX, s_NormalY, s_NormalZ,
+							s_centroidX, s_centroidY, s_centroidZ,
+							s_Sxx, s_Syy, s_Szz, s_Sxy, s_Syz, s_Sxz,
+							s_Eig1, s_Eig2, s_Eig3,
+							mergeAngleThreshCos, mergeDistThresh);
 				}
 			}
 		}

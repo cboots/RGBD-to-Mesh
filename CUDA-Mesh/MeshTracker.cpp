@@ -19,8 +19,8 @@ MeshTracker::MeshTracker(int xResolution, int yResolution, Intrinsics intr)
 	mPlaneFinalDistThresh = 0.015;
 
 	mDistPeakThresholdTight = 0.025;
-	mMinDistPeakCount = 750;
-	mMinNormalPeakCout = 350;
+	mMinDistPeakCount = 800;
+	mMinNormalPeakCout = 800;
 
 	initBuffers(mXRes, mYRes);
 
@@ -406,10 +406,10 @@ void MeshTracker::GPUSimpleSegmentation()
 	clearPlaneStats(dev_planeStats, MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_MAX_PEAKS, MAX_SEGMENTATION_ROUNDS, -1);
 
 	//Future LOOP Start
-	for(int iter = 0; iter < 1; ++iter)
+	for(int iter = 0; iter < 2; ++iter)
 	{
 		//Generate normal histogram
-		normalHistogramGeneration(2, iter);//Won't work for iterations higher than 0 at resolution levels higher than 0
+		normalHistogramGeneration(0, iter);//Won't work for iterations higher than 0 at resolution levels higher than 0
 		
 		segmentationInnerLoop(2, iter);
 		
@@ -417,8 +417,8 @@ void MeshTracker::GPUSimpleSegmentation()
 		realignPeaks(dev_planeStats, dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_MAX_PEAKS, 
 			NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS, iter);
 		
-		segmentationInnerLoop(1, iter);
-
+		segmentationInnerLoop(2, iter);
+		
 		
 		Float3SOA normals;
 		normals.x = dev_nmapSOA.x[0];
