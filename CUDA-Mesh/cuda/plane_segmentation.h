@@ -51,3 +51,6 @@ __host__ void fitFinalPlanes(PlaneStats planeStats, int numPlanes,
 							 float fitAngleThresh, float fitDistThresh, int iteration);
 
 __host__ void realignPeaks(PlaneStats planeStats, Float3SOA normalPeaks, int numNormPeaks, int numDistPeaks, int xBins, int yBins, int iteration);
+
+
+__host__ void mergePlanes(PlaneStats planeStats, int numPlanes, float mergeAngleThresh, float mergeDistThresh);

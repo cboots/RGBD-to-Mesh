@@ -413,7 +413,7 @@ void MeshTracker::GPUSimpleSegmentation()
 		
 		segmentationInnerLoop(2, iter);
 		
-		//Use plane stats from first pass to better align peaks, then re-segment at max resolution
+		//Use plane stats from first pass to better align peaks, then re-segment
 		realignPeaks(dev_planeStats, dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_MAX_PEAKS, 
 			NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS, iter);
 		
@@ -430,9 +430,13 @@ void MeshTracker::GPUSimpleSegmentation()
 		positions.y = dev_vmapSOA.y[0];
 		positions.z = dev_vmapSOA.z[0];
 
-		fitFinalPlanes(dev_planeStats, MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS, 
+		int numPlanes = MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*(iter+1);
+
+		mergePlanes(dev_planeStats, numPlanes,mPlaneMergeAngleThresh*PI_F/180.0f, mPlaneMergeDistThresh);
+
+		fitFinalPlanes(dev_planeStats, numPlanes, 
 			normals, positions,  dev_finalSegmentsBuffer, dev_finalDistanceToPlaneBuffer, mXRes, mYRes,
-			mPlaneFinalAngleThresh*PI_F/180.0f, mPlaneFinalDistThresh, iter);
+			mPlaneFinalAngleThresh*PI_F/180.0f, mPlaneFinalDistThresh, 0);
 			
 	}
 }

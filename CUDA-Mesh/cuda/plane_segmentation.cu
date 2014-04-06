@@ -922,7 +922,7 @@ __global__ void finalizePlanesKernel(PlaneStats planeStats, int numNormalPeaks, 
 	s_Eig3[index] = eigs.z;//Smallest
 
 	__syncthreads();
-	
+
 	//Individual planes calculated, do merging now.
 	for(int startPeak = 0; startPeak < numDistPeaks; ++startPeak)
 	{
@@ -935,11 +935,11 @@ __global__ void finalizePlanesKernel(PlaneStats planeStats, int numNormalPeaks, 
 				if(s_counts[ti] > 0)
 				{
 					mergePlanes(si, ti, s_counts,
-							s_NormalX, s_NormalY, s_NormalZ,
-							s_centroidX, s_centroidY, s_centroidZ,
-							s_Sxx, s_Syy, s_Szz, s_Sxy, s_Syz, s_Sxz,
-							s_Eig1, s_Eig2, s_Eig3,
-							mergeAngleThreshCos, mergeDistThresh);
+						s_NormalX, s_NormalY, s_NormalZ,
+						s_centroidX, s_centroidY, s_centroidZ,
+						s_Sxx, s_Syy, s_Szz, s_Sxy, s_Syz, s_Sxz,
+						s_Eig1, s_Eig2, s_Eig3,
+						mergeAngleThreshCos, mergeDistThresh);
 				}
 			}
 		}
@@ -977,6 +977,116 @@ __host__ void finalizePlanes(PlaneStats planeStats, int numNormalPeaks, int numD
 
 	finalizePlanesKernel<<<blocks,threads, sharedCount*sizeof(float)>>>(planeStats, numNormalPeaks, numDistPeaks, 
 		cos(mergeAngleThresh), mergeDistThresh, iteration);
+}
+
+
+__global__ void mergePlanesKernel(PlaneStats planeStats, int numPlanes, float mergeAngleThreshCos, float mergeDistThresh)
+{
+
+
+	extern __shared__ float s_mem[];
+	float* s_counts = s_mem;
+	float* s_centroidX = s_counts    + numPlanes;
+	float* s_centroidY = s_centroidX + numPlanes;
+	float* s_centroidZ = s_centroidY + numPlanes;
+	float* s_NormalX = s_centroidZ    + numPlanes;
+	float* s_NormalY = s_NormalX + numPlanes;
+	float* s_NormalZ = s_NormalY + numPlanes;
+	float* s_Eig1 = s_NormalZ    + numPlanes;
+	float* s_Eig2 = s_Eig1 + numPlanes;
+	float* s_Eig3 = s_Eig2 + numPlanes;
+	float* s_Sxx	= s_Eig3 + numPlanes;
+	float* s_Syy	= s_Sxx + numPlanes;
+	float* s_Szz	= s_Syy + numPlanes;
+	float* s_Sxy	= s_Szz + numPlanes;
+	float* s_Syz	= s_Sxy + numPlanes;
+	float* s_Sxz	= s_Syz + numPlanes;
+
+	//Now that all these pointers have been initialized....
+	//Load shared memory
+	int index = threadIdx.x;
+
+	s_counts[index] = planeStats.count[index];
+
+	s_centroidX[index] = planeStats.centroids.x[index];
+	s_centroidY[index] = planeStats.centroids.y[index];
+	s_centroidZ[index] = planeStats.centroids.z[index];
+
+	//Normalize scatter matrix
+	s_Sxx[index] = planeStats.Sxx[index];
+	s_Syy[index] = planeStats.Syy[index];
+	s_Szz[index] = planeStats.Szz[index];
+	s_Sxy[index] = planeStats.Sxy[index];
+	s_Syz[index] = planeStats.Syz[index];
+	s_Sxz[index] = planeStats.Sxz[index];
+
+	s_Eig1[index] = planeStats.eigs.x[index];
+	s_Eig2[index] = planeStats.eigs.y[index];
+	s_Eig3[index] = planeStats.eigs.z[index];
+
+	s_NormalX[index] =planeStats.norms.x[index];
+	s_NormalY[index] =planeStats.norms.y[index];
+	s_NormalZ[index] =planeStats.norms.z[index];
+
+
+	__syncthreads();
+
+	if(threadIdx.x == 0)
+	{
+		//Individual planes calculated, do merging now.
+		for(int si = 0; si < numPlanes; ++si)
+		{
+			if(s_counts[si] > 0)
+			{
+				for(int ti = si + 1; ti < numPlanes; ++ti)
+				{
+					if(s_counts[ti] > 0)
+					{
+						mergePlanes(si, ti, s_counts,
+							s_NormalX, s_NormalY, s_NormalZ,
+							s_centroidX, s_centroidY, s_centroidZ,
+							s_Sxx, s_Syy, s_Szz, s_Sxy, s_Syz, s_Sxz,
+							s_Eig1, s_Eig2, s_Eig3,
+							mergeAngleThreshCos, mergeDistThresh);
+					}
+				}
+			}
+		}
+	}
+
+	__syncthreads();
+
+
+	//=======Save final planes (WRITEBACK)======
+	planeStats.count[index] = s_counts[index];
+
+	planeStats.centroids.x[index] = s_centroidX[index];
+	planeStats.centroids.y[index] = s_centroidY[index];
+	planeStats.centroids.z[index] = s_centroidZ[index];
+	planeStats.norms.x[index] = s_NormalX[index];
+	planeStats.norms.y[index] = s_NormalY[index];
+	planeStats.norms.z[index] = s_NormalZ[index];
+	planeStats.eigs.x[index] = s_Eig1[index];
+	planeStats.eigs.y[index] = s_Eig2[index];
+	planeStats.eigs.z[index] = s_Eig3[index];
+	planeStats.Sxx[index] = s_Sxx[index];
+	planeStats.Syy[index] = s_Syy[index];
+	planeStats.Szz[index] = s_Szz[index];
+	planeStats.Sxy[index] = s_Sxy[index];
+	planeStats.Syz[index] = s_Syz[index];
+	planeStats.Sxz[index] = s_Sxz[index];
+}
+
+
+__host__ void mergePlanes(PlaneStats planeStats, int numPlanes, float mergeAngleThresh, float mergeDistThresh)
+{
+
+	assert(numPlanes < 1024);
+	dim3 threads(numPlanes);
+	dim3 blocks(1);
+	int sharedCount = numPlanes*(1 + 3 + 3 + 3 + 6);
+
+	mergePlanesKernel<<<blocks,threads, sharedCount*sizeof(float)>>>(planeStats, numPlanes, cos(mergeAngleThresh), mergeDistThresh);
 }
 
 
