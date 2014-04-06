@@ -16,4 +16,9 @@ void main()
 	
 	int seg = int(segments.x+1.0);
 	FragColor = vec4(seg & 3, (seg>>2) & 3, (seg>>4) & 3, 1.0)/4.0;
+	//float dist = segments.y/0.015;
+	//FragColor = vec4(dist+0.5);
+	
+	if(segments.x < 0)
+		FragColor = vec4(0.0);
 }
