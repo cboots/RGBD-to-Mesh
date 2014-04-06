@@ -333,7 +333,8 @@ __global__ void sendSegmentDataToPBO(float4* pbo, int* segments, float* projecte
 
 
 
-__host__ void drawNormalSegmentsToPBO(float4* pbo, int* normalSegments, float* projectedDistanceMap, int xRes, int yRes)
+__host__ void drawNormalSegmentsToPBO(float4* pbo, int* normalSegments, float* projectedDistanceMap, 
+									  int xRes, int yRes, int pboXRes, int pboYRes)
 {
 
 	int tileSize = 16;
@@ -345,7 +346,7 @@ __host__ void drawNormalSegmentsToPBO(float4* pbo, int* normalSegments, float* p
 
 
 	sendSegmentDataToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo,  normalSegments, projectedDistanceMap,
-		xRes, yRes, xRes, yRes);
+		xRes, yRes, pboXRes, pboYRes);
 }
 
 

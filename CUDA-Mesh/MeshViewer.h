@@ -269,7 +269,7 @@ private:
 	void drawVMaptoTexture(GLuint texture, int level);
 	void drawNMaptoTexture(GLuint texture, int level);
 	void drawNormalHistogramtoTexture(GLuint texture);
-	void drawNormalSegmentsToTexture(GLuint texture);
+	void drawNormalSegmentsToTexture(GLuint texture, int level);
 	void drawFinalSegmentsToTexture(GLuint texture);
 	void drawDistanceHistogramtoTexture(GLuint texture, vec3 color, int scale, int peak);
 

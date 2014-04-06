@@ -787,13 +787,14 @@ void MeshViewer::drawRGBMaptoTexture(GLuint texture, int level)
 	glActiveTexture(GL_TEXTURE0);
 }
 
-void MeshViewer::drawNormalSegmentsToTexture(GLuint texture)
+void MeshViewer::drawNormalSegmentsToTexture(GLuint texture, int level)
 {
 	float4* dptrNormalSegmentsMap;
 	cudaGLMapBufferObject((void**)&dptrNormalSegmentsMap, imagePBO0);
 
 	clearPBO(dptrNormalSegmentsMap, mXRes, mYRes, 0.0f);
-	drawNormalSegmentsToPBO(dptrNormalSegmentsMap, mMeshTracker->getNormalSegments(), mMeshTracker->getPlaneProjectedDistance(), mXRes, mYRes);
+	drawNormalSegmentsToPBO(dptrNormalSegmentsMap, mMeshTracker->getNormalSegments(), mMeshTracker->getPlaneProjectedDistance(),
+		mXRes>>level, mYRes>>level, mXRes, mYRes);
 
 	cudaGLUnmapBufferObject(imagePBO0);
 
@@ -818,7 +819,8 @@ void MeshViewer::drawFinalSegmentsToTexture(GLuint texture)
 	cudaGLMapBufferObject((void**)&dptrNormalSegmentsMap, imagePBO0);
 
 	clearPBO(dptrNormalSegmentsMap, mXRes, mYRes, 0.0f);
-	drawNormalSegmentsToPBO(dptrNormalSegmentsMap, mMeshTracker->getFinalSegments(), mMeshTracker->getFinalFitDistance(), mXRes, mYRes);
+	drawNormalSegmentsToPBO(dptrNormalSegmentsMap, mMeshTracker->getFinalSegments(), mMeshTracker->getFinalFitDistance(), 
+		mXRes, mYRes, mXRes, mYRes);
 
 	cudaGLUnmapBufferObject(imagePBO0);
 
@@ -1023,8 +1025,8 @@ void MeshViewer::display()
 			drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL Original depth
 			break;
 		case DISPLAY_MODE_SEGMENTATION_DEBUG:
-			drawNormalSegmentsToTexture(texture0);
-			drawQuad(normalsegments_prog, -0.5, 0.5, 0.5, 0.5, 1.0,  &texture0, 1);//UL
+			drawNormalSegmentsToTexture(texture0, 2);
+			drawQuad(normalsegments_prog, -0.5, 0.5, 0.5, 0.5, 0.25,  &texture0, 1);//UL
 			drawNormalHistogramtoTexture(texture0);
 			drawQuad(histogram_prog, -0.5,  -0.5, 0.5, 0.5, 0.1,  &texture0, 1);//LL
 
