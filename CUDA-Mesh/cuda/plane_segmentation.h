@@ -54,3 +54,5 @@ __host__ void realignPeaks(PlaneStats planeStats, Float3SOA normalPeaks, int num
 
 
 __host__ void mergePlanes(PlaneStats planeStats, int numPlanes, float mergeAngleThresh, float mergeDistThresh);
+
+__host__ void generatePlaneCompressionMap(PlaneStats planeStats, int numPlanes, int* planeIdMap, int* planeCountOut);

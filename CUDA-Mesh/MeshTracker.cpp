@@ -70,6 +70,8 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 	for(int i = 1; i < MAX_2D_PEAKS_PER_ROUND; i++)//Update other pointers
 		dev_distPeaks[i] = dev_distPeaks[i-1] + DISTANCE_HIST_COUNT;
 
+
+
 	//Plane stats buffers
 	cudaMalloc((void**) &dev_planeStats.count, MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(float));
 	cudaMalloc((void**) &dev_planeStats.Sxx,   MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(float));
@@ -85,6 +87,9 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 
 	cudaMalloc((void**) &dev_finalSegmentsBuffer, xRes*yRes*sizeof(int));
 	cudaMalloc((void**) &dev_finalDistanceToPlaneBuffer, xRes*yRes*sizeof(float));
+
+	cudaMalloc((void**) &dev_planeIdMap,  MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(int));
+	cudaMalloc((void**) &dev_detectedPlaneCount,  sizeof(int));
 
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
@@ -138,6 +143,9 @@ void MeshTracker::cleanupBuffers()
 
 	cudaFree(dev_finalSegmentsBuffer);
 	cudaFree(dev_finalDistanceToPlaneBuffer);
+
+	cudaFree(dev_planeIdMap);
+	cudaFree(dev_detectedPlaneCount);
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -370,19 +378,19 @@ void MeshTracker::segmentationInnerLoop(int resolutionLevel, int iteration)
 	distanceHistogramPrimaryPeakDetection(dev_distanceHistograms[0], DISTANCE_HIST_COUNT, MAX_2D_PEAKS_PER_ROUND, dev_distPeaks[0], 
 		DISTANCE_HIST_MAX_PEAKS, int(2.0f*mDistPeakThresholdTight/DISTANCE_HIST_RESOLUTION), 
 		mMinDistPeakCount*countScale, DISTANCE_HIST_MIN, DISTANCE_HIST_MAX);
-	
+
 	//Segment by distance and assemble plane stats for segments
 	clearPlaneStats(dev_planeStats, MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_MAX_PEAKS, MAX_SEGMENTATION_ROUNDS, iteration);
-	
+
 	fineDistanceSegmentation(dev_distPeaks[0], MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_MAX_PEAKS, 
 		positions, dev_planeStats, dev_normalSegments, dev_planeProjectedDistanceMap, 
 		mXRes>>resolutionLevel, mYRes>>resolutionLevel, mDistPeakThresholdTight, iteration);
-	
-	
+
+
 	//Process stats and calculate merges
 	finalizePlanes(dev_planeStats, MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_MAX_PEAKS, 
 		mPlaneMergeAngleThresh*PI_F/180.0f, mPlaneMergeDistThresh, iteration);
-		
+
 }
 
 
@@ -411,16 +419,16 @@ void MeshTracker::GPUSimpleSegmentation()
 	{
 		//Generate normal histogram
 		normalHistogramGeneration(0, iter);//Won't work for iterations higher than 0 at resolution levels higher than 0
-		
+
 		segmentationInnerLoop(2, iter);
-		
+
 		//Use plane stats from first pass to better align peaks, then re-segment
 		realignPeaks(dev_planeStats, dev_normalPeaks, MAX_2D_PEAKS_PER_ROUND, DISTANCE_HIST_MAX_PEAKS, 
 			NUM_NORMAL_X_SUBDIVISIONS, NUM_NORMAL_Y_SUBDIVISIONS, iter);
-		
+
 		segmentationInnerLoop(2, iter);
-		
-		
+
+
 		Float3SOA normals;
 		normals.x = dev_nmapSOA.x[0];
 		normals.y = dev_nmapSOA.y[0];
@@ -438,8 +446,12 @@ void MeshTracker::GPUSimpleSegmentation()
 		fitFinalPlanes(dev_planeStats, numPlanes, 
 			normals, positions,  dev_finalSegmentsBuffer, dev_finalDistanceToPlaneBuffer, mXRes, mYRes,
 			mPlaneFinalAngleThresh*PI_F/180.0f, mPlaneFinalDistThresh, 0);
-			
+
 	}
+
+	generatePlaneCompressionMap(dev_planeStats, MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*MAX_SEGMENTATION_ROUNDS, 
+		dev_planeIdMap, dev_detectedPlaneCount);
+
 }
 
 

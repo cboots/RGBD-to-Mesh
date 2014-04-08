@@ -87,6 +87,8 @@ private:
 	int* dev_finalSegmentsBuffer;
 	float* dev_finalDistanceToPlaneBuffer;
 
+	int* dev_planeIdMap;
+	int* dev_detectedPlaneCount;
 
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
 	Float1SOAPyramid dev_float1PyramidBuffers[NUM_FLOAT1_PYRAMID_BUFFERS];
@@ -94,7 +96,7 @@ private:
 	float* dev_floatImageBuffers[NUM_FLOAT1_IMAGE_SIZE_BUFFERS];
 
 #pragma region
-	
+
 #pragma region Private Methods
 	void createFloat1SOAPyramid(Float1SOAPyramid& dev_pyramid, int xRes, int yRes);
 	void freeFloat1SOAPyramid(Float1SOAPyramid dev_pyramid);
@@ -105,7 +107,7 @@ private:
 	void createFloat3SOA(Float3SOA& dev_soa, int length);
 	void freeFloat3SOA(Float3SOA dev_soa);
 
-	
+
 	void createInt3SOA(Int3SOA& dev_soa, int length);
 	void freeInt3SOA(Int3SOA dev_soa);
 
