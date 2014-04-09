@@ -269,6 +269,8 @@ void MeshViewer::initShader()
 	const char * barhistogram_frag = "shaders/barhistogramFS.glsl";
 	const char * normalsegments_frag = "shaders/normalsegmentsFS.glsl";
 	const char * finalsegments_frag = "shaders/finalsegmentsFS.glsl";
+	const char * distsegments_frag = "shaders/distsegmentsFS.glsl";
+	const char * projectedsegments_frag = "shaders/projectedsegmentsFS.glsl";
 
 	//Color image shader
 	color_prog = glslUtility::createProgram(pass_vert, NULL, color_frag, quadAttributeLocations, 2);
@@ -292,6 +294,11 @@ void MeshViewer::initShader()
 	normalsegments_prog = glslUtility::createProgram(pass_vert, NULL, normalsegments_frag, quadAttributeLocations, 2);
 
 	finalsegments_prog = glslUtility::createProgram(pass_vert, NULL, finalsegments_frag, quadAttributeLocations, 2);
+
+	projectedsegments_prog = glslUtility::createProgram(pass_vert, NULL, distsegments_frag, quadAttributeLocations, 2);
+
+	distsegments_prog = glslUtility::createProgram(pass_vert, NULL, projectedsegments_frag, quadAttributeLocations, 2);
+
 }
 
 void MeshViewer::initTextures()
@@ -819,7 +826,8 @@ void MeshViewer::drawFinalSegmentsToTexture(GLuint texture)
 	cudaGLMapBufferObject((void**)&dptrNormalSegmentsMap, imagePBO0);
 
 	clearPBO(dptrNormalSegmentsMap, mXRes, mYRes, 0.0f);
-	drawNormalSegmentsToPBO(dptrNormalSegmentsMap, mMeshTracker->getFinalSegments(), mMeshTracker->getFinalFitDistance(), 
+	drawSegmentsDataToPBO(dptrNormalSegmentsMap, mMeshTracker->getFinalSegments(), mMeshTracker->getFinalFitDistance(), 
+		mMeshTracker->getProjectedSx(),  mMeshTracker->getProjectedSy(),  
 		mXRes, mYRes, mXRes, mYRes);
 
 	cudaGLUnmapBufferObject(imagePBO0);
@@ -1047,6 +1055,14 @@ void MeshViewer::display()
 			drawQuad(finalsegments_prog, 0.5, -0.5, 0.5, 0.5, 1.0,  &texture0, 1);//LR
 
 			break;
+		case DISPLAY_MODE_PROJECTION_DEBUG:
+			//Draw final segmentation
+			drawFinalSegmentsToTexture(texture0);
+			drawQuad(finalsegments_prog, -0.5, 0.5, 0.5, 0.5, 1.0,  &texture0, 1);//UL
+			drawQuad(distsegments_prog,  0.5, 0.5, 0.5, 0.5, 1.0,  &texture0, 1);//UR
+			drawQuad(projectedsegments_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture0, 1);//LL
+			
+			break;
 		case DISPLAY_MODE_NONE:
 		default:
 			break;
@@ -1103,6 +1119,9 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		break;
 	case '7':
 		mViewState = DISPLAY_MODE_SEGMENTATION_DEBUG;
+		break;
+	case '8':
+		mViewState = DISPLAY_MODE_PROJECTION_DEBUG;
 		break;
 	case '0':
 		mViewState = DISPLAY_MODE_NONE;

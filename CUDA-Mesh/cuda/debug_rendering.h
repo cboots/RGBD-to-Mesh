@@ -38,3 +38,7 @@ __host__ void drawNormalSegmentsToPBO(float4* pbo, int* normalSegments, float* p
 									  int xRes, int yRes, int pboXRes, int pboYRes);
 
 __host__ void drawScaledHistogramToPBO(float4* pbo, int* histogram, glm::vec3 color, int maxValue, int length, int pboXRes, int pboYRes);
+
+
+__host__ void drawSegmentsDataToPBO(float4* pbo, int* normalSegments, float* projectedDistanceMap, float* projectedSx, float* projectedSy,
+									  int xRes, int yRes, int pboXRes, int pboYRes);

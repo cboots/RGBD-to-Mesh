@@ -168,6 +168,8 @@ public:
 	inline float* getPlaneProjectedDistance() {return dev_planeProjectedDistanceMap;}
 	inline int* getFinalSegments() { return dev_finalSegmentsBuffer;}
 	inline float* getFinalFitDistance() {return dev_finalDistanceToPlaneBuffer;}
+	inline float* getProjectedSx() {return dev_segmentProjectedSx;}
+	inline float* getProjectedSy() {return dev_segmentProjectedSy;}
 	inline int* getDistanceHistogram(int peak) {return (peak >= 0 && peak < MAX_2D_PEAKS_PER_ROUND)?dev_distanceHistograms[peak]:NULL;}
 #pragma endregion
 

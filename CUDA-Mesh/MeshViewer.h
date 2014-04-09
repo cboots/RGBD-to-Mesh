@@ -48,6 +48,7 @@ enum DisplayModes
 	DISPLAY_MODE_VMAP_DEBUG,
 	DISPLAY_MODE_NMAP_DEBUG,
 	DISPLAY_MODE_SEGMENTATION_DEBUG,
+	DISPLAY_MODE_PROJECTION_DEBUG,
 	DISPLAY_MODE_NONE
 };
 
@@ -170,6 +171,8 @@ private:
 	GLuint barhistogram_prog;
 	GLuint normalsegments_prog;
 	GLuint finalsegments_prog;
+	GLuint projectedsegments_prog;
+	GLuint distsegments_prog;
 #pragma endregion
 
 #pragma region Buffer Object Indecies
