@@ -369,7 +369,7 @@ __global__ void segmentNormals2DKernel(Float3SOA rawNormals, Float3SOA rawPositi
 		if(xi == xi && yi == yi){
 			//x = xi/float(xBins)*2.0f - 1.0f;
 			//y = yi/float(yBins)*2.0f - 1.0f;
-			
+
 			x = cosf(xi*PI_F/xBins);
 			y = cosf(yi*PI_F/yBins);
 			z = sqrt(1-x*x-y*y);
@@ -1223,7 +1223,7 @@ __global__ void realignPeaksKernel(PlaneStats planeStats, Float3SOA normalPeaks,
 			//Projected space is well behaved w.r.t indexing when 0 <= z <= 1
 			//xI = (x+1.0f)*0.5f*xBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
 			//yI = (y+1.0f)*0.5f*yBins;//x in range of -1 to 1. Map to 0 to 1.0 and multiply by number of bins
-			
+
 			xI = acos(x)*PI_INV_F*xBins;
 			yI = acos(y)*PI_INV_F*yBins;
 		}
@@ -1265,19 +1265,19 @@ __host__ void realignPeaks(PlaneStats planeStats, Float3SOA normalPeaks, int num
 
 inline int pow2roundup (int x)
 {
-    if (x < 0)
-        return 0;
-    --x;
-    x |= x >> 1;
-    x |= x >> 2;
-    x |= x >> 4;
-    x |= x >> 8;
-    x |= x >> 16;
-    return x+1;
+	if (x < 0)
+		return 0;
+	--x;
+	x |= x >> 1;
+	x |= x >> 2;
+	x |= x >> 4;
+	x |= x >> 8;
+	x |= x >> 16;
+	return x+1;
 }
 
 
-__global__ void generatePlaneCompressionMapKernel(PlaneStats planeStats, int numPlanes, int* planeIdMap, int* planeCountOut)
+__global__ void generatePlaneCompressionMapKernel(PlaneStats planeStats, int numPlanes, int* planeIdMap, int* planeIDInvMap, int* planeCountOut)
 {
 	extern __shared__ int temp[];
 
@@ -1285,7 +1285,7 @@ __global__ void generatePlaneCompressionMapKernel(PlaneStats planeStats, int num
 	int index = threadIdx.x;
 	int offset = 1;
 	int n = 2*blockDim.x;//get actual temp padding
-	
+
 	int ai = index;
 	int bi = index + n/2;
 	int bankOffsetA = CONFLICT_FREE_OFFSET(ai);
@@ -1296,7 +1296,7 @@ __global__ void generatePlaneCompressionMapKernel(PlaneStats planeStats, int num
 	//Bounds checking, load shared mem
 	temp[ai+bankOffsetA] = (ai < numPlanes && aiFlag)?1:0;
 	temp[bi+bankOffsetB] = (bi < numPlanes && biFlag)?1:0;
-	
+
 	//Reduction step
 	for (int d = n>>1; d > 0; d >>= 1)                  
 	{   
@@ -1344,19 +1344,87 @@ __global__ void generatePlaneCompressionMapKernel(PlaneStats planeStats, int num
 	__syncthreads();
 
 	//Writeback (Scatter)
-	if(ai < numPlanes && aiFlag)
-		planeIdMap[temp[ai+bankOffsetA]] = ai;
-	if(bi < numPlanes && biFlag)
-		planeIdMap[temp[bi+bankOffsetB]] = bi;
+	if(ai < numPlanes )
+	{
+		if(aiFlag){
+			planeIdMap[temp[ai+bankOffsetA]] = ai;
+			planeIDInvMap[ai] = temp[ai+bankOffsetA];
+		}else
+		{
+			planeIDInvMap[ai] = -1;
+		}
+	}
+	if(bi < numPlanes)
+	{
+		if(biFlag){
+			planeIdMap[temp[bi+bankOffsetB]] = bi;
+			planeIDInvMap[bi] = temp[bi+bankOffsetB];
+		}else
+		{
+			planeIDInvMap[bi] = -1;
+		}
+	}
 
 }
 
 
-__host__ void generatePlaneCompressionMap(PlaneStats planeStats, int numPlanes, int* planeIdMap, int* planeCountOut)
+__host__ void generatePlaneCompressionMap(PlaneStats planeStats, int numPlanes, int* planeIdMap, int* planeIDInvMap, int* planeCountOut)
 {
 	dim3 threads(numPlanes>>1);//Two elements per thread
 	dim3 blocks(1);
 	int sharedSize = (2*numPlanes+2)*sizeof(int);
 
-	generatePlaneCompressionMapKernel<<<blocks,threads,sharedSize>>>(planeStats, numPlanes, planeIdMap, planeCountOut);
+	generatePlaneCompressionMapKernel<<<blocks,threads,sharedSize>>>(planeStats, numPlanes, planeIdMap, planeIDInvMap, planeCountOut);
+}
+
+__global__ void streamCompactPlaneStatsKernel(PlaneStats planeStats, int numPlanes, int* planeIdMap, int* planeCount)
+{
+	int index = threadIdx.x;
+	int planeIndex = planeIdMap[index];
+	bool isValid = (index < planeCount[0]);
+
+	float count = isValid?planeStats.count[planeIndex]:0;
+	float centroidX = isValid?planeStats.centroids.x[planeIndex]:CUDART_NAN_F;
+	float centroidY = isValid?planeStats.centroids.y[planeIndex]:CUDART_NAN_F;
+	float centroidZ = isValid?planeStats.centroids.z[planeIndex]:CUDART_NAN_F;
+	float normX = isValid?planeStats.norms.x[planeIndex]:CUDART_NAN_F;
+	float normY = isValid?planeStats.norms.y[planeIndex]:CUDART_NAN_F;
+	float normZ = isValid?planeStats.norms.z[planeIndex]:CUDART_NAN_F;
+	float eigs1 = isValid?planeStats.eigs.x[planeIndex]:CUDART_NAN_F;
+	float eigs2 = isValid?planeStats.eigs.y[planeIndex]:CUDART_NAN_F;
+	float eigs3 = isValid?planeStats.eigs.z[planeIndex]:CUDART_NAN_F;
+	float Sxx = isValid?planeStats.Sxx[planeIndex]:CUDART_NAN_F;
+	float Syy = isValid?planeStats.Syy[planeIndex]:CUDART_NAN_F;
+	float Szz = isValid?planeStats.Szz[planeIndex]:CUDART_NAN_F;
+	float Sxy = isValid?planeStats.Sxy[planeIndex]:CUDART_NAN_F;
+	float Syz = isValid?planeStats.Syz[planeIndex]:CUDART_NAN_F;
+	float Sxz = isValid?planeStats.Sxz[planeIndex]:CUDART_NAN_F;
+
+	__syncthreads();
+
+	planeStats.count[index] = count;
+
+	planeStats.centroids.x[index] = centroidX;
+	planeStats.centroids.y[index] = centroidY;
+	planeStats.centroids.z[index] = centroidZ;
+	planeStats.norms.x[index] = normX;
+	planeStats.norms.y[index] = normY;
+	planeStats.norms.z[index] = normZ;
+	planeStats.eigs.x[index] = eigs1;
+	planeStats.eigs.y[index] = eigs2;
+	planeStats.eigs.z[index] = eigs3;
+	planeStats.Sxx[index] = Sxx;
+	planeStats.Syy[index] = Syy;
+	planeStats.Szz[index] = Szz;
+	planeStats.Sxy[index] = Sxy;
+	planeStats.Syz[index] = Syz;
+	planeStats.Sxz[index] = Sxz;
+}
+
+__host__ void compactPlaneStats(PlaneStats planeStats, int numPlanes, int* planeIdMap,  int* planeCount)
+{
+	dim3 threads(numPlanes);
+	dim3 blocks(1);
+
+	streamCompactPlaneStatsKernel<<<blocks,threads>>>(planeStats, numPlanes, planeIdMap,planeCount);
 }

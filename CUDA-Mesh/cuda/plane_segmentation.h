@@ -52,7 +52,8 @@ __host__ void fitFinalPlanes(PlaneStats planeStats, int numPlanes,
 
 __host__ void realignPeaks(PlaneStats planeStats, Float3SOA normalPeaks, int numNormPeaks, int numDistPeaks, int xBins, int yBins, int iteration);
 
-
 __host__ void mergePlanes(PlaneStats planeStats, int numPlanes, float mergeAngleThresh, float mergeDistThresh);
 
-__host__ void generatePlaneCompressionMap(PlaneStats planeStats, int numPlanes, int* planeIdMap, int* planeCountOut);
+__host__ void generatePlaneCompressionMap(PlaneStats planeStats, int numPlanes, int* planeIdMap, int* planeInvIdMap, int* planeCountOut);
+
+__host__ void compactPlaneStats(PlaneStats planeStats, int numPlanes, int* planeIdMap,  int* planeCount);

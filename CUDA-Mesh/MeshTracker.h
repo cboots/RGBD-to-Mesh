@@ -88,6 +88,7 @@ private:
 	float* dev_finalDistanceToPlaneBuffer;
 
 	int* dev_planeIdMap;
+	int* dev_planeInvIdMap;
 	int* dev_detectedPlaneCount;
 
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
@@ -144,6 +145,8 @@ public:
 
 	void GPUSimpleSegmentation();
 	void subsamplePyramids();
+
+	void ReprojectPlaneTextures();
 
 #pragma endregion
 

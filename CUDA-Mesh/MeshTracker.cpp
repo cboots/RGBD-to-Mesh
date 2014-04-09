@@ -89,6 +89,7 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 	cudaMalloc((void**) &dev_finalDistanceToPlaneBuffer, xRes*yRes*sizeof(float));
 
 	cudaMalloc((void**) &dev_planeIdMap,  MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(int));
+	cudaMalloc((void**) &dev_planeInvIdMap,  MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(int));
 	cudaMalloc((void**) &dev_detectedPlaneCount,  sizeof(int));
 
 
@@ -145,6 +146,7 @@ void MeshTracker::cleanupBuffers()
 	cudaFree(dev_finalDistanceToPlaneBuffer);
 
 	cudaFree(dev_planeIdMap);
+	cudaFree(dev_planeInvIdMap);
 	cudaFree(dev_detectedPlaneCount);
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
@@ -450,7 +452,17 @@ void MeshTracker::GPUSimpleSegmentation()
 	}
 
 	generatePlaneCompressionMap(dev_planeStats, MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*MAX_SEGMENTATION_ROUNDS, 
+		dev_planeIdMap, dev_planeInvIdMap, dev_detectedPlaneCount);
+
+	compactPlaneStats(dev_planeStats,  MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*MAX_SEGMENTATION_ROUNDS, 
 		dev_planeIdMap, dev_detectedPlaneCount);
+
+}
+
+
+void MeshTracker::ReprojectPlaneTextures()
+{
+	//Compute bounding boxes
 
 }
 

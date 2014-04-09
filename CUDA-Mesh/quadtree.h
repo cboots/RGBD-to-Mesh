@@ -10,3 +10,5 @@
 #include "math.h"
 
 
+__host__ void computePlaneBoundingBoxes(PlaneStats planeStats, int* planeIdMap, int* numPlanesFound, 
+										float4* aabbs, int* segments, int xRes, int yRes);

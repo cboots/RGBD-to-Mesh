@@ -28,8 +28,8 @@ hold on
 plot(sourcepoints(:,1), sourcepoints(:,2));
 hold off
 
-destWidth = 200;
-destHeight = 200;
+destWidth = 50;
+destHeight = 50;
 destpoints = [1 1; destWidth 1; destWidth destHeight; 1 destHeight;];
 
 a = [sourcepoints(1:3,1)'; sourcepoints(1:3,2)'; ones(1,3)];
