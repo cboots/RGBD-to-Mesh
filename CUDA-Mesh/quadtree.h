@@ -12,5 +12,5 @@
 
 
 __host__ void computeAABBs(PlaneStats planeStats, int* planeInvIdMap, glm::vec3* tangents, glm::vec4* aabbs, int* planeCount, int maxPlanes,
-						   float* segmentProjectedSx, float* segmentProjectedSy, 
+						   Float3SOA positions, float* segmentProjectedSx, float* segmentProjectedSy, 
 						   int* finalSegmentsBuffer, int xRes, int yRes);

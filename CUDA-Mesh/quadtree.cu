@@ -3,7 +3,7 @@
 
 __global__ void computeAABBsKernel(PlaneStats planeStats, int* planeInvIdMap, glm::vec3* tangents, glm::vec4* aabbs, 
 								   int* planeCount, int maxPlanes,
-								   float* segmentProjectedSx, float* segmentProjectedSy, 
+								   Float3SOA positions, float* segmentProjectedSx, float* segmentProjectedSy, 
 								   int* finalSegmentsBuffer, int xRes, int yRes)
 {
 	extern __shared__ int s_Mem[];
@@ -41,12 +41,26 @@ __global__ void computeAABBsKernel(PlaneStats planeStats, int* planeInvIdMap, gl
 	//Remap segments
 	int segment = finalSegmentsBuffer[imageX + imageY*xRes];
 	if(segment >= 0)
+	{
+		//Remap and writeback
 		segment = s_InvMap[segment];
-	finalSegmentsBuffer[imageX + imageY*xRes] = segment;
+		finalSegmentsBuffer[imageX + imageY*xRes] = segment;
+
+		//Compute Sx and Sy
+		glm::vec3 dp = glm::vec3(positions.x[imageX + imageY*xRes], positions.y[imageX + imageY*xRes], positions.z[imageX + imageY*xRes])
+			- glm::vec3(s_centroidX[segment], s_centroidY[segment], s_centroidZ[segment]);
+
+		float sx = glm::dot(dp, s_tangents[segment]);
+		float sy = glm::dot(dp, s_bitangents[segment]);
+		segmentProjectedSx[imageX + imageY*xRes] = sx;
+		segmentProjectedSy[imageX + imageY*xRes] = sy;
+
+	}
+
 }
 
 __host__ void computeAABBs(PlaneStats planeStats, int* planeInvIdMap, glm::vec3* tangents, glm::vec4* aabbs, int* planeCount, int maxPlanes,
-						   float* segmentProjectedSx, float* segmentProjectedSy, 
+						   Float3SOA positions, float* segmentProjectedSx, float* segmentProjectedSy, 
 						   int* finalSegmentsBuffer, int xRes, int yRes)
 {
 	int blockWidth = 32;
@@ -59,7 +73,7 @@ __host__ void computeAABBs(PlaneStats planeStats, int* planeInvIdMap, glm::vec3*
 	int sharedMem = maxPlanes*(sizeof(int) + sizeof(float)*3+sizeof(glm::vec3)*2 + sizeof(glm::vec4));
 
 	computeAABBsKernel<<<blocks,threads,sharedMem>>>(planeStats, planeInvIdMap, tangents, aabbs, planeCount, maxPlanes,
-		segmentProjectedSx, segmentProjectedSy, 
+		positions, segmentProjectedSx, segmentProjectedSy, 
 		finalSegmentsBuffer, xRes, yRes);
 
 }
