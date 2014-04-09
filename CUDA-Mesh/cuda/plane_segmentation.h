@@ -57,3 +57,5 @@ __host__ void mergePlanes(PlaneStats planeStats, int numPlanes, float mergeAngle
 __host__ void generatePlaneCompressionMap(PlaneStats planeStats, int numPlanes, int* planeIdMap, int* planeInvIdMap, int* planeCountOut);
 
 __host__ void compactPlaneStats(PlaneStats planeStats, int numPlanes, int* planeIdMap,  int* planeCount);
+
+__host__ void computePlaneTangents(PlaneStats planeStats, float3* planeTangents, int numPlanes, int* planeCount);

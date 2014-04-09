@@ -91,6 +91,9 @@ private:
 	int* dev_planeInvIdMap;
 	int* dev_detectedPlaneCount;
 
+	float3* dev_planeTangents;
+	float4* dev_planeAABB;
+
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
 	Float1SOAPyramid dev_float1PyramidBuffers[NUM_FLOAT1_PYRAMID_BUFFERS];
 

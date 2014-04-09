@@ -92,6 +92,10 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 	cudaMalloc((void**) &dev_planeInvIdMap,  MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(int));
 	cudaMalloc((void**) &dev_detectedPlaneCount,  sizeof(int));
 
+	cudaMalloc((void**) &dev_planeTangents, MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(float3));
+	cudaMalloc((void**) &dev_planeAABB, MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(float4));
+
+
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -148,6 +152,8 @@ void MeshTracker::cleanupBuffers()
 	cudaFree(dev_planeIdMap);
 	cudaFree(dev_planeInvIdMap);
 	cudaFree(dev_detectedPlaneCount);
+	cudaFree(dev_planeTangents);
+	cudaFree(dev_planeAABB);
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -457,6 +463,8 @@ void MeshTracker::GPUSimpleSegmentation()
 	compactPlaneStats(dev_planeStats,  MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*MAX_SEGMENTATION_ROUNDS, 
 		dev_planeIdMap, dev_detectedPlaneCount);
 
+	computePlaneTangents(dev_planeStats, dev_planeTangents, 
+		MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*MAX_SEGMENTATION_ROUNDS, dev_detectedPlaneCount);
 }
 
 

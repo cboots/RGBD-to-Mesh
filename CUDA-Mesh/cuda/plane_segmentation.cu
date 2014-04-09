@@ -1428,3 +1428,51 @@ __host__ void compactPlaneStats(PlaneStats planeStats, int numPlanes, int* plane
 
 	streamCompactPlaneStatsKernel<<<blocks,threads>>>(planeStats, numPlanes, planeIdMap,planeCount);
 }
+
+
+__global__ void computePlaneTangentsKernels(PlaneStats planeStats, float3* planeTangents, int* planeCount)
+{
+	int count = planeCount[0];
+
+	glm::vec3 tangent = glm::vec3(CUDART_NAN_F);
+	int index = threadIdx.x;
+	if(threadIdx.x < count)
+	{
+
+
+
+		//T = (A-eye(3)*eig2)*(A(:,1)-[1;0;0]*eig3);
+
+		glm::mat3 S1_n = glm::mat3(glm::vec3(planeStats.Sxx[index], planeStats.Sxy[index], planeStats.Sxz[index]), 
+			glm::vec3(planeStats.Sxy[index], planeStats.Syy[index], planeStats.Syz[index]),
+			glm::vec3(planeStats.Sxz[index], planeStats.Syz[index], planeStats.Szz[index]));
+
+		glm::mat3 S2 = outerProduct(planeStats.centroids.x[index], planeStats.centroids.y[index], planeStats.centroids.z[index]);
+
+		float eig2 = planeStats.eigs.y[index];
+		float eig3 = planeStats.eigs.z[index];
+
+		glm::mat3 A = S1_n - S2;
+		glm::mat3 Aeig1 = A;
+		Aeig1[0][0] -= eig2;
+		Aeig1[1][1] -= eig2;
+		Aeig1[2][2] -= eig2;
+		tangent = Aeig1*(A[0] - glm::vec3(eig3,0.0f,0.0f));
+
+		float length = glm::length(tangent);
+		tangent /= length;
+	}
+
+	planeTangents[index].x = tangent.x;
+	planeTangents[index].y = tangent.y;
+	planeTangents[index].z = tangent.z;
+}
+
+__host__ void computePlaneTangents(PlaneStats planeStats, float3* planeTangents, int numPlanes, int* planeCount)
+{
+	dim3 threads(numPlanes);
+	dim3 blocks(1);
+
+	computePlaneTangentsKernels<<<blocks,threads>>>(planeStats, planeTangents, planeCount);
+
+}
