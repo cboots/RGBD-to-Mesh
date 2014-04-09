@@ -10,5 +10,7 @@
 #include "math.h"
 
 
-__host__ void computePlaneBoundingBoxes(PlaneStats planeStats, int* planeIdMap, int* numPlanesFound, 
-										float4* aabbs, int* segments, int xRes, int yRes);
+
+__host__ void computeAABBs(PlaneStats planeStats, int* planeInvIdMap, glm::vec3* tangents, glm::vec4* aabbs, int* planeCount, int maxPlanes,
+						   float* segmentProjectedSx, float* segmentProjectedSy, 
+						   int* finalSegmentsBuffer, int xRes, int yRes);

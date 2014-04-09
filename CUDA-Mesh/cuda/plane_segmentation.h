@@ -58,4 +58,4 @@ __host__ void generatePlaneCompressionMap(PlaneStats planeStats, int numPlanes, 
 
 __host__ void compactPlaneStats(PlaneStats planeStats, int numPlanes, int* planeIdMap,  int* planeCount);
 
-__host__ void computePlaneTangents(PlaneStats planeStats, float3* planeTangents, int numPlanes, int* planeCount);
+__host__ void computePlaneTangents(PlaneStats planeStats, glm::vec3* planeTangents, int numPlanes, int* planeCount);

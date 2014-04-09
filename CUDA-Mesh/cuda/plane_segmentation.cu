@@ -1430,7 +1430,7 @@ __host__ void compactPlaneStats(PlaneStats planeStats, int numPlanes, int* plane
 }
 
 
-__global__ void computePlaneTangentsKernels(PlaneStats planeStats, float3* planeTangents, int* planeCount)
+__global__ void computePlaneTangentsKernels(PlaneStats planeStats, glm::vec3* planeTangents, int* planeCount)
 {
 	int count = planeCount[0];
 
@@ -1438,8 +1438,6 @@ __global__ void computePlaneTangentsKernels(PlaneStats planeStats, float3* plane
 	int index = threadIdx.x;
 	if(threadIdx.x < count)
 	{
-
-
 
 		//T = (A-eye(3)*eig2)*(A(:,1)-[1;0;0]*eig3);
 
@@ -1463,12 +1461,10 @@ __global__ void computePlaneTangentsKernels(PlaneStats planeStats, float3* plane
 		tangent /= length;
 	}
 
-	planeTangents[index].x = tangent.x;
-	planeTangents[index].y = tangent.y;
-	planeTangents[index].z = tangent.z;
+	planeTangents[index] = tangent;
 }
 
-__host__ void computePlaneTangents(PlaneStats planeStats, float3* planeTangents, int numPlanes, int* planeCount)
+__host__ void computePlaneTangents(PlaneStats planeStats, glm::vec3* planeTangents, int numPlanes, int* planeCount)
 {
 	dim3 threads(numPlanes);
 	dim3 blocks(1);

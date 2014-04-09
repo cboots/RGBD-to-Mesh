@@ -948,6 +948,8 @@ void MeshViewer::display()
 
 		mMeshTracker->GPUSimpleSegmentation();
 
+		mMeshTracker->ReprojectPlaneTextures();
+
 		cudaDeviceSynchronize();
 
 		int millisec = t.elapsed().wall / 1000000;

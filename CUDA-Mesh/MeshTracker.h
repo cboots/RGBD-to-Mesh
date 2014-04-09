@@ -10,6 +10,7 @@
 #include "Utils.h"
 #include "CudaUtils.h"
 #include "plane_segmentation.h"
+#include "quadtree.h"
 #include <iostream>
 
 using namespace std;
@@ -90,9 +91,12 @@ private:
 	int* dev_planeIdMap;
 	int* dev_planeInvIdMap;
 	int* dev_detectedPlaneCount;
+	int host_detectedPlaneCount;
+	glm::vec3* dev_planeTangents;
+	glm::vec4* dev_planeAABB;
 
-	float3* dev_planeTangents;
-	float4* dev_planeAABB;
+	float* dev_segmentProjectedSx;
+	float* dev_segmentProjectedSy;
 
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
 	Float1SOAPyramid dev_float1PyramidBuffers[NUM_FLOAT1_PYRAMID_BUFFERS];
