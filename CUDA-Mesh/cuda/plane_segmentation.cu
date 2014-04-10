@@ -1455,38 +1455,19 @@ __global__ void computePlaneTangentsKernels(PlaneStats planeStats, glm::vec3* pl
 	int index = threadIdx.x;
 	if(threadIdx.x < count)
 	{
-
-		//T = (A-eye(3)*eig2)*(A(:,1)-[1;0;0]*eig3);
-
-		glm::mat3 S1_n = glm::mat3(glm::vec3(planeStats.Sxx[index], planeStats.Sxy[index], planeStats.Sxz[index]), 
-			glm::vec3(planeStats.Sxy[index], planeStats.Syy[index], planeStats.Syz[index]),
-			glm::vec3(planeStats.Sxz[index], planeStats.Syz[index], planeStats.Szz[index]));
-
-		glm::mat3 S2 = outerProduct(planeStats.centroids.x[index], planeStats.centroids.y[index], planeStats.centroids.z[index]);
-
-		float eig2 = planeStats.eigs.y[index];
-		float eig3 = planeStats.eigs.z[index];
-
-		glm::mat3 A = S1_n - S2;
-		glm::mat3 Aeig1 = A;
-		Aeig1[0][0] -= eig2;
-		Aeig1[1][1] -= eig2;
-		Aeig1[2][2] -= eig2;
-		tangent = Aeig1*(A[0] - glm::vec3(eig3,0.0f,0.0f));
-
-		float length = glm::length(tangent);
-		tangent /= length;
-
-		//Compute alignment
 		glm::vec3 normal(planeStats.norms.x[index],planeStats.norms.y[index],planeStats.norms.z[index]);
-		glm::vec3 bitangent = glm::normalize(glm::cross(normal, tangent));
 
-
-		if(abs(bitangent.y) > abs(tangent.y))
+		if(abs(normal.z) > abs(normal.y))
 		{
-			//need to swap bitangent and tangent
-			tangent = bitangent;
+			//front facing dominant, split with (x-cx) == 0 (y-z plane)
+			tangent = glm::normalize(glm::cross(normal, glm::vec3(1,0,0)));
+		}else
+		{
+			//Side facing dominant, split with (z-cz) == 0 (x-y plane)
+			
+			tangent = glm::normalize(glm::cross(normal, glm::vec3(0,0,1)));
 		}
+
 
 		if(tangent.y < 0)
 		{
