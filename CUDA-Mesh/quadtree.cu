@@ -50,8 +50,8 @@ __global__ void computeAABBsKernel(PlaneStats planeStats, int* planeInvIdMap, gl
 		glm::vec3 dp = glm::vec3(positions.x[imageX + imageY*xRes], positions.y[imageX + imageY*xRes], positions.z[imageX + imageY*xRes])
 			- glm::vec3(s_centroidX[segment], s_centroidY[segment], s_centroidZ[segment]);
 
-		float sx = glm::dot(dp, s_tangents[segment]);
-		float sy = glm::dot(dp, s_bitangents[segment]);
+		float sx = glm::dot(dp, s_bitangents[segment]);
+		float sy = glm::dot(dp, s_tangents[segment]);
 		segmentProjectedSx[imageX + imageY*xRes] = sx;
 		segmentProjectedSy[imageX + imageY*xRes] = sy;
 

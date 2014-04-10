@@ -821,6 +821,14 @@ __device__ bool mergePlanes(int si, int ti, float* s_counts,
 			glm::vec3 eigs;
 			glm::vec3 norm  = normalFrom3x3Covar(Sm1_n - Sm2, eigs);
 
+			//Flip normal towards viewpoint
+			//if n dot p > 0, flip towards viewpoint
+			if(norm.x*mergedCentroid.x + norm.y*mergedCentroid.y + norm.z * mergedCentroid.z > 0.0f)
+			{
+				//Flip towards camera
+				norm = -norm;
+			}
+
 			//=====MERGE DONE, WRITEBACK=====
 			s_counts[si] = count_m;
 			s_counts[ti] = 0.0f;
@@ -920,6 +928,15 @@ __global__ void finalizePlanesKernel(PlaneStats planeStats, int numNormalPeaks, 
 	glm::vec3 eigs;
 
 	glm::vec3 norm = normalFrom3x3Covar(S1_n - S2, eigs);//S1_n is normalized
+
+	//Flip normal towards viewpoint
+	//if n dot p > 0, flip towards viewpoint
+	if(norm.x*s_centroidX[index] + norm.y*s_centroidY[index] + norm.z * s_centroidZ[index] > 0.0f)
+	{
+		//Flip towards camera
+		norm = -norm;
+	}
+
 	s_NormalX[index] = norm.x;
 	s_NormalY[index] = norm.y;
 	s_NormalZ[index] = norm.z;
@@ -1459,6 +1476,23 @@ __global__ void computePlaneTangentsKernels(PlaneStats planeStats, glm::vec3* pl
 
 		float length = glm::length(tangent);
 		tangent /= length;
+
+		//Compute alignment
+		glm::vec3 normal(planeStats.norms.x[index],planeStats.norms.y[index],planeStats.norms.z[index]);
+		glm::vec3 bitangent = glm::normalize(glm::cross(normal, tangent));
+
+
+		if(abs(bitangent.y) > abs(tangent.y))
+		{
+			//need to swap bitangent and tangent
+			tangent = bitangent;
+		}
+
+		if(tangent.y < 0)
+		{
+			tangent = -tangent;
+		}
+
 	}
 
 	planeTangents[index] = tangent;
