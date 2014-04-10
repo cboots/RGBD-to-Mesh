@@ -109,7 +109,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
       <CompileOut>$(ProjectDir)$(Platform)/$(Configuration)/%(Filename)%(Extension).obj</CompileOut>
     </CudaCompile>
     <CudaCompile>
-      <Include>cuda</Include>
+      <Include>cuda;</Include>
       <CodeGeneration>compute_20,sm_20</CodeGeneration>
       <MaxRegCount>32</MaxRegCount>
     </CudaCompile>

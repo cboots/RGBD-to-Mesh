@@ -1,5 +1,6 @@
 #include "quadtree.h"
 
+
 //Numthreads is assumed to be a power of two
 __device__ void minmaxreduction(float* s_minSx, float* s_maxSx, float* s_minSy, float* s_maxSy, int indexInBlock, int nTotalThreads)
 {
@@ -254,6 +255,7 @@ __global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, 
 
 		float sourceWidthMeters = aabb.y-aabb.x;
 		float sourceHeightMeters = aabb.w-aabb.z;
+
 
 	}
 }
