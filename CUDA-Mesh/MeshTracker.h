@@ -93,6 +93,7 @@ private:
 	int* dev_detectedPlaneCount;
 	int host_detectedPlaneCount;
 	glm::vec3* dev_planeTangents;
+	glm::vec4* dev_aabbIntermediateBuffer;
 	glm::vec4* dev_planeAABB;
 
 	float* dev_segmentProjectedSx;

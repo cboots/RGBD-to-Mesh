@@ -95,6 +95,11 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 	cudaMalloc((void**) &dev_planeTangents, MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(glm::vec3));
 	cudaMalloc((void**) &dev_planeAABB, MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(glm::vec4));
 
+	int numBlocks = ceil(xRes/float(AABB_COMPUTE_BLOCKWIDTH))*ceil(yRes/float(AABB_COMPUTE_BLOCKHEIGHT));
+	cudaMalloc((void**) &dev_aabbIntermediateBuffer, 
+		numBlocks*MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(glm::vec4));
+
+
 	cudaMalloc((void**) &dev_segmentProjectedSx, xRes*yRes*sizeof(float));
 	cudaMalloc((void**) &dev_segmentProjectedSy, xRes*yRes*sizeof(float));
 
@@ -156,6 +161,7 @@ void MeshTracker::cleanupBuffers()
 	cudaFree(dev_detectedPlaneCount);
 	cudaFree(dev_planeTangents);
 	cudaFree(dev_planeAABB);
+	cudaFree(dev_aabbIntermediateBuffer);
 
 	cudaFree(dev_segmentProjectedSx);
 	cudaFree(dev_segmentProjectedSy);
@@ -482,7 +488,7 @@ void MeshTracker::ReprojectPlaneTextures()
 	positions.z = dev_vmapSOA.z[0];
 
 	//Compute bounding boxes and do some other work in the meantime like remapping segments to correct ids and generating plane projected 
-	computeAABBs(dev_planeStats, dev_planeInvIdMap, dev_planeTangents, dev_planeAABB, dev_detectedPlaneCount,  
+	computeAABBs(dev_planeStats, dev_planeInvIdMap, dev_planeTangents, dev_planeAABB, dev_aabbIntermediateBuffer, dev_detectedPlaneCount,  
 		MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*MAX_SEGMENTATION_ROUNDS, 
 		positions, dev_segmentProjectedSx, dev_segmentProjectedSy, dev_finalSegmentsBuffer, mXRes, mYRes);
 }

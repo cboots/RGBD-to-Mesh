@@ -127,19 +127,74 @@ __global__ void computeAABBsKernel(PlaneStats planeStats, int* planeInvIdMap, gl
 			s_maxSy[indexInBlock] = (segment == plane)?sy:0;
 			__syncthreads();
 			minmaxreduction(s_minSx, s_maxSx, s_minSy, s_maxSy, indexInBlock, blockDim.x*blockDim.y);
+			//Threads already synced in function
 
+			if(indexInBlock == 0)
+				aabbs[(blockIdx.x + blockIdx.y*gridDim.x) + plane*gridDim.x*gridDim.y] = glm::vec4(s_minSx[0], s_maxSx[0],s_minSy[0],s_maxSy[0]);
+		}else{
+			if(indexInBlock == 0)
+				aabbs[(blockIdx.x + blockIdx.y*gridDim.x) + plane*gridDim.x*gridDim.y] = glm::vec4(0.0f);
 		}
 	}
-
-
 }
 
-__host__ void computeAABBs(PlaneStats planeStats, int* planeInvIdMap, glm::vec3* tangents, glm::vec4* aabbs, int* planeCount, int maxPlanes,
+
+__global__ void reduceAABBsKernel(glm::vec4* aabbsBlockResults, glm::vec4* aabbs, int numBlocks, int maxPlanes, int* planeCount)
+{
+	extern __shared__ float s_temp[];
+	float* s_minSx = s_temp;
+	float* s_minSy = (s_minSx + blockDim.x);
+	float* s_maxSx = (s_minSy + blockDim.x);
+	float* s_maxSy = (s_maxSx + blockDim.x);
+
+	//two elements loaded per thread
+	int i = threadIdx.x;
+	int i2 = threadIdx.x + blockDim.x;
+
+	int numPlanes = planeCount[0];
+	for(int plane = 0; plane < numPlanes; ++plane)
+	{
+		glm::vec4 aabb1(0.0f);
+		glm::vec4 aabb2(0.0f);
+		if(i < numBlocks)
+			aabb1 = aabbsBlockResults[i + plane*numBlocks];
+		if(i2 < numBlocks)
+			aabb2 = aabbsBlockResults[i2 + plane*numBlocks];
+
+		s_minSx[i] = MIN(aabb1.x,aabb2.x);
+		s_maxSx[i] = MAX(aabb1.y,aabb2.y);
+		s_minSy[i] = MIN(aabb1.z,aabb2.z);
+		s_maxSy[i] = MAX(aabb1.w,aabb2.w);
+
+		__syncthreads();
+		minmaxreduction(s_minSx, s_maxSx, s_minSy, s_maxSy, i, blockDim.x);
+
+		if(threadIdx.x == 0)
+			aabbs[plane] = glm::vec4(s_minSx[0], s_maxSx[0],s_minSy[0],s_maxSy[0]);
+	}
+}
+
+
+inline int pow2roundup (int x)
+{
+	if (x < 0)
+		return 0;
+	--x;
+	x |= x >> 1;
+	x |= x >> 2;
+	x |= x >> 4;
+	x |= x >> 8;
+	x |= x >> 16;
+	return x+1;
+}
+
+__host__ void computeAABBs(PlaneStats planeStats, int* planeInvIdMap, glm::vec3* tangents, glm::vec4* aabbs, glm::vec4* aabbsBlockResults,
+						   int* planeCount, int maxPlanes,
 						   Float3SOA positions, float* segmentProjectedSx, float* segmentProjectedSy, 
 						   int* finalSegmentsBuffer, int xRes, int yRes)
 {
-	int blockWidth = 32;
-	int blockHeight = 8;
+	int blockWidth = AABB_COMPUTE_BLOCKWIDTH;
+	int blockHeight = AABB_COMPUTE_BLOCKHEIGHT;
 
 	assert(blockHeight*blockWidth >= maxPlanes);
 	dim3 threads(blockWidth, blockHeight);
@@ -147,8 +202,19 @@ __host__ void computeAABBs(PlaneStats planeStats, int* planeInvIdMap, glm::vec3*
 	//plane map, tangent, bitangent, centroid and aabb of each plane loaded to shared memory.
 	int sharedMem = maxPlanes*(sizeof(int) + sizeof(float)*3+sizeof(glm::vec3)*2) + blockWidth*blockHeight*4*sizeof(float);
 
-	computeAABBsKernel<<<blocks,threads,sharedMem>>>(planeStats, planeInvIdMap, tangents, aabbs, planeCount, maxPlanes,
+	computeAABBsKernel<<<blocks,threads,sharedMem>>>(planeStats, planeInvIdMap, tangents, aabbsBlockResults, planeCount, maxPlanes,
 		positions, segmentProjectedSx, segmentProjectedSy, 
 		finalSegmentsBuffer, xRes, yRes);
+
+
+	int numBlocks = blocks.x*blocks.y;
+	int pow2Blocks = pow2roundup (numBlocks) >> 1;//Next lowest power of two
+	assert(pow2Blocks <= 1024);
+
+
+	threads = dim3(pow2Blocks);
+	blocks = dim3(1);
+	sharedMem = 4*sizeof(float)*pow2Blocks;
+	reduceAABBsKernel<<<blocks,threads,sharedMem>>>(aabbsBlockResults, aabbs, numBlocks, maxPlanes, planeCount);
 
 }
