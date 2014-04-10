@@ -218,3 +218,52 @@ __host__ void computeAABBs(PlaneStats planeStats, int* planeInvIdMap, glm::vec3*
 	reduceAABBsKernel<<<blocks,threads,sharedMem>>>(aabbsBlockResults, aabbs, numBlocks, maxPlanes, planeCount);
 
 }
+
+
+__global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, PlaneStats planeStats, glm::vec3* tangents, glm::vec4* aabbs,
+											  ProjectionParameters* projParams, int* planeCount, int xRes, int yRes)
+{
+	if(threadIdx.x < planeCount[0])
+	{
+		//In range and valid plane.
+
+		glm::vec3 tangent = tangents[threadIdx.x];
+		glm::vec3 normal = glm::vec3(planeStats.norms.x[threadIdx.x],planeStats.norms.y[threadIdx.x],planeStats.norms.z[threadIdx.x]);
+		glm::vec3 bitangent = glm::normalize(glm::cross(normal, tangent));
+
+		glm::vec3 centroid = glm::vec3(planeStats.centroids.x[threadIdx.x],
+			planeStats.centroids.y[threadIdx.x],
+			planeStats.centroids.z[threadIdx.x]);
+		glm::vec4 aabb = aabbs[threadIdx.x];
+
+		//Compute camera space coordinates
+		glm::vec3 sp1 = aabb.x*bitangent;
+		glm::vec3 sp2 = aabb.y*bitangent;
+		glm::vec3 sp3 = aabb.z*tangent;
+		glm::vec3 sp4 = aabb.w*tangent;
+
+		//Compute screen space projections
+		float su1 = sp1.x*intr.fx/sp1.z + intr.cx;
+		float sv1 = sp1.y*intr.fy/sp1.z + intr.cy;
+		float su2 = sp2.x*intr.fx/sp2.z + intr.cx;
+		float sv2 = sp2.y*intr.fy/sp2.z + intr.cy;
+		float su3 = sp3.x*intr.fx/sp3.z + intr.cx;
+		float sv3 = sp3.y*intr.fy/sp3.z + intr.cy;
+		float su4 = sp4.x*intr.fx/sp4.z + intr.cx;
+		float sv4 = sp4.y*intr.fy/sp4.z + intr.cy;
+
+		float sourceWidthMeters = aabb.y-aabb.x;
+		float sourceHeightMeters = aabb.w-aabb.z;
+
+	}
+}
+
+
+__host__ void calculateProjectionData(rgbd::framework::Intrinsics intr, PlaneStats planeStats, glm::vec3* tangents, glm::vec4* aabbs, 
+									  ProjectionParameters* projParams, int* planeCount, int maxPlanes, int xRes, int yRes)
+{
+	dim3 blocks(1);
+	dim3 threads(maxPlanes);
+
+	calculateProjectionDataKernel<<<blocks,threads>>>(intr, planeStats, tangents, aabbs, projParams, planeCount, xRes, yRes);
+}

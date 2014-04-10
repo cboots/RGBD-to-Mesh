@@ -103,6 +103,9 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 	cudaMalloc((void**) &dev_segmentProjectedSx, xRes*yRes*sizeof(float));
 	cudaMalloc((void**) &dev_segmentProjectedSy, xRes*yRes*sizeof(float));
 
+	cudaMalloc((void**) &dev_planeProjectionParameters, 
+		MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(ProjectionParameters));
+
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -165,6 +168,8 @@ void MeshTracker::cleanupBuffers()
 
 	cudaFree(dev_segmentProjectedSx);
 	cudaFree(dev_segmentProjectedSy);
+
+	cudaFree(dev_planeProjectionParameters);
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -491,6 +496,10 @@ void MeshTracker::ReprojectPlaneTextures()
 	computeAABBs(dev_planeStats, dev_planeInvIdMap, dev_planeTangents, dev_planeAABB, dev_aabbIntermediateBuffer, dev_detectedPlaneCount,  
 		MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*MAX_SEGMENTATION_ROUNDS, 
 		positions, dev_segmentProjectedSx, dev_segmentProjectedSy, dev_finalSegmentsBuffer, mXRes, mYRes);
+
+	calculateProjectionData(mIntr, dev_planeStats, dev_planeTangents, dev_planeAABB, dev_planeProjectionParameters, dev_detectedPlaneCount, 
+		MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*MAX_SEGMENTATION_ROUNDS, mXRes, mYRes);
+
 }
 
 

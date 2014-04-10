@@ -16,8 +16,8 @@
 using namespace std;
 using namespace rgbd::framework;
 
-#define NUM_FLOAT1_IMAGE_SIZE_BUFFERS 10
-#define NUM_FLOAT1_PYRAMID_BUFFERS 10
+#define NUM_FLOAT1_IMAGE_SIZE_BUFFERS 1
+#define NUM_FLOAT1_PYRAMID_BUFFERS 1
 #define NUM_FLOAT3_PYRAMID_BUFFERS 5
 
 #define NUM_NORMAL_X_SUBDIVISIONS		32
@@ -98,6 +98,8 @@ private:
 
 	float* dev_segmentProjectedSx;
 	float* dev_segmentProjectedSy;
+
+	ProjectionParameters* dev_planeProjectionParameters;
 
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
 	Float1SOAPyramid dev_float1PyramidBuffers[NUM_FLOAT1_PYRAMID_BUFFERS];
