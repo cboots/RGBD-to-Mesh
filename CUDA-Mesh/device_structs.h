@@ -59,7 +59,7 @@ struct PlaneStats{
 struct ProjectionParameters{
 	int destWidth;
 	int destHeight;
-	float textureResolution;//pixels/meter
+	int textureResolution;//pixels/meter
 	glm::mat3 projectionMatrix;
 };
 

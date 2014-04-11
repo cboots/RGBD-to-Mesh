@@ -267,7 +267,7 @@ __global__ void reduceAABBsKernel(glm::vec4* aabbsBlockResults, glm::vec4* aabbs
 }
 
 
-inline int pow2roundup (int x)
+__host__ __device__ int roundupnextpow2 (int x)
 {
 	if (x < 0)
 		return 0;
@@ -300,7 +300,7 @@ __host__ void computeAABBs(PlaneStats planeStats, int* planeInvIdMap, glm::vec3*
 
 
 	int numBlocks = blocks.x*blocks.y;
-	int pow2Blocks = pow2roundup (numBlocks) >> 1;//Next lowest power of two
+	int pow2Blocks = roundupnextpow2 (numBlocks) >> 1;//Next lowest power of two
 	assert(pow2Blocks <= 1024);
 
 
@@ -328,11 +328,15 @@ __global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, 
 			planeStats.centroids.z[threadIdx.x]);
 		glm::vec4 aabb = aabbs[threadIdx.x];
 
-		//Compute camera space coordinates
-		glm::vec3 sp1 = aabb.x*bitangent+centroid;
-		glm::vec3 sp2 = aabb.y*bitangent+centroid;
-		glm::vec3 sp3 = aabb.z*tangent+centroid;
-		glm::vec3 sp4 = aabb.w*tangent+centroid;
+		//Compute camera space coordinates (4 points in clockwise winding from viewpoint)
+		/*   1----2
+		*    |    |
+		*    4----3
+		*/
+		glm::vec3 sp1 = (aabb.x*bitangent)+(aabb.z*tangent)+centroid;//UL, Sxmin,Symin
+		glm::vec3 sp2 = (aabb.y*bitangent)+(aabb.z*tangent)+centroid;//UR, Sxmax,Symin
+		glm::vec3 sp3 = (aabb.y*bitangent)+(aabb.w*tangent)+centroid;//LR, Sxmax,Symax
+		glm::vec3 sp4 = (aabb.x*bitangent)+(aabb.w*tangent)+centroid;//LL, Sxmin,Symax
 
 		//Compute screen space projections
 		float su1 = sp1.x*intr.fx/sp1.z + intr.cx;
@@ -344,15 +348,54 @@ __global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, 
 		float su4 = sp4.x*intr.fx/sp4.z + intr.cx;
 		float sv4 = sp4.y*intr.fy/sp4.z + intr.cy;
 
+		//Compute desired resolution.
 		float sourceWidthMeters = aabb.y-aabb.x;
 		float sourceHeightMeters = aabb.w-aabb.z;
 
-		//Compute A matrix 
-		glm::mat3 a = glm::mat3(su1,sv1,1,su2,sv2,1,su3,sv3,1);
+		//Compute minimum resolution for complete data preservation
+		float d12 = sqrtf((su1-su2)*(su1-su2)+(sv1-sv2)*(sv1-sv2));
+		float d23 = sqrtf((su2-su3)*(su2-su3)+(sv2-sv3)*(sv2-sv3));
+		float d34 = sqrtf((su3-su4)*(su3-su4)+(sv3-sv4)*(sv3-sv4));
+		float d41 = sqrtf((su4-su1)*(su4-su1)+(sv4-sv1)*(sv4-sv1));
+		float maxXRatio = MAX(d12,d34)/sourceWidthMeters;
+		float maxYRatio = MAX(d23,d41)/sourceHeightMeters;
+	
+		int maxRatio = ceil(MAX(maxXRatio,maxYRatio));
+		maxRatio = roundupnextpow2(maxRatio);
+
+		int destWidth  = maxRatio * sourceWidthMeters;
+		int destHeight = maxRatio * sourceHeightMeters;
+
+
+		//Compute A matrix (source points to basis vectors)
+		glm::mat3 A = glm::mat3(su1,sv1,1,su2,sv2,1,su3,sv3,1);
 		glm::vec3 b = glm::vec3(su4,sv4, 1);
+		glm::vec3 x = solveAbGaussian(A,b);
+		//mult each row i by xi
+		for(int i = 0; i < 3; ++i)
+		{
+			A[i][0] *= x[i];
+			A[i][1] *= x[i];
+			A[i][2] *= x[i];
+		}
 
-		glm::vec3 x = solveAbGaussian(a,b);
 
+		//Compute B matrix (dest points to basis vectors)
+		glm::mat3 B = glm::mat3(0,0,1,destWidth,0,1,destWidth,destHeight,1);
+		b = glm::vec3(0,destHeight, 1);
+		x = solveAbGaussian(B,b);
+		//mult each row i by xi
+		for(int i = 0; i < 3; ++i)
+		{
+			B[i][0] *= x[i];
+			B[i][1] *= x[i];
+			B[i][2] *= x[i];
+		}
+		
+		projParams[threadIdx.x].projectionMatrix = A*glm::inverse(B);
+		projParams[threadIdx.x].destWidth = destWidth;
+		projParams[threadIdx.x].destHeight = destHeight;
+		projParams[threadIdx.x].textureResolution = maxRatio;
 
 	}
 }
