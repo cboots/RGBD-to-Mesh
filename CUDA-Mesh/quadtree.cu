@@ -1,5 +1,96 @@
 #include "quadtree.h"
 
+//R2 = R1*multFactor + R2;
+__device__ void add_r1_to_r2(glm::mat3 &A, glm::vec3 &b, int r1, int r2, float multFactor)
+{
+	float tmp;
+
+	if (r1 == r2) return;
+
+	for(int i = 0; i < 3; ++i)
+	{
+		A[i][r2] = A[i][r2] + multFactor*A[i][r1];
+	}
+
+	b[r2] = b[r2] + multFactor*b[r1];
+
+}
+
+__device__ void swap_row(glm::mat3 &A, glm::vec3 &b, int r1, int r2)
+{
+	float tmp;
+
+	if (r1 == r2) return;
+
+#pragma unroll
+	for(int i = 0; i < 3; ++i)
+	{
+		tmp = A[i][r1];
+		A[i][r1] = A[i][r2];
+		A[i][r2] = tmp;
+	}
+
+	tmp = b[r1];
+	b[r1] = b[r2];
+	b[r2] = tmp;
+
+}
+
+__device__ void row_mult(glm::mat3 &A, glm::vec3 &b, int r1, float mult)
+{
+#pragma unroll
+	for(int i = 0; i < 3; ++i)
+	{
+		A[i][r1] = A[i][r1]*mult;
+	}
+
+	b[r1] *= mult;
+
+}
+
+
+__device__ glm::vec3 solveAbGaussian(glm::mat3 A, glm::vec3 b)
+{
+	//Make sure diagonals have non-zero entries
+	//TODO
+
+	//Row echelon form
+	for(int r = 0; r < 3; ++r)
+	{
+		float factor = 1.0f/A[r][r];
+		row_mult(A,b,r,factor);
+		for(int r2 = r+1; r2 < 3; ++r2)
+		{
+			if(abs(A[r][r2]) > 0.000001f)
+			{
+				//If A[r][r2] not zero yet, 
+				//Need A[r][r2] + factor*A[r][r] == 0
+				factor = -A[r][r2]/A[r][r]; 
+				add_r1_to_r2(A,b,r,r2,factor);
+			}
+		}
+	}
+
+	//Matrix now upper triangular
+	//Back substitute
+	for(int r = 0; r < 3; ++r)
+	{
+		for(int c = r+1; c < 3; ++c)
+		{
+			if(abs(A[c][r]) > 0.000001f)
+			{
+				//element is non-zero. Backsubstitute
+				//Need A[c][r] + factor*A[c][c] == 0
+				float factor = -A[c][r]/A[c][c];
+				add_r1_to_r2(A,b,c,r,factor);
+			}
+		}
+	}
+	return b;
+
+}
+
+
 
 //Numthreads is assumed to be a power of two
 __device__ void minmaxreduction(float* s_minSx, float* s_maxSx, float* s_minSy, float* s_maxSy, int indexInBlock, int nTotalThreads)
@@ -238,10 +329,10 @@ __global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, 
 		glm::vec4 aabb = aabbs[threadIdx.x];
 
 		//Compute camera space coordinates
-		glm::vec3 sp1 = aabb.x*bitangent;
-		glm::vec3 sp2 = aabb.y*bitangent;
-		glm::vec3 sp3 = aabb.z*tangent;
-		glm::vec3 sp4 = aabb.w*tangent;
+		glm::vec3 sp1 = aabb.x*bitangent+centroid;
+		glm::vec3 sp2 = aabb.y*bitangent+centroid;
+		glm::vec3 sp3 = aabb.z*tangent+centroid;
+		glm::vec3 sp4 = aabb.w*tangent+centroid;
 
 		//Compute screen space projections
 		float su1 = sp1.x*intr.fx/sp1.z + intr.cx;
@@ -255,6 +346,12 @@ __global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, 
 
 		float sourceWidthMeters = aabb.y-aabb.x;
 		float sourceHeightMeters = aabb.w-aabb.z;
+
+		//Compute A matrix 
+		glm::mat3 a = glm::mat3(su1,sv1,1,su2,sv2,1,su3,sv3,1);
+		glm::vec3 b = glm::vec3(su4,sv4, 1);
+
+		glm::vec3 x = solveAbGaussian(a,b);
 
 
 	}

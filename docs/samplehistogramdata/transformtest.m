@@ -32,8 +32,8 @@ destWidth = 50;
 destHeight = 50;
 destpoints = [1 1; destWidth 1; destWidth destHeight; 1 destHeight;];
 
-a = [sourcepoints(1:3,1)'; sourcepoints(1:3,2)'; ones(1,3)];
-b = [sourcepoints(4,:)'; 1];
+a = [sourcepoints(1:3,1)'; sourcepoints(1:3,2)'; ones(1,3)]
+b = [sourcepoints(4,:)'; 1]
 x = linsolve(a, b);
 
 A = bsxfun(@times, a, x');
