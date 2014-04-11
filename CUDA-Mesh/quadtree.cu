@@ -49,10 +49,56 @@ __device__ void row_mult(glm::mat3 &A, glm::vec3 &b, int r1, float mult)
 }
 
 
+#define APPROXZERO(a) (abs(a) < 0.000001f)
+__device__ void makeNonZeroDiagonal(glm::mat3 &A,glm::vec3 b)
+{
+	int permute[3];
+
+	if(		 !APPROXZERO(A[0][0]) && !APPROXZERO(A[1][1]) && !APPROXZERO(A[2][2]))
+	{
+		permute[0] = 0; permute[1] = 1; permute[2] = 2;
+	}else if(!APPROXZERO(A[0][0]) && !APPROXZERO(A[1][2]) && !APPROXZERO(A[2][1]))
+	{
+		permute[0] = 0; permute[1] = 2; permute[2] = 1;
+	}else if(!APPROXZERO(A[0][1]) && !APPROXZERO(A[1][0]) && !APPROXZERO(A[2][2]))
+	{
+		permute[0] = 1; permute[1] = 0; permute[2] = 2;
+	}else if(!APPROXZERO(A[0][1]) && !APPROXZERO(A[1][2]) && !APPROXZERO(A[2][0]))
+	{
+		permute[0] = 1; permute[1] = 2; permute[2] = 0;
+	}else if(!APPROXZERO(A[0][2]) && !APPROXZERO(A[1][0]) && !APPROXZERO(A[2][1]))
+	{
+		permute[0] = 2; permute[1] = 0; permute[2] = 1;
+	}else if(!APPROXZERO(A[0][2]) && !APPROXZERO(A[1][1]) && !APPROXZERO(A[2][0]))
+	{
+		permute[0] = 2; permute[1] = 1; permute[2] = 0;
+	}else{
+		//ERROR
+	}
+
+	for(int i = 0; i < 3; ++i)
+	{
+		if(permute[i] > i)
+		{
+			swap_row(A,b, i, permute[i]);
+			for(int j = 0; j < 3; ++j)
+			{
+				if(permute[j] == i)
+				{
+					permute[j] = permute[i];
+					permute[i] = i;
+					break;
+				}
+			}
+		}
+	}
+}
+
 __device__ glm::vec3 solveAbGaussian(glm::mat3 A, glm::vec3 b)
 {
 	//Make sure diagonals have non-zero entries
-	//TODO
+	if(abs(A[0][0]*A[1][1]*A[2][2]) < 0.000001f)
+		makeNonZeroDiagonal(A,b);
 
 	//Row echelon form
 	for(int r = 0; r < 3; ++r)
@@ -392,7 +438,8 @@ __global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, 
 			B[i][2] *= x[i];
 		}
 		
-		projParams[threadIdx.x].projectionMatrix = A*glm::inverse(B);
+		glm::mat3 C = A*glm::inverse(B);
+		projParams[threadIdx.x].projectionMatrix = C;
 		projParams[threadIdx.x].destWidth = destWidth;
 		projParams[threadIdx.x].destHeight = destHeight;
 		projParams[threadIdx.x].textureResolution = maxRatio;
