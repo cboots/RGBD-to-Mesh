@@ -3,6 +3,7 @@
 #include "RGBDFrame.h"
 #include "device_structs.h"
 #include <glm/glm.hpp>
+#include "math_constants.h"
 
 using namespace rgbd::framework;
 
@@ -42,3 +43,6 @@ __host__ void drawScaledHistogramToPBO(float4* pbo, int* histogram, glm::vec3 co
 
 __host__ void drawSegmentsDataToPBO(float4* pbo, int* normalSegments, float* projectedDistanceMap, float* projectedSx, float* projectedSy,
 									  int xRes, int yRes, int pboXRes, int pboYRes);
+
+__host__ void drawPlaneProjectedTexturetoPBO(float4* pbo, Float4SOA projectedTexture, int texWidth, int texHeight, 
+											 int texBufferWidth, int pboXRes, int pboYRes);

@@ -418,3 +418,43 @@ __host__ void drawScaledHistogramToPBO(float4* pbo, int* histogram, glm::vec3 co
 	drawScaledHistogramToPBOKernel<<<fullBlocksPerGrid,threadsPerBlock>>>(pbo, histogram, color, float(1.0f/maxValue), length, pboXRes, pboYRes);
 }
 
+__global__ void drawPlaneProjectedTexturetoPBOKernel(float4* pbo, Float4SOA projectedTexture, int texWidth, int texHeight, 
+											 int texBufferWidth, int pboXRes, int pboYRes)
+{
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int i = (y * texBufferWidth) + x;
+	int pboi = (y * pboXRes) + x;
+
+	if(x < pboXRes && y < pboYRes){
+
+		//TODO: Texture oversize scaling
+		float4 texVal = {CUDART_NAN_F,CUDART_NAN_F,CUDART_NAN_F,CUDART_NAN_F};
+		if(x < texWidth && y < texHeight)
+		{
+			texVal.x = projectedTexture.x[i];
+			texVal.y = projectedTexture.y[i];
+			texVal.z = projectedTexture.z[i];
+			texVal.w = projectedTexture.w[i];
+		}
+		// Each thread writes one pixel location in the texture (textel)
+		pbo[pboi] = texVal;
+
+	}
+}
+
+
+__host__ void drawPlaneProjectedTexturetoPBO(float4* pbo, Float4SOA projectedTexture, int texWidth, int texHeight, 
+											 int texBufferWidth, int pboXRes, int pboYRes)
+{
+
+	int tileSize = 16;
+	dim3 threadsPerBlock(tileSize, tileSize);
+	dim3 fullBlocksPerGrid((int)ceil(float(pboXRes)/float(tileSize)), 
+		(int)ceil(float(pboYRes)/float(tileSize)));
+	//Parallel by PBO pixel (is for debug, not exact recreation)
+
+	drawPlaneProjectedTexturetoPBOKernel<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo, projectedTexture, 
+		texWidth, texHeight, texBufferWidth, pboXRes, pboYRes);
+
+}

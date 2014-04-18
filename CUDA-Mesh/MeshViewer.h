@@ -49,6 +49,7 @@ enum DisplayModes
 	DISPLAY_MODE_NMAP_DEBUG,
 	DISPLAY_MODE_SEGMENTATION_DEBUG,
 	DISPLAY_MODE_PROJECTION_DEBUG,
+	DISPLAY_MODE_PROJECTED_TEXTURE_DEBUG,
 	DISPLAY_MODE_NONE
 };
 
@@ -275,6 +276,8 @@ private:
 	void drawNormalSegmentsToTexture(GLuint texture, int level);
 	void drawFinalSegmentsToTexture(GLuint texture);
 	void drawDistanceHistogramtoTexture(GLuint texture, vec3 color, int scale, int peak);
+	
+	void drawPlaneProjectedTexturetoTexture(GLuint texture, int planeNum);
 
 #pragma endregion
 

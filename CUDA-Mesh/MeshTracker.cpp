@@ -552,6 +552,7 @@ void MeshTracker::ReprojectPlaneTextures()
 		}else
 		{
 			//Reached last plane, done
+			host_detectedPlaneCount = i;
 			break;
 		}
 	}

@@ -182,6 +182,9 @@ public:
 	inline float* getProjectedSx() {return dev_segmentProjectedSx;}
 	inline float* getProjectedSy() {return dev_segmentProjectedSy;}
 	inline int* getDistanceHistogram(int peak) {return (peak >= 0 && peak < MAX_2D_PEAKS_PER_ROUND)?dev_distanceHistograms[peak]:NULL;}
+	inline Float4SOA getProjectedTexture(int planeNum){return dev_PlaneTexures[planeNum];}
+	inline ProjectionParameters getHostProjectionParameters(int planeNum){return host_planeProjectionParameters[planeNum];}
+	inline int getHostNumDetectedPlanes(){return host_detectedPlaneCount;}
 #pragma endregion
 
 #pragma region Property Getters
@@ -194,6 +197,7 @@ public:
 		if(maxAngleDegrees > 0.0f && maxAngleDegrees < 90.0f) 
 			m2DSegmentationMaxAngleFromPeak = maxAngleDegrees;
 	}
+	inline int getProjectedTextureBufferWidth(){return MAX_TEXTURE_BUFFER_SIZE;}
 #pragma endregion
 };
 

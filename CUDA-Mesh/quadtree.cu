@@ -472,5 +472,5 @@ __host__ void projectTexture(ProjectionParameters* host_projParams, ProjectionPa
 							 RGBMapSOA rgbMap, int* dev_finalSegmentsBuffer, float* dev_finalDistanceToPlaneBuffer,
 							 int imageXRes, int imageYRes)
 {
-
+	
 }
