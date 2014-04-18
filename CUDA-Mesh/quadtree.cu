@@ -361,6 +361,11 @@ __host__ void computeAABBs(PlaneStats planeStats, int* planeInvIdMap, glm::vec3*
 __global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, PlaneStats planeStats, glm::vec3* tangents, glm::vec4* aabbs,
 											  ProjectionParameters* projParams, int* planeCount, int xRes, int yRes)
 {
+	glm::mat3 C(1.0f);
+
+	int destWidth  = 0;
+	int destHeight = 0;
+	int maxRatio = 0;
 	if(threadIdx.x < planeCount[0])
 	{
 		//In range and valid plane.
@@ -405,18 +410,18 @@ __global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, 
 		float d41 = sqrtf((su4-su1)*(su4-su1)+(sv4-sv1)*(sv4-sv1));
 		float maxXRatio = MAX(d12,d34)/sourceWidthMeters;
 		float maxYRatio = MAX(d23,d41)/sourceHeightMeters;
-	
-		int maxRatio = ceil(MAX(maxXRatio,maxYRatio));
+
+		maxRatio = ceil(MAX(maxXRatio,maxYRatio));
 		maxRatio = roundupnextpow2(maxRatio);
 
-		int destWidth  = maxRatio * sourceWidthMeters;
-		int destHeight = maxRatio * sourceHeightMeters;
+		destWidth  = maxRatio * sourceWidthMeters;
+		destHeight = maxRatio * sourceHeightMeters;
 
 
 		//Compute A matrix (source points to basis vectors)
 		glm::mat3 A = glm::mat3(su1,sv1,1,su2,sv2,1,su3,sv3,1);
 		glm::vec3 b = glm::vec3(su4,sv4, 1);
-		glm::vec3 x = solveAbGaussian(A,b);
+		glm::vec3 x = A._inverse()*b; 
 		//mult each row i by xi
 		for(int i = 0; i < 3; ++i)
 		{
@@ -427,9 +432,12 @@ __global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, 
 
 
 		//Compute B matrix (dest points to basis vectors)
-		glm::mat3 B = glm::mat3(0,0,1,destWidth,0,1,destWidth,destHeight,1);
+		glm::mat3 B = glm::mat3(0,0,1,
+			destWidth,0,1,
+			destWidth,destHeight,1);
 		b = glm::vec3(0,destHeight, 1);
-		x = solveAbGaussian(B,b);
+
+		x = glm::inverse(B)*b;
 		//mult each row i by xi
 		for(int i = 0; i < 3; ++i)
 		{
@@ -437,14 +445,15 @@ __global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, 
 			B[i][1] *= x[i];
 			B[i][2] *= x[i];
 		}
-		
-		glm::mat3 C = A*glm::inverse(B);
-		projParams[threadIdx.x].projectionMatrix = C;
-		projParams[threadIdx.x].destWidth = destWidth;
-		projParams[threadIdx.x].destHeight = destHeight;
-		projParams[threadIdx.x].textureResolution = maxRatio;
+
+		C = A*glm::inverse(B);
 
 	}
+
+	projParams[threadIdx.x].projectionMatrix = C;
+	projParams[threadIdx.x].destWidth = destWidth;
+	projParams[threadIdx.x].destHeight = destHeight;
+	projParams[threadIdx.x].textureResolution = maxRatio;
 }
 
 
@@ -455,4 +464,13 @@ __host__ void calculateProjectionData(rgbd::framework::Intrinsics intr, PlaneSta
 	dim3 threads(maxPlanes);
 
 	calculateProjectionDataKernel<<<blocks,threads>>>(intr, planeStats, tangents, aabbs, projParams, planeCount, xRes, yRes);
+}
+
+
+__host__ void projectTexture(ProjectionParameters* host_projParams, ProjectionParameters* dev_projParams, 
+							 Float4SOA destTexture, int destTextureSize, 
+							 RGBMapSOA rgbMap, int* dev_finalSegmentsBuffer, float* dev_finalDistanceToPlaneBuffer,
+							 int imageXRes, int imageYRes)
+{
+
 }

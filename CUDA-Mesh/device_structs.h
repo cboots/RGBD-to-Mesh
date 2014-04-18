@@ -24,6 +24,14 @@ struct Float3SOA{
 	float* z;
 };
 
+
+struct Float4SOA{
+	float* x;
+	float* y;
+	float* z;
+	float* w;
+};
+
 struct Int3SOA{
 	int* x;
 	int* y;

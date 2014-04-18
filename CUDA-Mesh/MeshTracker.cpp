@@ -73,39 +73,45 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 
 
 	//Plane stats buffers
-	cudaMalloc((void**) &dev_planeStats.count, MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(float));
-	cudaMalloc((void**) &dev_planeStats.Sxx,   MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(float));
-	cudaMalloc((void**) &dev_planeStats.Syy,   MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(float));
-	cudaMalloc((void**) &dev_planeStats.Szz,   MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(float));
-	cudaMalloc((void**) &dev_planeStats.Sxy,   MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(float));
-	cudaMalloc((void**) &dev_planeStats.Syz,   MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(float));
-	cudaMalloc((void**) &dev_planeStats.Sxz,   MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(float));
-	createFloat3SOA(dev_planeStats.centroids,  MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS);
-	createFloat3SOA(dev_planeStats.norms,      MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS);
-	createFloat3SOA(dev_planeStats.eigs,       MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS);
+	cudaMalloc((void**) &dev_planeStats.count, MAX_PLANES_TOTAL*sizeof(float));
+	cudaMalloc((void**) &dev_planeStats.Sxx,   MAX_PLANES_TOTAL*sizeof(float));
+	cudaMalloc((void**) &dev_planeStats.Syy,   MAX_PLANES_TOTAL*sizeof(float));
+	cudaMalloc((void**) &dev_planeStats.Szz,   MAX_PLANES_TOTAL*sizeof(float));
+	cudaMalloc((void**) &dev_planeStats.Sxy,   MAX_PLANES_TOTAL*sizeof(float));
+	cudaMalloc((void**) &dev_planeStats.Syz,   MAX_PLANES_TOTAL*sizeof(float));
+	cudaMalloc((void**) &dev_planeStats.Sxz,   MAX_PLANES_TOTAL*sizeof(float));
+	createFloat3SOA(dev_planeStats.centroids,  MAX_PLANES_TOTAL);
+	createFloat3SOA(dev_planeStats.norms,      MAX_PLANES_TOTAL);
+	createFloat3SOA(dev_planeStats.eigs,       MAX_PLANES_TOTAL);
 
 
 	cudaMalloc((void**) &dev_finalSegmentsBuffer, xRes*yRes*sizeof(int));
 	cudaMalloc((void**) &dev_finalDistanceToPlaneBuffer, xRes*yRes*sizeof(float));
 
-	cudaMalloc((void**) &dev_planeIdMap,  MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(int));
-	cudaMalloc((void**) &dev_planeInvIdMap,  MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(int));
+	cudaMalloc((void**) &dev_planeIdMap,  MAX_PLANES_TOTAL*sizeof(int));
+	cudaMalloc((void**) &dev_planeInvIdMap,  MAX_PLANES_TOTAL*sizeof(int));
 	cudaMalloc((void**) &dev_detectedPlaneCount,  sizeof(int));
 
-	cudaMalloc((void**) &dev_planeTangents, MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(glm::vec3));
-	cudaMalloc((void**) &dev_planeAABB, MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(glm::vec4));
+	cudaMalloc((void**) &dev_planeTangents, MAX_PLANES_TOTAL*sizeof(glm::vec3));
+	cudaMalloc((void**) &dev_planeAABB, MAX_PLANES_TOTAL*sizeof(glm::vec4));
 
 	int numBlocks = ceil(xRes/float(AABB_COMPUTE_BLOCKWIDTH))*ceil(yRes/float(AABB_COMPUTE_BLOCKHEIGHT));
 	cudaMalloc((void**) &dev_aabbIntermediateBuffer, 
-		numBlocks*MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(glm::vec4));
+		numBlocks*MAX_PLANES_TOTAL*sizeof(glm::vec4));
 
 
 	cudaMalloc((void**) &dev_segmentProjectedSx, xRes*yRes*sizeof(float));
 	cudaMalloc((void**) &dev_segmentProjectedSy, xRes*yRes*sizeof(float));
 
 	cudaMalloc((void**) &dev_planeProjectionParameters, 
-		MAX_SEGMENTATION_ROUNDS*MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*sizeof(ProjectionParameters));
+		MAX_PLANES_TOTAL*sizeof(ProjectionParameters));
+	host_planeProjectionParameters = new ProjectionParameters[MAX_PLANES_TOTAL];
 
+
+	for(int i = 0; i < MAX_PLANES_TOTAL; ++i)
+	{
+		createFloat4SOA(dev_PlaneTexures[i], MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE);
+	}
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -116,6 +122,7 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 	{
 		createFloat3SOAPyramid(dev_float3PyramidBuffers[i], xRes, yRes);
 	}
+
 
 	for(int i = 0; i < NUM_FLOAT1_IMAGE_SIZE_BUFFERS; ++i)
 	{
@@ -170,6 +177,12 @@ void MeshTracker::cleanupBuffers()
 	cudaFree(dev_segmentProjectedSy);
 
 	cudaFree(dev_planeProjectionParameters);
+	delete host_planeProjectionParameters;
+
+	for(int i = 0; i < MAX_PLANES_TOTAL; ++i)
+	{
+		freeFloat4SOA(dev_PlaneTexures[i]);
+	}
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -240,6 +253,21 @@ void MeshTracker::freeFloat3SOA(Float3SOA dev_soa)
 	cudaFree(dev_soa.x);
 }
 
+
+
+void MeshTracker::createFloat4SOA(Float4SOA& dev_soa, int length)
+{
+	cudaMalloc((void**) &dev_soa.x, sizeof(float)*4*length);
+	dev_soa.y = dev_soa.x + length;
+	dev_soa.z = dev_soa.y + length;
+	dev_soa.w = dev_soa.z + length;
+}
+
+void MeshTracker::freeFloat4SOA(Float4SOA dev_soa)
+{
+	cudaFree(dev_soa.x);
+}
+
 void MeshTracker::createFloat3SOAPyramid(Float3SOAPyramid& dev_pyramid, int xRes, int yRes)
 {
 	int pixCount = xRes*yRes;
@@ -276,6 +304,9 @@ void MeshTracker::freeFloat3SOAPyramid(Float3SOAPyramid dev_pyramid)
 {
 	cudaFree(dev_pyramid.x[0]);
 }
+
+
+
 
 #pragma endregion
 
@@ -473,14 +504,14 @@ void MeshTracker::GPUSimpleSegmentation()
 
 	}
 
-	generatePlaneCompressionMap(dev_planeStats, MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*MAX_SEGMENTATION_ROUNDS, 
+	generatePlaneCompressionMap(dev_planeStats, MAX_PLANES_TOTAL, 
 		dev_planeIdMap, dev_planeInvIdMap, dev_detectedPlaneCount);
 
-	compactPlaneStats(dev_planeStats,  MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*MAX_SEGMENTATION_ROUNDS, 
+	compactPlaneStats(dev_planeStats,  MAX_PLANES_TOTAL, 
 		dev_planeIdMap, dev_detectedPlaneCount);
 
 	computePlaneTangents(dev_planeStats, dev_planeTangents, 
-		MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*MAX_SEGMENTATION_ROUNDS, dev_detectedPlaneCount);
+		MAX_PLANES_TOTAL, dev_detectedPlaneCount);
 }
 
 
@@ -494,11 +525,36 @@ void MeshTracker::ReprojectPlaneTextures()
 
 	//Compute bounding boxes and do some other work in the meantime like remapping segments to correct ids and generating plane projected 
 	computeAABBs(dev_planeStats, dev_planeInvIdMap, dev_planeTangents, dev_planeAABB, dev_aabbIntermediateBuffer, dev_detectedPlaneCount,  
-		MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*MAX_SEGMENTATION_ROUNDS, 
+		MAX_PLANES_TOTAL, 
 		positions, dev_segmentProjectedSx, dev_segmentProjectedSy, dev_finalSegmentsBuffer, mXRes, mYRes);
 
 	calculateProjectionData(mIntr, dev_planeStats, dev_planeTangents, dev_planeAABB, dev_planeProjectionParameters, dev_detectedPlaneCount, 
-		MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*MAX_SEGMENTATION_ROUNDS, mXRes, mYRes);
+		MAX_PLANES_TOTAL, mXRes, mYRes);
+
+	cudaMemcpy(host_planeProjectionParameters, dev_planeProjectionParameters, 
+		MAX_PLANES_TOTAL*sizeof(ProjectionParameters), 
+		cudaMemcpyDeviceToHost);
+
+	//Plane projection parameters now on host side. Use to dispatch kernels more efficiently
+	RGBMapSOA rgbMap;
+	rgbMap.r = dev_rgbSOA.x[0];
+	rgbMap.g = dev_rgbSOA.y[0];
+	rgbMap.b = dev_rgbSOA.z[0];
+
+	for(int i = 0; i < MAX_PLANES_TOTAL; ++i){
+		if(host_planeProjectionParameters[i].destWidth > 0)
+		{
+			//Offset projections to correct index
+			projectTexture(host_planeProjectionParameters + i, dev_planeProjectionParameters + i, 
+				dev_PlaneTexures[i], MAX_TEXTURE_BUFFER_SIZE, 
+				rgbMap, dev_finalSegmentsBuffer, dev_finalDistanceToPlaneBuffer,
+				mXRes, mYRes);
+		}else
+		{
+			//Reached last plane, done
+			break;
+		}
+	}
 
 }
 

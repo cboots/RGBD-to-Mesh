@@ -27,12 +27,15 @@ using namespace rgbd::framework;
 #define PEAK_2D_EXCLUSION_RADIUS	8
 
 #define MAX_SEGMENTATION_ROUNDS		2
+#define MAX_PLANES_TOTAL			(MAX_2D_PEAKS_PER_ROUND*DISTANCE_HIST_MAX_PEAKS*MAX_SEGMENTATION_ROUNDS)
 
 #define DISTANCE_HIST_MAX_PEAKS	8
 #define DISTANCE_HIST_COUNT	512
 #define DISTANCE_HIST_MIN	0.1f
 #define DISTANCE_HIST_MAX	5.0f
 #define DISTANCE_HIST_RESOLUTION  ((DISTANCE_HIST_MAX-DISTANCE_HIST_MIN)/DISTANCE_HIST_COUNT)
+
+#define MAX_TEXTURE_BUFFER_SIZE	2048
 
 enum FilterMode
 {
@@ -100,6 +103,9 @@ private:
 	float* dev_segmentProjectedSy;
 
 	ProjectionParameters* dev_planeProjectionParameters;
+	ProjectionParameters* host_planeProjectionParameters;
+
+	Float4SOA dev_PlaneTexures[MAX_PLANES_TOTAL];
 
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
 	Float1SOAPyramid dev_float1PyramidBuffers[NUM_FLOAT1_PYRAMID_BUFFERS];
@@ -118,6 +124,8 @@ private:
 	void createFloat3SOA(Float3SOA& dev_soa, int length);
 	void freeFloat3SOA(Float3SOA dev_soa);
 
+	void createFloat4SOA(Float4SOA& dev_soa, int length);
+	void freeFloat4SOA(Float4SOA dev_soa);
 
 	void createInt3SOA(Int3SOA& dev_soa, int length);
 	void freeInt3SOA(Int3SOA dev_soa);
