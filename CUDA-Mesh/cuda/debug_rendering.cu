@@ -351,7 +351,7 @@ __host__ void drawNormalSegmentsToPBO(float4* pbo, int* normalSegments, float* p
 
 
 __global__ void sendFinalSegmentDataToPBO(float4* pbo, int* segments, float* projectedDistances, float* projectedSx, float* projectedSy,
-									 int xRes, int yRes, int pboXRes, int pboYRes)
+										  int xRes, int yRes, int pboXRes, int pboYRes)
 {
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
@@ -371,7 +371,7 @@ __global__ void sendFinalSegmentDataToPBO(float4* pbo, int* segments, float* pro
 
 
 __host__ void drawSegmentsDataToPBO(float4* pbo, int* normalSegments, float* projectedDistanceMap, float* projectedSx, float* projectedSy,
-									  int xRes, int yRes, int pboXRes, int pboYRes)
+									int xRes, int yRes, int pboXRes, int pboYRes)
 {
 
 	int tileSize = 16;
@@ -419,15 +419,26 @@ __host__ void drawScaledHistogramToPBO(float4* pbo, int* histogram, glm::vec3 co
 }
 
 __global__ void drawPlaneProjectedTexturetoPBOKernel(float4* pbo, Float4SOA projectedTexture, int texWidth, int texHeight, 
-											 int texBufferWidth, int pboXRes, int pboYRes)
+													 int texBufferWidth, int pboXRes, int pboYRes)
 {
 	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
 	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
-	int i = (y * texBufferWidth) + x;
 	int pboi = (y * pboXRes) + x;
 
-	if(x < pboXRes && y < pboYRes){
 
+
+
+	if(x < pboXRes && y < pboYRes){
+		//Calculate Scale recip
+		int scale = 1;
+		if(texWidth > pboXRes || texHeight > pboYRes)
+		{
+			scale = glm::max(ceil(texWidth/float(pboXRes)),ceil(texHeight/float(pboYRes)));
+		}
+		x*=scale;
+		y*=scale;
+
+		int i = (y * texBufferWidth) + x;
 		//TODO: Texture oversize scaling
 		float4 texVal = {CUDART_NAN_F,CUDART_NAN_F,CUDART_NAN_F,CUDART_NAN_F};
 		if(x < texWidth && y < texHeight)

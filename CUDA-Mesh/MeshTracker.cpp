@@ -22,7 +22,7 @@ MeshTracker::MeshTracker(int xResolution, int yResolution, Intrinsics intr)
 	mMinDistPeakCount = 800;
 	mMinNormalPeakCout = 800;
 
-	mMaxPlanesOutput = MAX_PLANES_TOTAL;
+	mMaxPlanesOutput = 1;
 
 	initBuffers(mXRes, mYRes);
 
@@ -538,10 +538,11 @@ void MeshTracker::ReprojectPlaneTextures()
 	rgbMap.g = dev_rgbSOA.y[0];
 	rgbMap.b = dev_rgbSOA.z[0];
 
+	host_detectedPlaneCount = 0;
 	for(int i = 0; i < mMaxPlanesOutput; ++i){
-		host_detectedPlaneCount = i;
 		if(host_planeProjectionParameters[i].destWidth > 0)
 		{
+			host_detectedPlaneCount++;
 			//Offset projections to correct index
 			projectTexture(i, host_planeProjectionParameters + i, dev_planeProjectionParameters + i, 
 				dev_PlaneTexure, MAX_TEXTURE_BUFFER_SIZE, 
