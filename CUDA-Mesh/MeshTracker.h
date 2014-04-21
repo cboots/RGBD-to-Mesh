@@ -105,7 +105,7 @@ private:
 	ProjectionParameters* dev_planeProjectionParameters;
 	ProjectionParameters* host_planeProjectionParameters;
 
-	Float4SOA dev_PlaneTexures[MAX_PLANES_TOTAL];
+	Float4SOA dev_PlaneTexure;
 
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
 	Float1SOAPyramid dev_float1PyramidBuffers[NUM_FLOAT1_PYRAMID_BUFFERS];
@@ -182,7 +182,7 @@ public:
 	inline float* getProjectedSx() {return dev_segmentProjectedSx;}
 	inline float* getProjectedSy() {return dev_segmentProjectedSy;}
 	inline int* getDistanceHistogram(int peak) {return (peak >= 0 && peak < MAX_2D_PEAKS_PER_ROUND)?dev_distanceHistograms[peak]:NULL;}
-	inline Float4SOA getProjectedTexture(int planeNum){return dev_PlaneTexures[planeNum];}
+	inline Float4SOA getProjectedTexture(int planeNum){return dev_PlaneTexure;}
 	inline ProjectionParameters getHostProjectionParameters(int planeNum){return host_planeProjectionParameters[planeNum];}
 	inline int getHostNumDetectedPlanes(){return host_detectedPlaneCount;}
 #pragma endregion

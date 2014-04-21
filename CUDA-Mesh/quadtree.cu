@@ -421,7 +421,7 @@ __global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, 
 		//Compute A matrix (source points to basis vectors)
 		glm::mat3 A = glm::mat3(su1,sv1,1,su2,sv2,1,su3,sv3,1);
 		glm::vec3 b = glm::vec3(su4,sv4, 1);
-		glm::vec3 x = A._inverse()*b; 
+		glm::vec3 x = glm::inverse(A)*b; 
 		//mult each row i by xi
 		for(int i = 0; i < 3; ++i)
 		{

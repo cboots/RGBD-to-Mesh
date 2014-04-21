@@ -107,11 +107,8 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 		MAX_PLANES_TOTAL*sizeof(ProjectionParameters));
 	host_planeProjectionParameters = new ProjectionParameters[MAX_PLANES_TOTAL];
 
-
-	for(int i = 0; i < MAX_PLANES_TOTAL; ++i)
-	{
-		createFloat4SOA(dev_PlaneTexures[i], MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE);
-	}
+	createFloat4SOA(dev_PlaneTexure, MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE);
+	
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -179,10 +176,8 @@ void MeshTracker::cleanupBuffers()
 	cudaFree(dev_planeProjectionParameters);
 	delete host_planeProjectionParameters;
 
-	for(int i = 0; i < MAX_PLANES_TOTAL; ++i)
-	{
-		freeFloat4SOA(dev_PlaneTexures[i]);
-	}
+	freeFloat4SOA(dev_PlaneTexure);
+	
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -541,12 +536,12 @@ void MeshTracker::ReprojectPlaneTextures()
 	rgbMap.g = dev_rgbSOA.y[0];
 	rgbMap.b = dev_rgbSOA.z[0];
 
-	for(int i = 0; i < MAX_PLANES_TOTAL; ++i){
+	for(int i = 1; i < 2; ++i){
 		if(host_planeProjectionParameters[i].destWidth > 0)
 		{
 			//Offset projections to correct index
 			projectTexture(i, host_planeProjectionParameters + i, dev_planeProjectionParameters + i, 
-				dev_PlaneTexures[i], MAX_TEXTURE_BUFFER_SIZE, 
+				dev_PlaneTexure, MAX_TEXTURE_BUFFER_SIZE, 
 				rgbMap, dev_finalSegmentsBuffer, dev_finalDistanceToPlaneBuffer,
 				mXRes, mYRes);
 		}else
