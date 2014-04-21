@@ -25,7 +25,7 @@ __host__ void calculateProjectionData(rgbd::framework::Intrinsics intr, PlaneSta
 
 
 //Inputs are for a single texture projection, so first few inputs from arrays need to be preoffset to the correct plane
-__host__ void projectTexture(ProjectionParameters* host_projParams, ProjectionParameters* dev_projParams, 
+__host__ void projectTexture(int segmentId, ProjectionParameters* host_projParams, ProjectionParameters* dev_projParams, 
 							 Float4SOA destTexture, int destTextureSize, 
 							 RGBMapSOA rgbMap, int* dev_finalSegmentsBuffer, float* dev_finalDistanceToPlaneBuffer,
 							 int imageXRes, int imageYRes);

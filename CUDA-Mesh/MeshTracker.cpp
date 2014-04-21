@@ -545,7 +545,7 @@ void MeshTracker::ReprojectPlaneTextures()
 		if(host_planeProjectionParameters[i].destWidth > 0)
 		{
 			//Offset projections to correct index
-			projectTexture(host_planeProjectionParameters + i, dev_planeProjectionParameters + i, 
+			projectTexture(i, host_planeProjectionParameters + i, dev_planeProjectionParameters + i, 
 				dev_PlaneTexures[i], MAX_TEXTURE_BUFFER_SIZE, 
 				rgbMap, dev_finalSegmentsBuffer, dev_finalDistanceToPlaneBuffer,
 				mXRes, mYRes);

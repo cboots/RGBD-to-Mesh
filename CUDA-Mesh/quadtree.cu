@@ -467,10 +467,64 @@ __host__ void calculateProjectionData(rgbd::framework::Intrinsics intr, PlaneSta
 }
 
 
-__host__ void projectTexture(ProjectionParameters* host_projParams, ProjectionParameters* dev_projParams, 
+__global__ void projectTexture(int segmentId, ProjectionParameters* dev_projParams, 
+							   Float4SOA destTexture, int destTextureSize, 
+							   RGBMapSOA rgbMap, int* dev_finalSegmentsBuffer, float* dev_finalDistanceToPlaneBuffer,
+							   int imageXRes, int imageYRes)
+{
+	int destX = blockIdx.x*blockDim.x+threadIdx.x;
+	int destY = blockIdx.y*blockDim.y+threadIdx.y;
+
+	if(destX < destTextureSize && destX < dev_projParams->destWidth
+		&& destY < destTextureSize && destY < dev_projParams->destHeight)
+	{
+		float r = CUDART_NAN_F;
+		float g = CUDART_NAN_F;
+		float b = CUDART_NAN_F;
+		float dist = CUDART_NAN_F;
+
+		//Destination in range
+		glm::mat3 Tds = dev_projParams->projectionMatrix;
+
+		glm::vec3 sourceCoords = Tds*glm::vec3(destX, destY, 1.0f);
+
+		//Dehomogenization
+		sourceCoords.x /= sourceCoords.z;
+		sourceCoords.y /= sourceCoords.z;
+
+		if(sourceCoords.x >= 0 && sourceCoords.x < imageXRes 
+			&& sourceCoords.y >= 0 && sourceCoords.y < imageYRes )
+		{
+			//In source range
+			int linIndex = int(sourceCoords.x) + int(sourceCoords.y)*imageXRes;
+			if(segmentId == dev_finalSegmentsBuffer[linIndex]){
+				r = rgbMap.r[linIndex];
+				g = rgbMap.g[linIndex];
+				b = rgbMap.b[linIndex];
+				dist = dev_finalSegmentsBuffer[linIndex];
+			}
+		}
+
+		destTexture.x[destX + destY*destTextureSize] = r;
+		destTexture.y[destX + destY*destTextureSize] = g;
+		destTexture.z[destX + destY*destTextureSize] = b;
+		destTexture.w[destX + destY*destTextureSize] = dist;
+	}
+
+}
+
+
+__host__ void projectTexture(int segmentId, ProjectionParameters* host_projParams, ProjectionParameters* dev_projParams, 
 							 Float4SOA destTexture, int destTextureSize, 
 							 RGBMapSOA rgbMap, int* dev_finalSegmentsBuffer, float* dev_finalDistanceToPlaneBuffer,
 							 int imageXRes, int imageYRes)
 {
-	
+	int tileSize = 16;
+
+	dim3 threads(tileSize, tileSize);
+	dim3 blocks((int)ceil(float(host_projParams->destWidth)/float(tileSize)),
+		(int)ceil(float(host_projParams->destHeight)/float(tileSize)));
+
+	projectTexture<<<blocks,threads>>>(segmentId, dev_projParams, destTexture, destTextureSize, 
+		rgbMap, dev_finalSegmentsBuffer, dev_finalDistanceToPlaneBuffer, imageXRes, imageYRes);
 }
