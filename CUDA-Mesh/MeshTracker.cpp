@@ -22,6 +22,8 @@ MeshTracker::MeshTracker(int xResolution, int yResolution, Intrinsics intr)
 	mMinDistPeakCount = 800;
 	mMinNormalPeakCout = 800;
 
+	mMaxPlanesOutput = MAX_PLANES_TOTAL;
+
 	initBuffers(mXRes, mYRes);
 
 	resetTracker();
@@ -108,7 +110,7 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 	host_planeProjectionParameters = new ProjectionParameters[MAX_PLANES_TOTAL];
 
 	createFloat4SOA(dev_PlaneTexure, MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE);
-	
+
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -177,7 +179,7 @@ void MeshTracker::cleanupBuffers()
 	delete host_planeProjectionParameters;
 
 	freeFloat4SOA(dev_PlaneTexure);
-	
+
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -536,7 +538,8 @@ void MeshTracker::ReprojectPlaneTextures()
 	rgbMap.g = dev_rgbSOA.y[0];
 	rgbMap.b = dev_rgbSOA.z[0];
 
-	for(int i = 1; i < 2; ++i){
+	for(int i = 0; i < mMaxPlanesOutput; ++i){
+		host_detectedPlaneCount = i;
 		if(host_planeProjectionParameters[i].destWidth > 0)
 		{
 			//Offset projections to correct index
@@ -547,7 +550,6 @@ void MeshTracker::ReprojectPlaneTextures()
 		}else
 		{
 			//Reached last plane, done
-			host_detectedPlaneCount = i;
 			break;
 		}
 	}

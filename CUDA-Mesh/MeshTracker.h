@@ -66,6 +66,7 @@ private:
 	float mPlaneFinalAngleThresh;
 	float mPlaneFinalDistThresh;
 	float mMinNormalPeakCout;
+	int mMaxPlanesOutput;
 #pragma region
 
 #pragma region Pipeline Buffer Device Pointers
@@ -198,6 +199,8 @@ public:
 			m2DSegmentationMaxAngleFromPeak = maxAngleDegrees;
 	}
 	inline int getProjectedTextureBufferWidth(){return MAX_TEXTURE_BUFFER_SIZE;}
+	inline int getMaxPlanesOutput(){return mMaxPlanesOutput;}
+	inline void setMaxPlanesOutput(int maxPlanes){if(maxPlanes > 0 && maxPlanes <= MAX_PLANES_TOTAL) mMaxPlanesOutput = maxPlanes;}
 #pragma endregion
 };
 

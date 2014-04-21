@@ -1089,20 +1089,11 @@ void MeshViewer::display()
 		case DISPLAY_MODE_PROJECTION_DEBUG:
 			//Draw final segmentation
 			drawFinalSegmentsToTexture(texture0);
+			drawPlaneProjectedTexturetoTexture(texture1, mMeshTracker->getHostNumDetectedPlanes()-1);
 			drawQuad(finalsegments_prog, -0.5, 0.5, 0.5, 0.5, 1.0,  &texture0, 1);//UL
 			drawQuad(distsegments_prog,  0.5, 0.5, 0.5, 0.5, 1.0,  &texture0, 1);//UR
 			drawQuad(projectedsegments_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture0, 1);//LL
-
-			break;
-		case DISPLAY_MODE_PROJECTED_TEXTURE_DEBUG:
-			drawPlaneProjectedTexturetoTexture(texture0, 0);
-			drawPlaneProjectedTexturetoTexture(texture1, 1);
-			drawPlaneProjectedTexturetoTexture(texture2, 2);
-			drawPlaneProjectedTexturetoTexture(texture3, 3);
-			drawQuad(color_prog, -0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UL
-			drawQuad(color_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture1, 1);//UR
-			drawQuad(color_prog, -0.5, -0.5, 0.5, 0.5, 1.0, &texture2, 1);//LL
-			drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0, &texture3, 1);//LR
+			drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR
 
 			break;
 		case DISPLAY_MODE_NONE:
@@ -1164,9 +1155,6 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		break;
 	case '8':
 		mViewState = DISPLAY_MODE_PROJECTION_DEBUG;
-		break;
-	case '9':
-		mViewState = DISPLAY_MODE_PROJECTED_TEXTURE_DEBUG;
 		break;
 	case '0':
 		mViewState = DISPLAY_MODE_NONE;
