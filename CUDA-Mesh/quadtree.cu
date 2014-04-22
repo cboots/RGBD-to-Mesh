@@ -359,7 +359,7 @@ __host__ void computeAABBs(PlaneStats planeStats, int* planeInvIdMap, glm::vec3*
 
 
 __global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, PlaneStats planeStats, glm::vec3* tangents, glm::vec4* aabbs,
-											  ProjectionParameters* projParams, int* planeCount, int xRes, int yRes)
+											  ProjectionParameters* projParams, int* planeCount, int maxTextureSize, int xRes, int yRes)
 {
 	glm::mat3 C(1.0f);
 
@@ -417,6 +417,15 @@ __global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, 
 		destWidth  = maxRatio * sourceWidthMeters;
 		destHeight = maxRatio * sourceHeightMeters;
 
+		//Make sure it fits. If not, then scale down
+		if(destWidth > maxTextureSize || destHeight > maxTextureSize)
+		{
+			int scale = glm::max(ceil(destWidth/float(maxTextureSize)),ceil(destHeight/float(maxTextureSize)));
+			scale = roundupnextpow2(scale);
+			destWidth/=scale;
+			destHeight/=scale;
+
+		}
 
 		//Compute A matrix (source points to basis vectors)
 		glm::mat3 A = glm::mat3(su1,sv1,1,su2,sv2,1,su3,sv3,1);
@@ -458,12 +467,12 @@ __global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, 
 
 
 __host__ void calculateProjectionData(rgbd::framework::Intrinsics intr, PlaneStats planeStats, glm::vec3* tangents, glm::vec4* aabbs, 
-									  ProjectionParameters* projParams, int* planeCount, int maxPlanes, int xRes, int yRes)
+									  ProjectionParameters* projParams, int* planeCount, int maxTextureSize, int maxPlanes, int xRes, int yRes)
 {
 	dim3 blocks(1);
 	dim3 threads(maxPlanes);
 
-	calculateProjectionDataKernel<<<blocks,threads>>>(intr, planeStats, tangents, aabbs, projParams, planeCount, xRes, yRes);
+	calculateProjectionDataKernel<<<blocks,threads>>>(intr, planeStats, tangents, aabbs, projParams, planeCount, maxTextureSize, xRes, yRes);
 }
 
 

@@ -21,7 +21,7 @@ __host__ void computeAABBs(PlaneStats planeStats, int* planeInvIdMap, glm::vec3*
 
 
 __host__ void calculateProjectionData(rgbd::framework::Intrinsics intr, PlaneStats planeStats, glm::vec3* tangents, glm::vec4* aabbs, 
-									  ProjectionParameters* projParams, int* planeCount, int maxPlanes, int xRes, int yRes);
+									  ProjectionParameters* projParams, int* planeCount, int maxTextureSize, int maxPlanes, int xRes, int yRes);
 
 
 //Inputs are for a single texture projection, so first few inputs from arrays need to be preoffset to the correct plane

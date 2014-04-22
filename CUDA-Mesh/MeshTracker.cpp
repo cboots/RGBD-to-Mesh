@@ -526,7 +526,7 @@ void MeshTracker::ReprojectPlaneTextures()
 		positions, dev_segmentProjectedSx, dev_segmentProjectedSy, dev_finalSegmentsBuffer, mXRes, mYRes);
 
 	calculateProjectionData(mIntr, dev_planeStats, dev_planeTangents, dev_planeAABB, dev_planeProjectionParameters, dev_detectedPlaneCount, 
-		MAX_PLANES_TOTAL, mXRes, mYRes);
+		MAX_TEXTURE_BUFFER_SIZE, MAX_PLANES_TOTAL, mXRes, mYRes);
 
 	cudaMemcpy(host_planeProjectionParameters, dev_planeProjectionParameters, 
 		MAX_PLANES_TOTAL*sizeof(ProjectionParameters), 
