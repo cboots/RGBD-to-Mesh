@@ -22,7 +22,7 @@ MeshTracker::MeshTracker(int xResolution, int yResolution, Intrinsics intr)
 	mMinDistPeakCount = 800;
 	mMinNormalPeakCout = 800;
 
-	mMaxPlanesOutput = 1;
+	mMaxPlanesOutput = MAX_PLANES_TOTAL;
 
 	initBuffers(mXRes, mYRes);
 
