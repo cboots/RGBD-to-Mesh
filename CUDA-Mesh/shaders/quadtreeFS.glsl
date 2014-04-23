@@ -24,7 +24,7 @@ void main()
 			FragColor = vec4(0.0);
 		}else if(quadTreeDegree == 0)
 		{
-			FragColor = 0.1*vec4(1.0);
+			FragColor = vec4(1.0);
 		}else{
 			FragColor = vec4((quadTreeDegree >> 6) & 0x7,(quadTreeDegree >> 3) & 0x7,quadTreeDegree & 0x7,1.0);
 		}
