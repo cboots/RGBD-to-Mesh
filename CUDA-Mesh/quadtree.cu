@@ -593,6 +593,17 @@ __global__ void quadtreeDecimationKernel1(int actualWidth, int actualHeight, Flo
 		s_tile[s_index] = val;
 	}
 
+	
+
+
+
+
+	//Writeback
+	//writeback core.
+	gx = threadIdx.x + blockDim.x*blockIdx.x;
+	gy = threadIdx.y + blockDim.y*blockIdx.y;
+	s_index = threadIdx.x + threadIdx.y*(blockDim.x+1);
+	quadTreeAssemblyBuffer[gx+gy*textureBufferSize] = s_tile[s_index];
 
 }
 

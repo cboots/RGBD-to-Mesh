@@ -110,7 +110,7 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 	host_planeProjectionParameters = new ProjectionParameters[MAX_PLANES_TOTAL];
 
 	createFloat4SOA(dev_PlaneTexture, MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE);
-	cudaMalloc((void**) &dev_quadTreeAssembly, MAX_TEXTURE_BUFFER_SIZE*sizeof(int));
+	cudaMalloc((void**) &dev_quadTreeAssembly, MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE*sizeof(int));
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
