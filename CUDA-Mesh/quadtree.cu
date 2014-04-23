@@ -540,8 +540,59 @@ __host__ void projectTexture(int segmentId, ProjectionParameters* host_projParam
 
 
 __global__ void quadtreeDecimationKernel1(int actualWidth, int actualHeight, Float4SOA planarTexture, int* quadTreeAssemblyBuffer,
-								 int textureBufferSize)
+										  int textureBufferSize)
 {
+	extern __shared__ int s_tile[];
+
+	//Global index
+	int gx = threadIdx.x + blockDim.x*blockIdx.x;
+	int gy = threadIdx.y + blockDim.y*blockIdx.y;
+	int s_index = threadIdx.x + threadIdx.y*(blockDim.x+1);
+	int indexInBlock = threadIdx.x + threadIdx.y*blockDim.x;
+	//Load shared memory
+	//load core. If in range and texture buffer has valid pixel at this location, load 0. Else, load -1;
+	int val = -1;
+	if(gx < actualWidth && gy < actualHeight)
+	{
+		float pixelContents = planarTexture.x[gx+gy*textureBufferSize];
+		if(pixelContents == pixelContents)
+		{
+			val = 0;//Pixel is valid point. save
+		}
+	}
+	s_tile[s_index] = val;
+
+	//Load apron
+	if(indexInBlock < (blockDim.x*blockDim.y+1))//first 33 threads load remaining apron
+	{
+		if(indexInBlock < blockDim.x)//first 16 load bottom
+		{
+			gx = indexInBlock  + blockDim.x*blockIdx.x;
+			gy = blockDim.y*(blockIdx.y+1);//first row of next block
+			s_index = indexInBlock + (blockDim.y*(blockDim.x+1));
+		}else if(indexInBlock < blockDim.x*blockDim.y){//next 16 load right apron
+			gx = blockDim.x*(blockIdx.x+1);//First column of next block
+			gy = blockDim.y*blockIdx.y + (indexInBlock % blockDim.x);//indexInBlock % blockDim.x is y position in block
+			s_index = blockDim.x + ((indexInBlock % blockDim.x)*(blockDim.x+1));
+		}else{
+			//load the corner
+			gx = blockDim.x*(blockIdx.x+1);
+			gy = blockDim.y*(blockIdx.y+1);
+			s_index = blockDim.x + blockDim.y*(blockDim.x+1);
+		}
+
+		val = -1;
+		if(gx < actualWidth && gy < actualHeight)
+		{
+			float pixelContents = planarTexture.x[gx+gy*textureBufferSize];
+			if(pixelContents == pixelContents)
+			{
+				val = 0;//Pixel is valid point. save
+			}
+		}
+		s_tile[s_index] = val;
+	}
+
 
 }
 

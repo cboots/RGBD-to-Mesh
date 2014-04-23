@@ -271,6 +271,7 @@ void MeshViewer::initShader()
 	const char * finalsegments_frag = "shaders/finalsegmentsFS.glsl";
 	const char * distsegments_frag = "shaders/distsegmentsFS.glsl";
 	const char * projectedsegments_frag = "shaders/projectedsegmentsFS.glsl";
+	const char * quadtree_frag = "shaders/quadtreeFS.glsl";
 
 	//Color image shader
 	color_prog = glslUtility::createProgram(pass_vert, NULL, color_frag, quadAttributeLocations, 2);
@@ -295,9 +296,12 @@ void MeshViewer::initShader()
 
 	finalsegments_prog = glslUtility::createProgram(pass_vert, NULL, finalsegments_frag, quadAttributeLocations, 2);
 
-	projectedsegments_prog = glslUtility::createProgram(pass_vert, NULL, distsegments_frag, quadAttributeLocations, 2);
+	distsegments_prog = glslUtility::createProgram(pass_vert, NULL, distsegments_frag, quadAttributeLocations, 2);
 
-	distsegments_prog = glslUtility::createProgram(pass_vert, NULL, projectedsegments_frag, quadAttributeLocations, 2);
+	projectedsegments_prog = glslUtility::createProgram(pass_vert, NULL, projectedsegments_frag, quadAttributeLocations, 2);
+
+	
+	quadtree_prog = glslUtility::createProgram(pass_vert, NULL, quadtree_frag, quadAttributeLocations, 2);
 
 }
 
@@ -697,6 +701,35 @@ void MeshViewer::drawPlaneProjectedTexturetoTexture(GLuint texture, int planeNum
 	glActiveTexture(GL_TEXTURE0);
 }
 
+void MeshViewer::drawQuadtreetoTexture(GLuint texture, int planeNum)
+{
+	float4* dptrTexture;
+	cudaGLMapBufferObject((void**)&dptrTexture, imagePBO0);
+
+	clearPBO(dptrTexture, mXRes, mYRes, 0.0f);
+	ProjectionParameters params = mMeshTracker->getHostProjectionParameters(planeNum);
+	if(planeNum < mMeshTracker->getHostNumDetectedPlanes())
+	{
+		drawQuadtreetoPBO(dptrTexture, 
+			mMeshTracker->getQuadtreeBuffer(planeNum),
+			params.destWidth, params.destHeight,
+			mMeshTracker->getProjectedTextureBufferWidth(),
+			mXRes, mYRes);
+	}
+	cudaGLUnmapBufferObject(imagePBO0);
+
+	//Unpack to textures
+	glActiveTexture(GL_TEXTURE12);
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+		GL_RGBA, GL_FLOAT, NULL);
+
+	//Unbind buffers
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glActiveTexture(GL_TEXTURE0);
+}
 void MeshViewer::drawVMaptoTexture(GLuint texture, int level)
 {
 	float4* dptrVMap;
@@ -1090,11 +1123,14 @@ void MeshViewer::display()
 			//Draw final segmentation
 			drawFinalSegmentsToTexture(texture0);
 			drawPlaneProjectedTexturetoTexture(texture1, mMeshTracker->getHostNumDetectedPlanes()-1);
-			drawQuad(finalsegments_prog, -0.5, 0.5, 0.5, 0.5, 1.0,  &texture0, 1);//UL
-			drawQuad(distsegments_prog,  0.5, 0.5, 0.5, 0.5, 1.0,  &texture0, 1);//UR
-			drawQuad(projectedsegments_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture0, 1);//LL
-			drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR
+			
+			drawQuadtreetoTexture(texture2, mMeshTracker->getHostNumDetectedPlanes()-1);
+			drawQuad(quadtree_prog,  -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL
 
+			//drawQuad(distsegments_prog,  -0.5, -0.5, 0.5, 0.5, 1.0,  &texture0, 1);//LL
+			drawQuad(finalsegments_prog, -0.5, 0.5, 0.5, 0.5, 1.0,  &texture0, 1);//UL
+			drawQuad(projectedsegments_prog, 0.5, 0.5, 0.5, 0.5, 1.0,  &texture0, 1);//UR
+			drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR
 			break;
 		case DISPLAY_MODE_NONE:
 		default:

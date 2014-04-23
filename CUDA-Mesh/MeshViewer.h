@@ -173,6 +173,7 @@ private:
 	GLuint finalsegments_prog;
 	GLuint projectedsegments_prog;
 	GLuint distsegments_prog;
+	GLuint quadtree_prog;
 #pragma endregion
 
 #pragma region Buffer Object Indecies
@@ -277,6 +278,7 @@ private:
 	void drawDistanceHistogramtoTexture(GLuint texture, vec3 color, int scale, int peak);
 	
 	void drawPlaneProjectedTexturetoTexture(GLuint texture, int planeNum);
+	void drawQuadtreetoTexture(GLuint texture, int planeNum);
 
 #pragma endregion
 

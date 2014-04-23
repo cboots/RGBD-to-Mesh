@@ -46,3 +46,6 @@ __host__ void drawSegmentsDataToPBO(float4* pbo, int* normalSegments, float* pro
 
 __host__ void drawPlaneProjectedTexturetoPBO(float4* pbo, Float4SOA projectedTexture, int texWidth, int texHeight, 
 											 int texBufferWidth, int pboXRes, int pboYRes);
+
+__host__ void drawQuadtreetoPBO(float4* pbo, int* dev_quadTree, int texWidth, int texHeight, 
+											 int texBufferWidth, int pboXRes, int pboYRes);

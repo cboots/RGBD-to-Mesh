@@ -469,3 +469,53 @@ __host__ void drawPlaneProjectedTexturetoPBO(float4* pbo, Float4SOA projectedTex
 		texWidth, texHeight, texBufferWidth, pboXRes, pboYRes);
 
 }
+
+
+
+__global__ void drawQuadtreetoPBOKernel(float4* pbo, int* quadTree, int texWidth, int texHeight, 
+													 int texBufferWidth, int pboXRes, int pboYRes)
+{
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int pboi = (y * pboXRes) + x;
+
+
+
+
+	if(x < pboXRes && y < pboYRes){
+		//Calculate Scale recip
+		int scale = 1;
+		if(texWidth > pboXRes || texHeight > pboYRes)
+		{
+			scale = glm::max(ceil(texWidth/float(pboXRes)),ceil(texHeight/float(pboYRes)));
+		}
+		x*=scale;
+		y*=scale;
+
+		int i = (y * texBufferWidth) + x;
+		//TODO: Texture oversize scaling
+		float4 texVal = {CUDART_NAN_F,CUDART_NAN_F,CUDART_NAN_F,CUDART_NAN_F};
+		if(x < texWidth && y < texHeight)
+		{
+			texVal.x = quadTree[i];
+		}
+		// Each thread writes one pixel location in the texture (textel)
+		pbo[pboi] = texVal;
+
+	}
+}
+
+__host__ void drawQuadtreetoPBO(float4* pbo, int* dev_quadTree, int texWidth, int texHeight, 
+							   int texBufferWidth, int pboXRes, int pboYRes)
+{
+
+	int tileSize = 16;
+	dim3 threadsPerBlock(tileSize, tileSize);
+	dim3 fullBlocksPerGrid((int)ceil(float(pboXRes)/float(tileSize)), 
+		(int)ceil(float(pboYRes)/float(tileSize)));
+	//Parallel by PBO pixel (is for debug, not exact recreation)
+
+	drawQuadtreetoPBOKernel<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo, dev_quadTree, 
+		texWidth, texHeight, texBufferWidth, pboXRes, pboYRes);
+
+}

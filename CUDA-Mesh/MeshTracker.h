@@ -186,6 +186,7 @@ public:
 	inline Float4SOA getProjectedTexture(int planeNum){return dev_PlaneTexture;}
 	inline ProjectionParameters getHostProjectionParameters(int planeNum){return host_planeProjectionParameters[planeNum];}
 	inline int getHostNumDetectedPlanes(){return host_detectedPlaneCount;}
+	inline int* getQuadtreeBuffer(int planeNum){return dev_quadTreeAssembly;}
 #pragma endregion
 
 #pragma region Property Getters
