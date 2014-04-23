@@ -633,7 +633,7 @@ __global__ void quadtreeDecimationKernel1(int actualWidth, int actualHeight, Flo
 				&&	s_tile[(threadIdx.x+step)	+	(threadIdx.y+step)*(blockDim.x+1)] == step)
 			{
 				//Upgrade degree of this point
-				s_tile[(threadIdx.x)	+	(threadIdx.y)  *(blockDim.x+1)] = 2*step;
+				s_tile[(threadIdx.x)	+	(threadIdx.y)  *(blockDim.x+1)] *= 2;
 
 				//Clear definitely removed points
 				s_tile[(threadIdx.x+step)	+	(threadIdx.y)  *(blockDim.x+1)] = -1;
@@ -653,32 +653,119 @@ __global__ void quadtreeDecimationKernel1(int actualWidth, int actualHeight, Flo
 	s_index = threadIdx.x + threadIdx.y*(blockDim.x+1);
 	quadTreeAssemblyBuffer[gx+gy*textureBufferSize] = s_tile[s_index];
 
-	//writeback apron
-	if(indexInBlock < blockDim.x*2)//first 32 threads save apron only if cleared to -1
-	{
-		if(indexInBlock < blockDim.x)//first 16 save bottom
-		{
-			gx = indexInBlock  + blockDim.x*blockIdx.x;
-			gy = blockDim.y*(blockIdx.y+1);//first row of next block
-			s_index = indexInBlock + (blockDim.y*(blockDim.x+1));
-		}else{//next 16 save right apron
-			gx = blockDim.x*(blockIdx.x+1);//First column of next block
-			gy = blockDim.y*blockIdx.y + (indexInBlock % blockDim.x);//indexInBlock % blockDim.x is y position in block
-			s_index = blockDim.x + ((indexInBlock % blockDim.x)*(blockDim.x+1));
-		}
-
-		if(s_tile[s_index] == -1 && gx < actualWidth && gy < actualHeight)
-		{
-			quadTreeAssemblyBuffer[gx+gy*textureBufferSize] = -1;
-		}
-
-	}
-
+	//no need to writeback apron
 
 }
 
 __global__ void quadtreeDecimationKernel2(int actualWidth, int actualHeight, int* quadTreeAssemblyBuffer, int textureBufferSize)
 {
+	extern __shared__ int s_tile[];
+
+	int scaleMultiplier = blockDim.x;
+
+	//======================Load==========================
+	//Global index (scaled by multiplier)
+	int gx = scaleMultiplier*(threadIdx.x + blockDim.x*blockIdx.x);
+	int gy = scaleMultiplier*(threadIdx.y + blockDim.y*blockIdx.y);
+	int s_index = threadIdx.x + threadIdx.y*(blockDim.x+1);
+	int indexInBlock = threadIdx.x + threadIdx.y*blockDim.x;
+	//Load shared memory
+	//load core. If in range and texture buffer has valid pixel at this location, load 0. Else, load -1;
+	int val = -1;
+	if(gx < actualWidth && gy < actualHeight)
+	{
+		val = quadTreeAssemblyBuffer[gx+gy*textureBufferSize];
+	}
+	s_tile[s_index] = val;
+
+	//Load apron
+	if(indexInBlock < (blockDim.x*2+1))//first 33 threads load remaining apron
+	{
+		if(indexInBlock < blockDim.x)//first 16 load bottom
+		{
+			gx = indexInBlock  + blockDim.x*blockIdx.x;
+			gy = blockDim.y*(blockIdx.y+1);//first row of next block
+			s_index = indexInBlock + (blockDim.y*(blockDim.x+1));
+		}else if(indexInBlock < blockDim.x*2){//next 16 load right apron
+			gx = blockDim.x*(blockIdx.x+1);//First column of next block
+			gy = blockDim.y*blockIdx.y + (indexInBlock % blockDim.x);//indexInBlock % blockDim.x is y position in block
+			s_index = blockDim.x + ((indexInBlock % blockDim.x)*(blockDim.x+1));
+		}else{
+			//load the corner
+			gx = blockDim.x*(blockIdx.x+1);
+			gy = blockDim.y*(blockIdx.y+1);
+			s_index = blockDim.x + blockDim.y*(blockDim.x+1);
+		}
+		gx *= scaleMultiplier;
+		gy *= scaleMultiplier;
+
+		val = -1;
+		if(gx < actualWidth && gy < actualHeight)
+		{
+			val = quadTreeAssemblyBuffer[gx+gy*textureBufferSize];
+		}
+		s_tile[s_index] = val;
+	}
+	__syncthreads();
+
+	//====================Reduction=========================
+
+
+	//Step == 0 is special case. need to initialize baseline quads
+	bool merge = false;
+	if(s_tile[threadIdx.x+threadIdx.y*(blockDim.x+1)] == 0)
+	{
+		//Check neighbors. If all neighbors right down and right-down diagonal are 0, set to 1.
+		if(		s_tile[(threadIdx.x+1)	+	(threadIdx.y)  *(blockDim.x+1)] == 0
+			&&	s_tile[(threadIdx.x  )	+	(threadIdx.y+1)*(blockDim.x+1)] == 0
+			&&	s_tile[(threadIdx.x+1)	+	(threadIdx.y+1)*(blockDim.x+1)] == 0)
+		{
+			merge = true;
+		}
+	}
+
+	__syncthreads();
+	if(merge)
+	{
+		s_tile[threadIdx.x+threadIdx.y*(blockDim.x+1)] = 1;
+	}
+
+	__syncthreads();
+
+
+	//Loop for remaining steps
+	for(int step = 1; step < blockDim.x; step <<= 1)
+	{
+		if((threadIdx.x % (step*2)) == 0 && (threadIdx.y % (step*2)) == 0)
+		{
+			//Corner points only.
+			if(	s_tile[(threadIdx.x)	+	(threadIdx.y)  *(blockDim.x+1)] == step*scaleMultiplier
+				&&  s_tile[(threadIdx.x+step)	+	(threadIdx.y)	  *(blockDim.x+1)] == step*scaleMultiplier
+				&&	s_tile[(threadIdx.x		)	+	(threadIdx.y+step)*(blockDim.x+1)] == step*scaleMultiplier
+				&&	s_tile[(threadIdx.x+step)	+	(threadIdx.y+step)*(blockDim.x+1)] == step*scaleMultiplier)
+			{
+				//Upgrade degree of this point
+				s_tile[(threadIdx.x)	+	(threadIdx.y)  *(blockDim.x+1)] *= 2;
+
+				//Clear definitely removed points
+				s_tile[(threadIdx.x+step)	+	(threadIdx.y)  *(blockDim.x+1)] = -1;
+				s_tile[(threadIdx.x		)	+	(threadIdx.y+step)*(blockDim.x+1)] = -1;
+				s_tile[(threadIdx.x+step)	+	(threadIdx.y+step)*(blockDim.x+1)] = -1;
+				
+			}
+		}
+		__syncthreads();
+		
+	}
+
+	//====================Writeback=========================
+	//writeback core.
+	gx = scaleMultiplier*(threadIdx.x + blockDim.x*blockIdx.x);
+	gy = scaleMultiplier*(threadIdx.y + blockDim.y*blockIdx.y);
+	s_index = threadIdx.x + threadIdx.y*(blockDim.x+1);
+	quadTreeAssemblyBuffer[gx+gy*textureBufferSize] = s_tile[s_index];
+
+	//no need to writeback apron
 
 }
 
