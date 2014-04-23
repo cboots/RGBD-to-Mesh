@@ -620,6 +620,32 @@ __global__ void quadtreeDecimationKernel1(int actualWidth, int actualHeight, Flo
 
 	__syncthreads();
 
+
+	//Loop for remaining steps
+	for(int step = 1; step < blockDim.x; step <<= 1)
+	{
+		if((threadIdx.x % (step*2)) == 0 && (threadIdx.y % (step*2)) == 0)
+		{
+			//Corner points only.
+			if(	s_tile[(threadIdx.x)	+	(threadIdx.y)  *(blockDim.x+1)] == step
+				&&  s_tile[(threadIdx.x+step)	+	(threadIdx.y)	  *(blockDim.x+1)] == step
+				&&	s_tile[(threadIdx.x		)	+	(threadIdx.y+step)*(blockDim.x+1)] == step
+				&&	s_tile[(threadIdx.x+step)	+	(threadIdx.y+step)*(blockDim.x+1)] == step)
+			{
+				//Upgrade degree of this point
+				s_tile[(threadIdx.x)	+	(threadIdx.y)  *(blockDim.x+1)] = 2*step;
+
+				//Clear definitely removed points
+				s_tile[(threadIdx.x+step)	+	(threadIdx.y)  *(blockDim.x+1)] = -1;
+				s_tile[(threadIdx.x		)	+	(threadIdx.y+step)*(blockDim.x+1)] = -1;
+				s_tile[(threadIdx.x+step)	+	(threadIdx.y+step)*(blockDim.x+1)] = -1;
+				
+			}
+		}
+		__syncthreads();
+		
+	}
+
 	//====================Writeback=========================
 	//writeback core.
 	gx = threadIdx.x + blockDim.x*blockIdx.x;
