@@ -109,7 +109,7 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 		MAX_PLANES_TOTAL*sizeof(ProjectionParameters));
 	host_planeProjectionParameters = new ProjectionParameters[MAX_PLANES_TOTAL];
 
-	createFloat4SOA(dev_PlaneTexure, MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE);
+	createFloat4SOA(dev_PlaneTexture, MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE);
 	cudaMalloc((void**) &dev_quadTreeAssembly, MAX_TEXTURE_BUFFER_SIZE*sizeof(int));
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
@@ -178,7 +178,7 @@ void MeshTracker::cleanupBuffers()
 	cudaFree(dev_planeProjectionParameters);
 	delete host_planeProjectionParameters;
 
-	freeFloat4SOA(dev_PlaneTexure);
+	freeFloat4SOA(dev_PlaneTexture);
 	cudaFree(dev_quadTreeAssembly);
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
@@ -546,7 +546,7 @@ void MeshTracker::ReprojectPlaneTextures()
 			host_detectedPlaneCount++;
 			//Offset projections to correct index
 			projectTexture(i, host_planeProjectionParameters + i, dev_planeProjectionParameters + i, 
-				dev_PlaneTexure, MAX_TEXTURE_BUFFER_SIZE, 
+				dev_PlaneTexture, MAX_TEXTURE_BUFFER_SIZE, 
 				rgbMap, dev_finalSegmentsBuffer, dev_finalDistanceToPlaneBuffer,
 				mXRes, mYRes);
 
