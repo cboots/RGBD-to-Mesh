@@ -564,14 +564,14 @@ __global__ void quadtreeDecimationKernel1(int actualWidth, int actualHeight, Flo
 	s_tile[s_index] = val;
 
 	//Load apron
-	if(indexInBlock < (blockDim.x*blockDim.y+1))//first 33 threads load remaining apron
+	if(indexInBlock < (blockDim.x*2+1))//first 33 threads load remaining apron
 	{
 		if(indexInBlock < blockDim.x)//first 16 load bottom
 		{
 			gx = indexInBlock  + blockDim.x*blockIdx.x;
 			gy = blockDim.y*(blockIdx.y+1);//first row of next block
 			s_index = indexInBlock + (blockDim.y*(blockDim.x+1));
-		}else if(indexInBlock < blockDim.x*blockDim.y){//next 16 load right apron
+		}else if(indexInBlock < blockDim.x*2){//next 16 load right apron
 			gx = blockDim.x*(blockIdx.x+1);//First column of next block
 			gy = blockDim.y*blockIdx.y + (indexInBlock % blockDim.x);//indexInBlock % blockDim.x is y position in block
 			s_index = blockDim.x + ((indexInBlock % blockDim.x)*(blockDim.x+1));
@@ -590,15 +590,35 @@ __global__ void quadtreeDecimationKernel1(int actualWidth, int actualHeight, Flo
 			{
 				val = 0;//Pixel is valid point. save
 			}
+
 		}
 		s_tile[s_index] = val;
 	}
+	__syncthreads();
 
 	//====================Reduction=========================
-	
 
 
+	//Step == 0 is special case. need to initialize baseline quads
+	bool merge = false;
+	if(s_tile[threadIdx.x+threadIdx.y*(blockDim.x+1)] == 0)
+	{
+		//Check neighbors. If all neighbors right down and right-down diagonal are 0, set to 1.
+		if(		s_tile[(threadIdx.x+1)	+	(threadIdx.y)  *(blockDim.x+1)] == 0
+			&&	s_tile[(threadIdx.x  )	+	(threadIdx.y+1)*(blockDim.x+1)] == 0
+			&&	s_tile[(threadIdx.x+1)	+	(threadIdx.y+1)*(blockDim.x+1)] == 0)
+		{
+			merge = true;
+		}
+	}
 
+	__syncthreads();
+	if(merge)
+	{
+		s_tile[threadIdx.x+threadIdx.y*(blockDim.x+1)] = 1;
+	}
+
+	__syncthreads();
 
 	//====================Writeback=========================
 	//writeback core.
@@ -608,8 +628,7 @@ __global__ void quadtreeDecimationKernel1(int actualWidth, int actualHeight, Flo
 	quadTreeAssemblyBuffer[gx+gy*textureBufferSize] = s_tile[s_index];
 
 	//writeback apron
-
-	if(indexInBlock < blockDim.x*blockDim.y)//first 32 threads save apron only if cleared to -1
+	if(indexInBlock < blockDim.x*2)//first 32 threads save apron only if cleared to -1
 	{
 		if(indexInBlock < blockDim.x)//first 16 save bottom
 		{
@@ -626,7 +645,7 @@ __global__ void quadtreeDecimationKernel1(int actualWidth, int actualHeight, Flo
 		{
 			quadTreeAssemblyBuffer[gx+gy*textureBufferSize] = -1;
 		}
-		
+
 	}
 
 
