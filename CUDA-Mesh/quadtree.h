@@ -29,3 +29,7 @@ __host__ void projectTexture(int segmentId, ProjectionParameters* host_projParam
 							 Float4SOA destTexture, int destTextureSize, 
 							 RGBMapSOA rgbMap, int* dev_finalSegmentsBuffer, float* dev_finalDistanceToPlaneBuffer,
 							 int imageXRes, int imageYRes);
+
+
+__host__ void quadtreeDecimation(int actualWidth, int actualHeight, Float4SOA planarTexture, int* quadTreeAssemblyBuffer,
+								 int textureBufferSize);

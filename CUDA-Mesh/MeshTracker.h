@@ -107,7 +107,7 @@ private:
 	ProjectionParameters* host_planeProjectionParameters;
 
 	Float4SOA dev_PlaneTexure;
-
+	int* dev_quadTreeAssembly;
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
 	Float1SOAPyramid dev_float1PyramidBuffers[NUM_FLOAT1_PYRAMID_BUFFERS];
 
@@ -166,7 +166,7 @@ public:
 	void subsamplePyramids();
 
 	void ReprojectPlaneTextures();
-
+	
 #pragma endregion
 
 #pragma region Buffer getters

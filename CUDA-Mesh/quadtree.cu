@@ -537,3 +537,34 @@ __host__ void projectTexture(int segmentId, ProjectionParameters* host_projParam
 	projectTexture<<<blocks,threads>>>(segmentId, dev_projParams, destTexture, destTextureSize, 
 		rgbMap, dev_finalSegmentsBuffer, dev_finalDistanceToPlaneBuffer, imageXRes, imageYRes);
 }
+
+
+__global__ void quadtreeDecimationKernel1(int actualWidth, int actualHeight, Float4SOA planarTexture, int* quadTreeAssemblyBuffer,
+								 int textureBufferSize)
+{
+
+}
+
+__global__ void quadtreeDecimationKernel2(int actualWidth, int actualHeight, int* quadTreeAssemblyBuffer, int textureBufferSize)
+{
+
+}
+
+__host__ void quadtreeDecimation(int actualWidth, int actualHeight, Float4SOA planarTexture, int* quadTreeAssemblyBuffer,
+								 int textureBufferSize)
+{
+	//do two simplification passes. Max quadtree size will therefore be 2*tileSize
+	int tileSize = 16;
+
+	//Pass one, parallel by pixel
+	dim3 threads(tileSize, tileSize);
+	dim3 blocks((int)ceil(actualWidth/float(tileSize)),
+		(int)ceil(actualHeight/float(tileSize)));
+	int sharedSize = (tileSize+1)*(tileSize+1)*sizeof(int);
+	quadtreeDecimationKernel1<<<blocks,threads,sharedSize>>>(actualWidth, actualHeight, planarTexture, quadTreeAssemblyBuffer, textureBufferSize);
+
+	blocks = dim3((int)ceil(actualWidth/float(tileSize*tileSize)),
+		(int)ceil(actualHeight/float(tileSize*tileSize)));
+	quadtreeDecimationKernel2<<<blocks,threads,sharedSize>>>(actualWidth, actualHeight, quadTreeAssemblyBuffer, textureBufferSize);
+
+}

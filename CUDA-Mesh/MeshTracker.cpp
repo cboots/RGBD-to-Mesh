@@ -110,7 +110,7 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 	host_planeProjectionParameters = new ProjectionParameters[MAX_PLANES_TOTAL];
 
 	createFloat4SOA(dev_PlaneTexure, MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE);
-
+	cudaMalloc((void**) &dev_quadTreeAssembly, MAX_TEXTURE_BUFFER_SIZE*sizeof(int));
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -179,7 +179,7 @@ void MeshTracker::cleanupBuffers()
 	delete host_planeProjectionParameters;
 
 	freeFloat4SOA(dev_PlaneTexure);
-
+	cudaFree(dev_quadTreeAssembly);
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -539,6 +539,7 @@ void MeshTracker::ReprojectPlaneTextures()
 	rgbMap.b = dev_rgbSOA.z[0];
 
 	host_detectedPlaneCount = 0;
+	//For each detected plane
 	for(int i = 0; i < mMaxPlanesOutput; ++i){
 		if(host_planeProjectionParameters[i].destWidth > 0)
 		{
@@ -548,6 +549,10 @@ void MeshTracker::ReprojectPlaneTextures()
 				dev_PlaneTexure, MAX_TEXTURE_BUFFER_SIZE, 
 				rgbMap, dev_finalSegmentsBuffer, dev_finalDistanceToPlaneBuffer,
 				mXRes, mYRes);
+
+			//Quadtree decimation
+			quadtreeDecimation((host_planeProjectionParameters + i)->destWidth, (host_planeProjectionParameters + i)->destHeight,
+				dev_PlaneTexture, dev_quadTreeAssembly, MAX_TEXTURE_BUFFER_SIZE);
 		}else
 		{
 			//Reached last plane, done
