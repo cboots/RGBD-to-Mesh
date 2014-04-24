@@ -1014,14 +1014,71 @@ __global__ void scatterResultsKernel(glm::vec4 aabbMeters, int actualWidth, int 
 			vertex.z = textureU;
 			vertex.w = textureV;
 			vertexBuffer[vertNum] = vertex;
+
+
+			//Generate mesh
+			// Quad configuration:
+			// 0-1
+			// |/|
+			// 2-3
+			// Index order: 0 - 1 - 2, 2 - 1 -3
+			//Already loaded vertnum for 0
+			int vertNum0 = 0;
+			int vertNum1 = 0;
+			int vertNum2 = 0;
+			int vertNum3 = 0;
+
+			//If degree greater than 0, assemble quad
+			if(degree > 0)
+			{
+				//garunteed to be in range by nature of quadtree degree
+				vertNum0 = vertNum;
+				vertNum1 = quadTreeScanResults[(pixelX+degree) + (pixelY)*textureBufferSize];
+				vertNum2 = quadTreeScanResults[(pixelX) + (pixelY+degree)*textureBufferSize];
+				vertNum3 = quadTreeScanResults[(pixelX+degree) + (pixelY+degree)*textureBufferSize];
+			}
+
+			//Always fill buffer
+			// Index order: 0 - 1 - 2, 2 - 1 -3
+			int offset = vertNum*6;
+			indexBuffer[offset+0] = vertNum0;
+			indexBuffer[offset+1] = vertNum1;
+			indexBuffer[offset+2] = vertNum2;
+			indexBuffer[offset+3] = vertNum2;
+			indexBuffer[offset+4] = vertNum1;
+			indexBuffer[offset+5] = vertNum3;
+
 		}
 	}
+}
+
+__global__ void reshapeTextureKernel(int actualWidth, int actualHeight, int finalTextureWidth, int finalTextureHeight, int textureBufferSize, 
+		Float4SOA planarTexture, Float4SOA finalTexture)
+{
+	int x = threadIdx.x;
+	int y = blockIdx.x;
+	int destIndex = x + y * finalTextureWidth;
+	int sourceIndex = x + y * textureBufferSize;
+
+	glm::vec4 textureValue(CUDART_NAN_F);
+
+	if(x < actualWidth && y < actualHeight)
+	{
+		textureValue = glm::vec4(planarTexture.x[sourceIndex],planarTexture.y[sourceIndex],
+			planarTexture.z[sourceIndex],planarTexture.w[sourceIndex]);
+	}
+
+	finalTexture.x[destIndex] = textureValue.x;
+	finalTexture.y[destIndex] = textureValue.y;
+	finalTexture.z[destIndex] = textureValue.z;
+	finalTexture.w[destIndex] = textureValue.w;
 }
 
 
 __host__ void quadtreeMeshGeneration(glm::vec4 aabbMeters, int actualWidth, int actualHeight, int* quadTreeAssemblyBuffer,
 									 int* quadTreeScanResults, int textureBufferSize, int* blockResults, int blockResultsBufferSize,
-									 int* indexBuffer, float4* vertexBuffer, int* compactCount, int* host_compactCount, int outputBufferSize)
+									 int* indexBuffer, float4* vertexBuffer, int* compactCount, int* host_compactCount, int outputBufferSize,
+									 int finalTextureWidth, int finalTextureHeight, Float4SOA planarTexture, Float4SOA finalTexture)
 {
 	int blockSize = roundupnextpow2(actualWidth);
 	int numBlocks = actualHeight;
@@ -1055,12 +1112,16 @@ __host__ void quadtreeMeshGeneration(glm::vec4 aabbMeters, int actualWidth, int 
 	blocks = dim3(numBlocks);
 	reintegrateResultsKernel<<<blocks,threads>>>(actualWidth, textureBufferSize, quadTreeScanResults, blockResults);
 
-	int finalTextureWidth = roundupnextpow2(actualWidth);
-	int finalTextureHeight = roundupnextpow2(actualHeight);
 	assert(finalTextureWidth <= textureBufferSize);
 	assert(finalTextureHeight <= textureBufferSize);
 
 	scatterResultsKernel<<<blocks,threads>>>(aabbMeters, actualWidth, actualHeight, finalTextureWidth, finalTextureHeight, textureBufferSize, 
 		quadTreeAssemblyBuffer, quadTreeScanResults, blockResults, indexBuffer, vertexBuffer);
 
+
+	//Reshape texture to aligned memory
+	threads = dim3(finalTextureWidth);
+	blocks = dim3(finalTextureHeight);
+	reshapeTextureKernel<<<blocks,threads>>>(actualWidth, actualHeight, finalTextureWidth, finalTextureHeight, textureBufferSize, 
+		planarTexture, finalTexture);
 }

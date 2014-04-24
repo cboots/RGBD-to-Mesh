@@ -110,11 +110,12 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 	host_planeProjectionParameters = new ProjectionParameters[MAX_PLANES_TOTAL];
 
 	createFloat4SOA(dev_PlaneTexture, MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE);
+	createFloat4SOA(dev_finalTextureBuffer, MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE);
 	cudaMalloc((void**) &dev_quadTreeAssembly, MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE*sizeof(int));
 	cudaMalloc((void**) &dev_quadTreeScanResults, MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE*sizeof(int));
 	cudaMalloc((void**) &dev_quadTreeBlockResults, MAX_TEXTURE_BUFFER_SIZE*sizeof(int));
 
-	
+
 	cudaMalloc((void**) &dev_quadTreeIndexBuffer, QUADTREE_BUFFER_SIZE*6*sizeof(int));//Triangles
 	cudaMalloc((void**) &dev_quadTreeVertexBuffer, QUADTREE_BUFFER_SIZE*sizeof(float4));//verticies
 	cudaMalloc((void**) &dev_compactCount, sizeof(int));//Number of triangles
@@ -187,10 +188,11 @@ void MeshTracker::cleanupBuffers()
 	delete host_planeProjectionParameters;
 
 	freeFloat4SOA(dev_PlaneTexture);
+	freeFloat4SOA(dev_finalTextureBuffer);
 	cudaFree(dev_quadTreeAssembly);
 	cudaFree(dev_quadTreeScanResults);
 	cudaFree(dev_quadTreeBlockResults);
-	
+
 	cudaFree(dev_quadTreeIndexBuffer);
 	cudaFree(dev_quadTreeVertexBuffer);
 	cudaFree(dev_compactCount);
@@ -525,6 +527,18 @@ void MeshTracker::GPUSimpleSegmentation()
 		MAX_PLANES_TOTAL, dev_detectedPlaneCount);
 }
 
+int roundnextpow2up (int x)
+{
+	if (x < 0)
+		return 0;
+	--x;
+	x |= x >> 1;
+	x |= x >> 2;
+	x |= x >> 4;
+	x |= x >> 8;
+	x |= x >> 16;
+	return x+1;
+}
 
 void MeshTracker::ReprojectPlaneTextures()
 {
@@ -569,11 +583,15 @@ void MeshTracker::ReprojectPlaneTextures()
 				dev_PlaneTexture, dev_quadTreeAssembly, MAX_TEXTURE_BUFFER_SIZE);
 
 			//Quadtree compression, mesh generation
+			int finalTextureWidth = roundnextpow2up((host_planeProjectionParameters + i)->destWidth);
+			int finalTextureHeight = roundnextpow2up((host_planeProjectionParameters + i)->destHeight);
+
 			quadtreeMeshGeneration((host_planeProjectionParameters + i)->aabbMeters, 
 				(host_planeProjectionParameters + i)->destWidth, (host_planeProjectionParameters + i)->destHeight,
 				dev_quadTreeAssembly, dev_quadTreeScanResults, MAX_TEXTURE_BUFFER_SIZE, 
 				dev_quadTreeBlockResults, MAX_TEXTURE_BUFFER_SIZE,
-				dev_quadTreeIndexBuffer, dev_quadTreeVertexBuffer, dev_compactCount, &host_quadtreeVertexCount, QUADTREE_BUFFER_SIZE);
+				dev_quadTreeIndexBuffer, dev_quadTreeVertexBuffer, dev_compactCount, &host_quadtreeVertexCount, QUADTREE_BUFFER_SIZE,
+				finalTextureWidth, finalTextureHeight, dev_PlaneTexture, dev_finalTextureBuffer);
 
 			//TODO: Collect data on decimation
 			//int area = (host_planeProjectionParameters + i)->destWidth*(host_planeProjectionParameters + i)->destHeight;
