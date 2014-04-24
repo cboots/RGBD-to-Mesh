@@ -36,4 +36,4 @@ __host__ void quadtreeDecimation(int actualWidth, int actualHeight, Float4SOA pl
 
 __host__ void quadtreeMeshGeneration(int actualWidth, int actualHeight, int* quadTreeAssemblyBuffer,
 									 int* quadTreeScanResults, int textureBufferSize, int* blockResults, int blockResultsBufferSize,
-									 int* indexBuffer, float4* vertexBuffer, int* compactCount, int outputBufferSize);
+									 int* indexBuffer, float4* vertexBuffer, int* compactCount, int* host_compactCount, int outputBufferSize);

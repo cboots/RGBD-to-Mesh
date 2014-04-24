@@ -968,7 +968,7 @@ __global__ void blockResultsExclusiveScanKernel(int* blockResults, int numBlocks
 
 __host__ void quadtreeMeshGeneration(int actualWidth, int actualHeight, int* quadTreeAssemblyBuffer,
 									 int* quadTreeScanResults, int textureBufferSize, int* blockResults, int blockResultsBufferSize,
-									 int* indexBuffer, float4* vertexBuffer, int* compactCount, int outputBufferSize)
+									 int* indexBuffer, float4* vertexBuffer, int* compactCount, int* host_compactCount, int outputBufferSize)
 {
 	int blockSize = roundupnextpow2(actualWidth);
 	int numBlocks = actualHeight;
@@ -994,7 +994,7 @@ __host__ void quadtreeMeshGeneration(int actualWidth, int actualHeight, int* qua
 	sharedCount = (pow2 + 2)*sizeof(int);
 	blockResultsExclusiveScanKernel<<<blocks,threads,sharedCount>>>(blockResults, numBlocks, compactCount);
 
-
+	cudaMemcpy(host_compactCount, compactCount, sizeof(int), cudaMemcpyDeviceToHost);
 	//Reintegrate
 
 	//Scatter (generate meshes and vertecies in the process)

@@ -118,7 +118,7 @@ private:
 	int* dev_quadTreeIndexBuffer;
 	float4* dev_quadTreeVertexBuffer;
 	int* dev_compactCount;
-
+	int host_quadtreeVertexCount;
 
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
 	Float1SOAPyramid dev_float1PyramidBuffers[NUM_FLOAT1_PYRAMID_BUFFERS];
