@@ -1389,7 +1389,7 @@ __host__ void generatePlaneCompressionMap(PlaneStats planeStats, int numPlanes, 
 {
 	dim3 threads(numPlanes>>1);//Two elements per thread
 	dim3 blocks(1);
-	int sharedSize = (2*numPlanes+2)*sizeof(int);
+	int sharedSize = (numPlanes+2)*sizeof(int);
 
 	generatePlaneCompressionMapKernel<<<blocks,threads,sharedSize>>>(planeStats, numPlanes, planeIdMap, planeIDInvMap, planeCountOut);
 }
