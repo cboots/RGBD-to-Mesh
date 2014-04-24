@@ -3,6 +3,7 @@
 #include "RGBDFrame.h"
 #include "device_structs.h"
 #include <glm/glm.hpp>
+#include "math_constants.h"
 
 using namespace rgbd::framework;
 
@@ -34,4 +35,17 @@ __host__ void drawNormalVoxelsToPBO(float4* pbo, int* voxels, int pboXRes, int p
 
 __host__ void drawDecoupledHistogramsToPBO(float4* pbo, Int3SOA histograms,  int length, int pboXRes, int pboYRes);
 
-__host__ void drawNormalSegmentsToPBO(float4* pbo, Int3SOA normalSegments, int xRes, int yRes);
+__host__ void drawNormalSegmentsToPBO(float4* pbo, int* normalSegments, float* projectedDistanceMap, 
+									  int xRes, int yRes, int pboXRes, int pboYRes);
+
+__host__ void drawScaledHistogramToPBO(float4* pbo, int* histogram, glm::vec3 color, int maxValue, int length, int pboXRes, int pboYRes);
+
+
+__host__ void drawSegmentsDataToPBO(float4* pbo, int* normalSegments, float* projectedDistanceMap, float* projectedSx, float* projectedSy,
+									  int xRes, int yRes, int pboXRes, int pboYRes);
+
+__host__ void drawPlaneProjectedTexturetoPBO(float4* pbo, Float4SOA projectedTexture, int texWidth, int texHeight, 
+											 int texBufferWidth, int pboXRes, int pboYRes);
+
+__host__ void drawQuadtreetoPBO(float4* pbo, int* dev_quadTree, int texWidth, int texHeight, 
+											 int texBufferWidth, int pboXRes, int pboYRes);

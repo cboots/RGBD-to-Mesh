@@ -9,21 +9,53 @@
 #include "Utils.h"
 #include "math.h"
 
-__host__ void computeNormalHistogram(float* normX, float* normY, int* histogram, int xRes, int yRes, int xBins, int yBins);
+__host__ void computeNormalHistogram(float* normX, float* normY, float* normZ, int* finalSegmentsBuffer, int* histogram, 
+									 int xRes, int yRes, int xBins, int yBins, bool excludePreviousSegments);
+
 __host__ void clearHistogram(int* histogram, int xBins, int yBins);
 
 
 __host__ void ACosHistogram(float* cosineValue, int* histogram, int valueCount, int numBins);
 
-__host__ void gaussianSubtractionPeakDetection(Int3SOA decoupledHist, Int3SOA peakIndex, int histSize, int maxPeaks, int minPeakCount, glm::vec3 sigmas);
-
-__host__ void segmentNormals(Float3SOA rawNormals, Int3SOA normalSegments, int imageWidth, int imageHeight, 
-							 Int3SOA decoupledHistogram, int histSize, Int3SOA peakIndecies, int maxPeaks, int maxDistance);
 
 __host__ void normalHistogramPrimaryPeakDetection(int* histogram, int xBins, int yBins, Float3SOA peaks, int maxPeaks, 
-												  int exclusionRadius, int minPeakHeight);
+												  int exclusionRadius, int minPeakHeight, float previousPeaksClearRadius);
 
 
-__host__ void segmentNormals2D(Float3SOA rawNormals, Int3SOA normalSegments, int imageWidth, int imageHeight, 
+__host__ void segmentNormals2D(Float3SOA rawNormals, Float3SOA rawPositions,
+							   int* normalSegments,  float* projectedDistance, int imageWidth, int imageHeight, 
 							   int* histogram, int xBins, int yBins, 
 							   Float3SOA peaks, int maxPeaks, float maxAngleRange);
+
+__host__ void generateDistanceHistograms(int* dev_normalSegments, float* dev_planeProjectedDistanceMap, int xRes, int yRes,
+										 int** dev_distanceHistograms, int numMaxNormalSegments, 
+										 int histcount, float histMinDist, float histMaxDist);
+
+
+__host__ void distanceHistogramPrimaryPeakDetection(int* histogram, int length, int numHistograms, float* distPeaks, int maxDistPeaks, 
+												  int exclusionRadius, int minPeakHeight, float minHistDist, float maxHistDist);
+
+__host__ void fineDistanceSegmentation(float* distPeaks, int numNormalPeaks,  int maxDistPeaks, 
+									   Float3SOA positions, PlaneStats planeStats,
+									   int* normalSegments, float* planeProjectedDistanceMap, 
+									   int xRes, int yRes, float maxDistTolerance, int iteration);
+
+
+__host__ void clearPlaneStats(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks, int maxRounds, int iteration);
+
+__host__ void finalizePlanes(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks, 
+							 float mergeAngleThresh, float mergeDistThresh,  int iteration);
+
+__host__ void fitFinalPlanes(PlaneStats planeStats, int numPlanes, 
+							  Float3SOA norms, Float3SOA positions, int* finalSegmentsBuffer, float* distToPlaneBuffer, int xRes, int yRes,
+							 float fitAngleThresh, float fitDistThresh, int iteration);
+
+__host__ void realignPeaks(PlaneStats planeStats, Float3SOA normalPeaks, int numNormPeaks, int numDistPeaks, int xBins, int yBins, int iteration);
+
+__host__ void mergePlanes(PlaneStats planeStats, int numPlanes, float mergeAngleThresh, float mergeDistThresh);
+
+__host__ void generatePlaneCompressionMap(PlaneStats planeStats, int numPlanes, int* planeIdMap, int* planeInvIdMap, int* planeCountOut);
+
+__host__ void compactPlaneStats(PlaneStats planeStats, int numPlanes, int* planeIdMap,  int* planeCount);
+
+__host__ void computePlaneTangents(PlaneStats planeStats, glm::vec3* planeTangents, int numPlanes, int* planeCount);

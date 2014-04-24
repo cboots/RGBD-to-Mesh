@@ -312,7 +312,29 @@ __global__ void sendInt3SOAToPBO(float4* pbo, int* x_src, int* y_src, int* z_src
 }
 
 
-__host__ void drawNormalSegmentsToPBO(float4* pbo, Int3SOA normalSegments, int xRes, int yRes)
+
+
+__global__ void sendSegmentDataToPBO(float4* pbo, int* segments, float* projectedDistances, int xRes, int yRes, int pboXRes, int pboYRes)
+{
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int i = (y * xRes) + x;
+	int pboi = (y * pboXRes) + x;
+
+	if(y < yRes && x < xRes){
+
+		// Each thread writes one pixel location in the texture (textel)
+		pbo[pboi].x = segments[i];
+		pbo[pboi].y = projectedDistances[i];
+		pbo[pboi].z = 0.0;
+		pbo[pboi].w = 0.0;
+	}
+}
+
+
+
+__host__ void drawNormalSegmentsToPBO(float4* pbo, int* normalSegments, float* projectedDistanceMap, 
+									  int xRes, int yRes, int pboXRes, int pboYRes)
 {
 
 	int tileSize = 16;
@@ -323,6 +345,177 @@ __host__ void drawNormalSegmentsToPBO(float4* pbo, Int3SOA normalSegments, int x
 		(int)ceil(float(yRes)/float(tileSize)));
 
 
-	sendInt3SOAToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo,  normalSegments.x, normalSegments.y, normalSegments.z,
-		xRes, yRes, xRes, yRes);
+	sendSegmentDataToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo,  normalSegments, projectedDistanceMap,
+		xRes, yRes, pboXRes, pboYRes);
+}
+
+
+__global__ void sendFinalSegmentDataToPBO(float4* pbo, int* segments, float* projectedDistances, float* projectedSx, float* projectedSy,
+										  int xRes, int yRes, int pboXRes, int pboYRes)
+{
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int i = (y * xRes) + x;
+	int pboi = (y * pboXRes) + x;
+
+	if(y < yRes && x < xRes){
+
+		// Each thread writes one pixel location in the texture (textel)
+		pbo[pboi].x = segments[i];
+		pbo[pboi].y = projectedDistances[i];
+		pbo[pboi].z = projectedSx[i];
+		pbo[pboi].w = projectedSy[i];
+	}
+}
+
+
+
+__host__ void drawSegmentsDataToPBO(float4* pbo, int* normalSegments, float* projectedDistanceMap, float* projectedSx, float* projectedSy,
+									int xRes, int yRes, int pboXRes, int pboYRes)
+{
+
+	int tileSize = 16;
+
+
+	dim3 threadsPerBlock(tileSize, tileSize);
+	dim3 fullBlocksPerGrid((int)ceil(float(xRes)/float(tileSize)), 
+		(int)ceil(float(yRes)/float(tileSize)));
+
+
+	sendFinalSegmentDataToPBO<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo,  normalSegments, projectedDistanceMap, projectedSx, projectedSy,
+		xRes, yRes, pboXRes, pboYRes);
+}
+
+
+__global__ void drawScaledHistogramToPBOKernel(float4* pbo, int* hist, glm::vec3 color, float scaleInv, int length, int pboXRes, int pboYRes)
+{
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int pboi = (y * pboXRes) + x;
+
+	if(y < pboYRes && x < length){
+
+		// Each thread writes one pixel location in the texture (textel)
+		pbo[pboi].x = color.x;
+		pbo[pboi].y = color.y;
+		pbo[pboi].z = color.z;
+		pbo[pboi].w = hist[x] * scaleInv;
+	}
+}
+
+
+
+__host__ void drawScaledHistogramToPBO(float4* pbo, int* histogram, glm::vec3 color, int maxValue, int length, int pboXRes, int pboYRes)
+{
+	int tileSize = 16;
+	assert(length < pboXRes);
+
+	dim3 threadsPerBlock(tileSize, tileSize);
+	dim3 fullBlocksPerGrid((int)ceil(float(length)/float(tileSize)), 
+		(int)ceil(float(pboYRes)/float(tileSize)));
+
+
+	drawScaledHistogramToPBOKernel<<<fullBlocksPerGrid,threadsPerBlock>>>(pbo, histogram, color, float(1.0f/maxValue), length, pboXRes, pboYRes);
+}
+
+__global__ void drawPlaneProjectedTexturetoPBOKernel(float4* pbo, Float4SOA projectedTexture, int texWidth, int texHeight, 
+													 int texBufferWidth, int pboXRes, int pboYRes)
+{
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int pboi = (y * pboXRes) + x;
+
+
+
+
+	if(x < pboXRes && y < pboYRes){
+		//Calculate Scale recip
+		int scale = 1;
+		if(texWidth > pboXRes || texHeight > pboYRes)
+		{
+			scale = glm::max(ceil(texWidth/float(pboXRes)),ceil(texHeight/float(pboYRes)));
+		}
+		x*=scale;
+		y*=scale;
+
+		int i = (y * texBufferWidth) + x;
+		//TODO: Texture oversize scaling
+		float4 texVal = {CUDART_NAN_F,CUDART_NAN_F,CUDART_NAN_F,CUDART_NAN_F};
+		if(x < texWidth && y < texHeight)
+		{
+			texVal.x = projectedTexture.x[i];
+			texVal.y = projectedTexture.y[i];
+			texVal.z = projectedTexture.z[i];
+			texVal.w = projectedTexture.w[i];
+		}
+		// Each thread writes one pixel location in the texture (textel)
+		pbo[pboi] = texVal;
+
+	}
+}
+
+
+__host__ void drawPlaneProjectedTexturetoPBO(float4* pbo, Float4SOA projectedTexture, int texWidth, int texHeight, 
+											 int texBufferWidth, int pboXRes, int pboYRes)
+{
+
+	int tileSize = 16;
+	dim3 threadsPerBlock(tileSize, tileSize);
+	dim3 fullBlocksPerGrid((int)ceil(float(pboXRes)/float(tileSize)), 
+		(int)ceil(float(pboYRes)/float(tileSize)));
+	//Parallel by PBO pixel (is for debug, not exact recreation)
+
+	drawPlaneProjectedTexturetoPBOKernel<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo, projectedTexture, 
+		texWidth, texHeight, texBufferWidth, pboXRes, pboYRes);
+
+}
+
+
+
+__global__ void drawQuadtreetoPBOKernel(float4* pbo, int* quadTree, int texWidth, int texHeight, 
+													 int texBufferWidth, int pboXRes, int pboYRes)
+{
+	int x = (blockIdx.x * blockDim.x) + threadIdx.x;
+	int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+	int pboi = (y * pboXRes) + x;
+
+
+
+
+	if(x < pboXRes && y < pboYRes){
+		//Calculate Scale recip
+		int scale = 1;
+		if(texWidth > pboXRes || texHeight > pboYRes)
+		{
+			scale = glm::max(ceil(texWidth/float(pboXRes)),ceil(texHeight/float(pboYRes)));
+		}
+		x*=scale;
+		y*=scale;
+
+		int i = (y * texBufferWidth) + x;
+		//TODO: Texture oversize scaling
+		float4 texVal = {CUDART_NAN_F,CUDART_NAN_F,CUDART_NAN_F,CUDART_NAN_F};
+		if(x < texWidth && y < texHeight)
+		{
+			texVal.x = quadTree[i];
+		}
+		// Each thread writes one pixel location in the texture (textel)
+		pbo[pboi] = texVal;
+
+	}
+}
+
+__host__ void drawQuadtreetoPBO(float4* pbo, int* dev_quadTree, int texWidth, int texHeight, 
+							   int texBufferWidth, int pboXRes, int pboYRes)
+{
+
+	int tileSize = 16;
+	dim3 threadsPerBlock(tileSize, tileSize);
+	dim3 fullBlocksPerGrid((int)ceil(float(pboXRes)/float(tileSize)), 
+		(int)ceil(float(pboYRes)/float(tileSize)));
+	//Parallel by PBO pixel (is for debug, not exact recreation)
+
+	drawQuadtreetoPBOKernel<<<fullBlocksPerGrid, threadsPerBlock>>>(pbo, dev_quadTree, 
+		texWidth, texHeight, texBufferWidth, pboXRes, pboYRes);
+
 }

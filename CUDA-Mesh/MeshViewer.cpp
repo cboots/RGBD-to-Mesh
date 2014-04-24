@@ -78,7 +78,6 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	//Setup default rendering/pipeline settings
 	mFilterMode = BILATERAL_FILTER;
 	mNormalMode = AVERAGE_GRADIENT_NORMALS;
-	mSegmentationMode = GPU_SIMPLE_SEGMENTATION;
 	mViewState = DISPLAY_MODE_OVERLAY;
 	hairyPoints = false;
 	mSpatialSigma = 2.0f;
@@ -266,10 +265,13 @@ void MeshViewer::initShader()
 	const char * depth_frag = "shaders/depthFS.glsl";
 	const char * vmap_frag = "shaders/vmapFS.glsl";
 	const char * nmap_frag = "shaders/nmapFS.glsl";
-	const char * curvature_frag = "shaders/curvatureFS.glsl";
 	const char * histogram_frag = "shaders/histogramFS.glsl";
 	const char * barhistogram_frag = "shaders/barhistogramFS.glsl";
 	const char * normalsegments_frag = "shaders/normalsegmentsFS.glsl";
+	const char * finalsegments_frag = "shaders/finalsegmentsFS.glsl";
+	const char * distsegments_frag = "shaders/distsegmentsFS.glsl";
+	const char * projectedsegments_frag = "shaders/projectedsegmentsFS.glsl";
+	const char * quadtree_frag = "shaders/quadtreeFS.glsl";
 
 	//Color image shader
 	color_prog = glslUtility::createProgram(pass_vert, NULL, color_frag, quadAttributeLocations, 2);
@@ -286,13 +288,21 @@ void MeshViewer::initShader()
 	//NMap display debug shader
 	nmap_prog = glslUtility::createProgram(pass_vert, NULL, nmap_frag, quadAttributeLocations, 2);
 
-	curvemap_prog = glslUtility::createProgram(pass_vert, NULL, curvature_frag, quadAttributeLocations, 2);
-
 	histogram_prog = glslUtility::createProgram(pass_vert, NULL, histogram_frag, quadAttributeLocations, 2);
 
 	barhistogram_prog = glslUtility::createProgram(pass_vert, NULL, barhistogram_frag, quadAttributeLocations, 2);
 
 	normalsegments_prog = glslUtility::createProgram(pass_vert, NULL, normalsegments_frag, quadAttributeLocations, 2);
+
+	finalsegments_prog = glslUtility::createProgram(pass_vert, NULL, finalsegments_frag, quadAttributeLocations, 2);
+
+	distsegments_prog = glslUtility::createProgram(pass_vert, NULL, distsegments_frag, quadAttributeLocations, 2);
+
+	projectedsegments_prog = glslUtility::createProgram(pass_vert, NULL, projectedsegments_frag, quadAttributeLocations, 2);
+
+	
+	quadtree_prog = glslUtility::createProgram(pass_vert, NULL, quadtree_frag, quadAttributeLocations, 2);
+
 }
 
 void MeshViewer::initTextures()
@@ -660,6 +670,66 @@ bool MeshViewer::drawDepthImageBufferToTexture(GLuint texture)
 	return true;
 }
 
+
+void MeshViewer::drawPlaneProjectedTexturetoTexture(GLuint texture, int planeNum)
+{
+	float4* dptrTexture;
+	cudaGLMapBufferObject((void**)&dptrTexture, imagePBO0);
+
+	clearPBO(dptrTexture, mXRes, mYRes, 0.0f);
+	ProjectionParameters params = mMeshTracker->getHostProjectionParameters(planeNum);
+	if(planeNum < mMeshTracker->getHostNumDetectedPlanes())
+	{
+		drawPlaneProjectedTexturetoPBO(dptrTexture, 
+			mMeshTracker->getProjectedTexture(planeNum),
+			params.destWidth, params.destHeight,
+			mMeshTracker->getProjectedTextureBufferWidth(),
+			mXRes, mYRes);
+	}
+	cudaGLUnmapBufferObject(imagePBO0);
+
+	//Unpack to textures
+	glActiveTexture(GL_TEXTURE12);
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+		GL_RGBA, GL_FLOAT, NULL);
+
+	//Unbind buffers
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glActiveTexture(GL_TEXTURE0);
+}
+
+void MeshViewer::drawQuadtreetoTexture(GLuint texture, int planeNum)
+{
+	float4* dptrTexture;
+	cudaGLMapBufferObject((void**)&dptrTexture, imagePBO0);
+
+	clearPBO(dptrTexture, mXRes, mYRes, 0.0f);
+	ProjectionParameters params = mMeshTracker->getHostProjectionParameters(planeNum);
+	if(planeNum < mMeshTracker->getHostNumDetectedPlanes())
+	{
+		drawQuadtreetoPBO(dptrTexture, 
+			mMeshTracker->getQuadtreeBuffer(planeNum),
+			params.destWidth, params.destHeight,
+			mMeshTracker->getProjectedTextureBufferWidth(),
+			mXRes, mYRes);
+	}
+	cudaGLUnmapBufferObject(imagePBO0);
+
+	//Unpack to textures
+	glActiveTexture(GL_TEXTURE12);
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+		GL_RGBA, GL_FLOAT, NULL);
+
+	//Unbind buffers
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glActiveTexture(GL_TEXTURE0);
+}
 void MeshViewer::drawVMaptoTexture(GLuint texture, int level)
 {
 	float4* dptrVMap;
@@ -708,29 +778,6 @@ void MeshViewer::drawNMaptoTexture(GLuint texture, int level)
 
 }
 
-void MeshViewer::drawCurvaturetoTexture(GLuint texture)
-{
-	float4* dptrNMap;
-	cudaGLMapBufferObject((void**)&dptrNMap, imagePBO0);
-
-	clearPBO(dptrNMap, mXRes, mYRes, 0.0f);
-	drawCurvaturetoPBO(dptrNMap, mMeshTracker->getCurvature(), mXRes, mYRes);
-
-	cudaGLUnmapBufferObject(imagePBO0);
-
-	//Unpack to textures
-	glActiveTexture(GL_TEXTURE12);
-	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
-	glBindTexture(GL_TEXTURE_2D, texture);
-	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
-		GL_RGBA, GL_FLOAT, NULL);
-
-	//Unbind buffers
-	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
-	glBindTexture(GL_TEXTURE_2D, 0);
-	glActiveTexture(GL_TEXTURE0);
-}
-
 
 void MeshViewer::drawNormalHistogramtoTexture(GLuint texture)
 {
@@ -757,13 +804,19 @@ void MeshViewer::drawNormalHistogramtoTexture(GLuint texture)
 
 }
 
-void MeshViewer::drawDecoupledHistogramsToTexture(GLuint texture)
-{
-	float4* dptrNMap;
-	cudaGLMapBufferObject((void**)&dptrNMap, imagePBO0);
 
-	clearPBO(dptrNMap, mXRes, mYRes, 0.0f);
-	drawDecoupledHistogramsToPBO(dptrNMap, mMeshTracker->getDecoupledHistogram(),  mMeshTracker->getNormalDecoupledBins(), mXRes, mYRes);
+void MeshViewer::drawDistanceHistogramtoTexture(GLuint texture, vec3 color, int scale, int peak)
+{
+	float4* pbo;
+	cudaGLMapBufferObject((void**)&pbo, imagePBO0);
+
+	clearPBO(pbo, mXRes, mYRes, 0.0f);
+
+	int* d_histPointer = mMeshTracker->getDistanceHistogram(peak);
+	if(d_histPointer == NULL)
+		return;
+
+	drawScaledHistogramToPBO(pbo, d_histPointer, color, scale, mMeshTracker->getDistanceHistogramSize(), mXRes, mYRes);
 
 	cudaGLUnmapBufferObject(imagePBO0);
 
@@ -805,13 +858,41 @@ void MeshViewer::drawRGBMaptoTexture(GLuint texture, int level)
 	glActiveTexture(GL_TEXTURE0);
 }
 
-void MeshViewer::drawNormalSegmentsToTexture(GLuint texture)
+void MeshViewer::drawNormalSegmentsToTexture(GLuint texture, int level)
 {
 	float4* dptrNormalSegmentsMap;
 	cudaGLMapBufferObject((void**)&dptrNormalSegmentsMap, imagePBO0);
 
 	clearPBO(dptrNormalSegmentsMap, mXRes, mYRes, 0.0f);
-	drawNormalSegmentsToPBO(dptrNormalSegmentsMap, mMeshTracker->getNormalSegments(), mXRes, mYRes);
+	drawNormalSegmentsToPBO(dptrNormalSegmentsMap, mMeshTracker->getNormalSegments(), mMeshTracker->getPlaneProjectedDistance(),
+		mXRes>>level, mYRes>>level, mXRes, mYRes);
+
+	cudaGLUnmapBufferObject(imagePBO0);
+
+	//Unpack to textures
+	glActiveTexture(GL_TEXTURE12);
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, imagePBO0);
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, mXRes, mYRes, 
+		GL_RGBA, GL_FLOAT, NULL);
+
+	//Unbind buffers
+	glBindBuffer( GL_PIXEL_UNPACK_BUFFER, 0);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glActiveTexture(GL_TEXTURE0);
+}
+
+
+
+void MeshViewer::drawFinalSegmentsToTexture(GLuint texture)
+{
+	float4* dptrNormalSegmentsMap;
+	cudaGLMapBufferObject((void**)&dptrNormalSegmentsMap, imagePBO0);
+
+	clearPBO(dptrNormalSegmentsMap, mXRes, mYRes, 0.0f);
+	drawSegmentsDataToPBO(dptrNormalSegmentsMap, mMeshTracker->getFinalSegments(), mMeshTracker->getFinalFitDistance(), 
+		mMeshTracker->getProjectedSx(),  mMeshTracker->getProjectedSy(),  
+		mXRes, mYRes, mXRes, mYRes);
 
 	cudaGLUnmapBufferObject(imagePBO0);
 
@@ -873,13 +954,12 @@ void MeshViewer::display()
 		seconds = seconds2;
 	}
 
-	stringstream title;
-	title << "RGBD to Mesh Visualization | " << (int)fps  << "FPS";
-	glutSetWindowTitle(title.str().c_str());
 
 
 	cudaDeviceSynchronize();
 	checkCUDAError("Loop Error Clear");
+
+
 
 	//=====Tracker Pipeline=====
 	//Check if log playback has restarted (special edge case)
@@ -893,6 +973,8 @@ void MeshViewer::display()
 	//Check if we have a new frame
 	if(mLatestTime > mLastSubmittedTime)
 	{
+		boost::timer::cpu_timer t;
+
 		//Now we have new data, so run pipeline
 		mLastSubmittedTime = mLatestTime;
 
@@ -926,14 +1008,9 @@ void MeshViewer::display()
 		{
 		case SIMPLE_NORMALS:
 			mMeshTracker->buildNMapSimple();
-			mMeshTracker->estimateCurvatureFromNormals();
 			break;
 		case AVERAGE_GRADIENT_NORMALS:
-			mMeshTracker->buildNMapAverageGradient(4);
-			mMeshTracker->estimateCurvatureFromNormals();
-			break;
-		case PCA_NORMALS:
-			mMeshTracker->buildNMapPCA(0.03f); 
+			mMeshTracker->buildNMapAverageGradient();
 			break;
 		}
 
@@ -941,19 +1018,21 @@ void MeshViewer::display()
 		//Launch kernels for subsampling
 		mMeshTracker->subsamplePyramids();
 
+		mMeshTracker->GPUSimpleSegmentation();
 
-		switch(mSegmentationMode)
-		{
-		case GPU_SIMPLE_SEGMENTATION:
-			mMeshTracker->GPUSimpleSegmentation();
-			break;
-		case GPU_DECOUPLED_SEGMENTATION:
-			mMeshTracker->GPUDecoupledSegmentation();
-			break;
-		}
+		mMeshTracker->ReprojectPlaneTextures();
 
+		cudaDeviceSynchronize();
+
+		int millisec = t.elapsed().wall / 1000000;
+		//Update title
+		stringstream title;
+		title << "RGBD to Mesh Visualization | (" << millisec << " ms)  " << (int)fps  << "FPS";
+		glutSetWindowTitle(title.str().c_str());
 
 	}//=====End of pipeline code=====
+
+
 
 
 	//=====RENDERING======
@@ -963,18 +1042,18 @@ void MeshViewer::display()
 		switch(mViewState)
 		{
 		case DISPLAY_MODE_DEPTH:
-			drawDepthImageBufferToTexture(texture0);
+			drawVMaptoTexture(texture0, 0);
 
 			drawQuad(depth_prog, 0, 0, 1, 1, 1.0, &texture0, 1);
 			break;
 		case DISPLAY_MODE_IMAGE:
-			drawColorImageBufferToTexture(texture1);
+			drawRGBMaptoTexture(texture1, 0);
 
 			drawQuad(color_prog, 0, 0, 1, 1, 1.0, &texture1, 1);
 			break;
 		case DISPLAY_MODE_OVERLAY:
-			drawDepthImageBufferToTexture(texture0);
-			drawColorImageBufferToTexture(texture1);
+			drawVMaptoTexture(texture0, 0);
+			drawRGBMaptoTexture(texture1, 0);
 
 
 			drawQuad(color_prog, 0, 0, 1, 1, 1.0, &texture1, 1);
@@ -984,25 +1063,17 @@ void MeshViewer::display()
 			glDisable(GL_BLEND);
 			break;
 		case DISPLAY_MODE_HISTOGRAM_COMPARE:
-
-			switch(mSegmentationMode)
-			{
-			case GPU_SIMPLE_SEGMENTATION:
-				drawNormalHistogramtoTexture(texture0);
-				drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture0, 1);//UL histogram
-				break;
-			case GPU_DECOUPLED_SEGMENTATION:
-				drawDecoupledHistogramsToTexture(texture0);
-				drawQuad(barhistogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture0, 1);//UL histogram
-				break;
-			}
-
+			drawNormalHistogramtoTexture(texture0);
 			drawNMaptoTexture(texture1, 0);
-			drawNormalSegmentsToTexture(texture2);
-			drawColorImageBufferToTexture(texture3);
+			drawFinalSegmentsToTexture(texture2);
+			drawRGBMaptoTexture(texture3,0);
+
+			drawQuad(histogram_prog, -0.5,  0.5, 0.5, 0.5, 0.1,  &texture0, 1);//UL histogram
 			drawQuad(nmap_prog,		 0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR
-			drawQuad(normalsegments_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL
+			drawQuad(finalsegments_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL
 			drawQuad(color_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture3, 1);//UR
+
+
 			break;
 		case DISPLAY_MODE_NMAP_DEBUG:
 			drawNMaptoTexture(texture0, 0);
@@ -1027,17 +1098,42 @@ void MeshViewer::display()
 			drawQuad(vmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 VMap
 			drawQuad(depth_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL Original depth
 			break;
-		case DISPLAY_MODE_CURVATURE_DEBUG:
+		case DISPLAY_MODE_SEGMENTATION_DEBUG:
+			drawNormalSegmentsToTexture(texture0, 2);
+			drawQuad(normalsegments_prog, -0.5, 0.5, 0.5, 0.5, 0.25,  &texture0, 1);//UL
+			drawNormalHistogramtoTexture(texture0);
+			drawQuad(histogram_prog, -0.5,  -0.5, 0.5, 0.5, 0.1,  &texture0, 1);//LL
 
-			drawDepthImageBufferToTexture(texture0);
-			drawColorImageBufferToTexture(texture1);
-			drawNMaptoTexture(texture2, 0);
-			drawCurvaturetoTexture(texture3);
+			//Draw all peak histograms
+			drawDistanceHistogramtoTexture(texture0, vec3(1,0,0), 10000, 0);
+			drawQuad(barhistogram_prog, 0.5, 0.875, 0.5, 0.125, 1.0, &texture0, 1);//UR
+			drawDistanceHistogramtoTexture(texture0, vec3(0,1,0), 10000, 1);
+			drawQuad(barhistogram_prog, 0.5, 0.625, 0.5, 0.125, 1.0, &texture0, 1);//UR
+			drawDistanceHistogramtoTexture(texture0, vec3(1,1,0), 10000, 2);
+			drawQuad(barhistogram_prog, 0.5, 0.375, 0.5, 0.125, 1.0, &texture0, 1);//UR
+			drawDistanceHistogramtoTexture(texture0, vec3(0,0,1), 10000, 3);
+			drawQuad(barhistogram_prog, 0.5, 0.125, 0.5, 0.125, 1.0, &texture0, 1);//UR
 
-			drawQuad(depth_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR depth
-			drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0,  &texture1, 1);//LR color
-			drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL normal 
-			drawQuad(curvemap_prog, -0.5,  0.5, 0.5, 0.5, 1.0,  &texture3, 1);//UL curvature
+			//Draw final segmentation
+			drawFinalSegmentsToTexture(texture0);
+			drawQuad(finalsegments_prog, 0.5, -0.5, 0.5, 0.5, 1.0,  &texture0, 1);//LR
+
+			break;
+		case DISPLAY_MODE_PROJECTION_DEBUG:
+			//Draw final segmentation
+			drawFinalSegmentsToTexture(texture0);
+			drawPlaneProjectedTexturetoTexture(texture1, mMeshTracker->getHostNumDetectedPlanes()-1);
+			
+			drawQuadtreetoTexture(texture2, mMeshTracker->getHostNumDetectedPlanes()-1);
+			drawQuad(quadtree_prog,  -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL
+
+			//drawQuad(distsegments_prog,  -0.5, -0.5, 0.5, 0.5, 1.0,  &texture0, 1);//LL
+			drawQuad(finalsegments_prog, -0.5, 0.5, 0.5, 0.5, 1.0,  &texture0, 1);//UL
+			drawQuad(projectedsegments_prog, 0.5, 0.5, 0.5, 0.5, 1.0,  &texture0, 1);//UR
+			drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR
+			break;
+		case DISPLAY_MODE_NONE:
+		default:
 			break;
 		}
 
@@ -1084,14 +1180,20 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	case '4':
 		mViewState = DISPLAY_MODE_HISTOGRAM_COMPARE;
 		break;
-	case '6':
+	case '5':
 		mViewState = DISPLAY_MODE_VMAP_DEBUG;
 		break;
-	case '7':
+	case '6':
 		mViewState = DISPLAY_MODE_NMAP_DEBUG;
 		break;
+	case '7':
+		mViewState = DISPLAY_MODE_SEGMENTATION_DEBUG;
+		break;
 	case '8':
-		mViewState = DISPLAY_MODE_CURVATURE_DEBUG;
+		mViewState = DISPLAY_MODE_PROJECTION_DEBUG;
+		break;
+	case '0':
+		mViewState = DISPLAY_MODE_NONE;
 		break;
 	case('r'):
 		cout << "Reloading Shaders" <<endl;
@@ -1270,34 +1372,74 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		mNormalMode = SIMPLE_NORMALS;
 		cout << "Simple Normals Mode"<< endl;
 		break;
-	case '/':
-		mNormalMode = PCA_NORMALS;
-		cout << "PCA Normals Mode" << endl;
-		break;
 	case 'H':
 		{
-			ofstream arrayData("decoupledhistogram.csv"); 
+			ofstream arrayData("segmentationSample.csv"); 
 
-			Int3SOA dev_histogram = mMeshTracker->getDecoupledHistogram();
-			int histogramlength = mMeshTracker->getNormalDecoupledBins();
+			int* dev_segements = mMeshTracker->getNormalSegments();
+			float* dev_segDistance = mMeshTracker->getPlaneProjectedDistance();
 
-			int* xHist = new int[histogramlength];
-			int* yHist = new int[histogramlength];
-			int* zHist = new int[histogramlength];
 
-			cudaMemcpy(xHist, dev_histogram.x, histogramlength*sizeof(int), cudaMemcpyDeviceToHost);
-			cudaMemcpy(yHist, dev_histogram.y, histogramlength*sizeof(int), cudaMemcpyDeviceToHost);
-			cudaMemcpy(zHist, dev_histogram.z, histogramlength*sizeof(int), cudaMemcpyDeviceToHost);
+			float* dev_rgbX = mMeshTracker->getRGBMapSOA().x[0];
+			float* dev_rgbY = mMeshTracker->getRGBMapSOA().y[0];
+			float* dev_rgbZ = mMeshTracker->getRGBMapSOA().z[0];
 
-			for(int i = 0; i < histogramlength; ++i) {
-				arrayData << xHist[i] << ','  << yHist[i] << ',' << zHist[i] << endl;
+
+			float* dev_posX = mMeshTracker->getVMapPyramid().x[0];
+			float* dev_posY = mMeshTracker->getVMapPyramid().y[0];
+			float* dev_posZ = mMeshTracker->getVMapPyramid().z[0];
+
+			float* dev_normX = mMeshTracker->getNMapPyramid().x[0];
+			float* dev_normY = mMeshTracker->getNMapPyramid().y[0];
+			float* dev_normZ = mMeshTracker->getNMapPyramid().z[0];
+
+
+			int* segmentIndex = new int[mXRes*mYRes];
+			float* segDistance = new float[mXRes*mYRes];
+
+
+			float* rgbX = new float[mXRes*mYRes];
+			float* rgbY = new float[mXRes*mYRes];
+			float* rgbZ = new float[mXRes*mYRes];
+
+			float* posX = new float[mXRes*mYRes];
+			float* posY = new float[mXRes*mYRes];
+			float* posZ = new float[mXRes*mYRes];
+
+			float* normX = new float[mXRes*mYRes];
+			float* normY = new float[mXRes*mYRes];
+			float* normZ = new float[mXRes*mYRes];
+
+			cudaMemcpy(segmentIndex,  dev_segements, mXRes*mYRes*sizeof(int), cudaMemcpyDeviceToHost);
+			cudaMemcpy(segDistance, dev_segDistance, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+
+			cudaMemcpy(rgbX, dev_rgbX, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(rgbY, dev_rgbY, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(rgbZ, dev_rgbZ, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(posX, dev_posX, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(posY, dev_posY, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(posZ, dev_posZ, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(normX, dev_normX, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(normY, dev_normY, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+			cudaMemcpy(normZ, dev_normZ, mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+
+			for(int i = 0; i < mXRes*mYRes; ++i) {
+				arrayData << posX[i] << ',' << posY[i] << ',' << posZ[i] << ',' 
+					<< normX[i] << ',' << normY[i] << ',' << normZ[i] << ',' 
+					<< segmentIndex[i] << ','  << segDistance[i] << ','
+					<< rgbX[i] << ',' << rgbY[i] << ',' << rgbZ[i] << endl;
 			}
 
-			delete xHist;
-			delete yHist;
-			delete zHist;
+			delete segmentIndex;
+			delete segDistance;
+			delete posX;
+			delete posY;
+			delete posZ;
+			delete normX;
+			delete normY;
+			delete normZ;
 
-			cout << "Current Decoupled Histogram Saved to file" <<endl;
+			cout << "Current Segmentation Saved to file" <<endl;
 		}
 		break;
 
@@ -1351,7 +1493,7 @@ void MeshViewer::mouse_move(int x, int y) {
 		float delX = x-drag_x_last;
 		float delY = y-drag_y_last;
 
-		float rotSpeed = 0.1f*PI/180.0f;
+		float rotSpeed = 0.1f*PI_F/180.0f;
 
 		vec3 Up = mCamera.up;
 		vec3 Right = normalize(cross(mCamera.view, -mCamera.up));

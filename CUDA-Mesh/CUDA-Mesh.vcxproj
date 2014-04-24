@@ -109,7 +109,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
       <CompileOut>$(ProjectDir)$(Platform)/$(Configuration)/%(Filename)%(Extension).obj</CompileOut>
     </CudaCompile>
     <CudaCompile>
-      <Include>cuda</Include>
+      <Include>cuda;</Include>
       <CodeGeneration>compute_20,sm_20</CodeGeneration>
       <MaxRegCount>32</MaxRegCount>
     </CudaCompile>
@@ -187,6 +187,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <ClInclude Include="MeshTracker.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="MeshViewer.h" />
+    <ClInclude Include="quadtree.h" />
     <ClInclude Include="Utils.h" />
   </ItemGroup>
   <ItemGroup>
@@ -205,6 +206,7 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
     <CudaCompile Include="cuda\scan.cu" />
     <CudaCompile Include="cuda\seperable_filter.cu" />
     <CudaCompile Include="cuda\transpose.cu" />
+    <CudaCompile Include="quadtree.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -3,6 +3,7 @@
 //Generic includes
 #include "Utils.h"
 #include "CudaUtils.h"
+#include <boost/timer/timer.hpp>
 
 //CUDA GL Includes
 #include "cuda_runtime.h"
@@ -46,23 +47,17 @@ enum DisplayModes
 	DISPLAY_MODE_HISTOGRAM_COMPARE,
 	DISPLAY_MODE_VMAP_DEBUG,
 	DISPLAY_MODE_NMAP_DEBUG,
-	DISPLAY_MODE_CURVATURE_DEBUG
+	DISPLAY_MODE_SEGMENTATION_DEBUG,
+	DISPLAY_MODE_PROJECTION_DEBUG,
+	DISPLAY_MODE_NONE
 };
 
 enum NormalMode
 {
 	SIMPLE_NORMALS,
-	AVERAGE_GRADIENT_NORMALS,
-	PCA_NORMALS
+	AVERAGE_GRADIENT_NORMALS
 };
 
-
-enum SegementationMode
-{
-	GPU_SIMPLE_SEGMENTATION,
-	GPU_DECOUPLED_SEGMENTATION
-};
-		
 class MeshViewer : public RGBDDevice::NewRGBDFrameListener
 {
 public:
@@ -125,7 +120,6 @@ private:
 #pragma region Pipeline Options
 	FilterMode mFilterMode;
 	NormalMode mNormalMode;
-	SegementationMode mSegmentationMode;
 	float mSpatialSigma;
 	float mDepthSigma;
 	float mMaxDepth;
@@ -173,10 +167,13 @@ private:
 	GLuint abs_prog;//Useful for debuging normals or world space coords
 	GLuint vmap_prog;
 	GLuint nmap_prog;
-	GLuint curvemap_prog;
 	GLuint histogram_prog;
 	GLuint barhistogram_prog;
 	GLuint normalsegments_prog;
+	GLuint finalsegments_prog;
+	GLuint projectedsegments_prog;
+	GLuint distsegments_prog;
+	GLuint quadtree_prog;
 #pragma endregion
 
 #pragma region Buffer Object Indecies
@@ -275,10 +272,13 @@ private:
 
 	void drawVMaptoTexture(GLuint texture, int level);
 	void drawNMaptoTexture(GLuint texture, int level);
-	void drawCurvaturetoTexture(GLuint texture);
 	void drawNormalHistogramtoTexture(GLuint texture);
-	void drawDecoupledHistogramsToTexture(GLuint texture);
-	void drawNormalSegmentsToTexture(GLuint texture);
+	void drawNormalSegmentsToTexture(GLuint texture, int level);
+	void drawFinalSegmentsToTexture(GLuint texture);
+	void drawDistanceHistogramtoTexture(GLuint texture, vec3 color, int scale, int peak);
+	
+	void drawPlaneProjectedTexturetoTexture(GLuint texture, int planeNum);
+	void drawQuadtreetoTexture(GLuint texture, int planeNum);
 
 #pragma endregion
 

@@ -1,5 +1,38 @@
 #include "preprocessing.h"
 
+__global__ void flipDepthImageXAxisKernel(rgbd::framework::DPixel* dev_depthBuffer, int xRes, int yRes)
+{
+	extern __shared__ int s_swapbuffer[];
+
+	int yi = threadIdx.y + blockIdx.y * blockDim.y;
+	int loadIndexX = (blockDim.x/2 * (gridDim.x * 2 - 2 - blockIdx.x)) + threadIdx.x;
+	if(threadIdx.x < blockDim.x/2)
+		loadIndexX = blockDim.x/2 * blockIdx.x + threadIdx.x;
+	
+
+	s_swapbuffer[threadIdx.x + threadIdx.y * blockDim.x] = dev_depthBuffer[loadIndexX + yi*xRes].depth;
+
+
+	dev_depthBuffer[loadIndexX + yi*xRes].depth = s_swapbuffer[(blockDim.x - 1 - threadIdx.x) + threadIdx.y*blockDim.x];
+
+}
+
+__host__ void flipDepthImageXAxis(rgbd::framework::DPixel* dev_depthBuffer, int xRes, int yRes)
+{
+	int blockWidth = 32;
+	int blockHeight = 8;
+
+	assert(xRes/2 % blockWidth == 0);
+
+	dim3 threadsPerBlock(blockWidth, blockHeight);
+
+	dim3 fullBlocksPerGrid((int)ceil(float(xRes)/float(blockWidth)), 
+		(int)ceil(float(yRes)/float(blockHeight)));
+	int sharedCount = blockWidth*blockHeight*sizeof(int);
+
+	flipDepthImageXAxisKernel<<<fullBlocksPerGrid, threadsPerBlock, sharedCount>>>(dev_depthBuffer, xRes, yRes);
+}
+
 #pragma region VMap No Filter
 __global__ void buildVMapNoFilterKernel(rgbd::framework::DPixel* dev_depthBuffer, Float3SOAPyramid vmapSOA, int xRes, int yRes,
 										rgbd::framework::Intrinsics intr, float maxDepth) 
@@ -10,10 +43,10 @@ __global__ void buildVMapNoFilterKernel(rgbd::framework::DPixel* dev_depthBuffer
 	if(u < xRes && v < yRes) 
 	{
 		int i = (v * xRes) + u;
-
+		int i2 = (v * xRes) + (xRes - 1 - u);//X Flipped index
 		float x = CUDART_NAN_F;
 		float y = CUDART_NAN_F;
-		float z = dev_depthBuffer[i].depth * 0.001f;
+		float z = dev_depthBuffer[i2].depth * 0.001f;
 
 		if (z > 0.001f && z < maxDepth) {//Exclude zero or negative depths.  
 
@@ -447,11 +480,11 @@ __global__ void rgbAOSToSOAKernel(rgbd::framework::ColorPixel* dev_colorPixels,
 	if(u < xRes && v < yRes) 
 	{
 		int i = (v * xRes) + u;
-
+		int i2 = (v * xRes) + (xRes - 1 - u);
 		rgbd::framework::ColorPixel color = dev_colorPixels[i];
-		rgbSOA.x[0][i] = color.r / 255.0f;
-		rgbSOA.y[0][i] = color.g / 255.0f;
-		rgbSOA.z[0][i] = color.b / 255.0f;
+		rgbSOA.x[0][i2] = color.r / 255.0f;
+		rgbSOA.y[0][i2] = color.g / 255.0f;
+		rgbSOA.z[0][i2] = color.b / 255.0f;
 	}
 
 }

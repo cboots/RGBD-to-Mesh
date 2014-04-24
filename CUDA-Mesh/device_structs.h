@@ -8,6 +8,8 @@
 
 #define NUM_PYRAMID_LEVELS 3
 
+
+
 struct RGBMapSOA{
 	float* r;
 	float* g;
@@ -20,6 +22,14 @@ struct Float3SOA{
 	float* x;
 	float* y;
 	float* z;
+};
+
+
+struct Float4SOA{
+	float* x;
+	float* y;
+	float* z;
+	float* w;
 };
 
 struct Int3SOA{
@@ -38,6 +48,29 @@ struct Float3SOAPyramid{
 	float* z[NUM_PYRAMID_LEVELS];
 };
 
+
+struct PlaneStats{
+	float* count;
+	Float3SOA norms;
+	Float3SOA eigs;
+	Float3SOA centroids;
+	//Scatter matrix decoupled
+	float* Sxx;
+	float* Syy;
+	float* Szz;
+	float* Sxy;
+	float* Syz;
+	float* Sxz;
+};
+
+
+struct ProjectionParameters{
+	int destWidth;
+	int destHeight;
+	int textureResolution;//pixels/meter
+	glm::mat3 projectionMatrix;
+	glm::vec4 aabbMeters;
+};
 
 typedef struct
 {

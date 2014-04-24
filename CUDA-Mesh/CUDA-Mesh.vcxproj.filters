@@ -31,6 +31,9 @@
     <CudaCompile Include="cuda\seperable_filter.cu">
       <Filter>Cuda</Filter>
     </CudaCompile>
+    <CudaCompile Include="quadtree.cu">
+      <Filter>Cuda</Filter>
+    </CudaCompile>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="glslUtility.cpp" />
@@ -79,6 +82,9 @@
       <Filter>Cuda</Filter>
     </ClInclude>
     <ClInclude Include="CudaUtils.h">
+      <Filter>Cuda</Filter>
+    </ClInclude>
+    <ClInclude Include="quadtree.h">
       <Filter>Cuda</Filter>
     </ClInclude>
   </ItemGroup>

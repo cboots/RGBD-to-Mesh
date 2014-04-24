@@ -13,9 +13,10 @@ void main()
 {
 	//Just pass through for now
 	vec4 norm = texture(u_Texture0, fs_texCoord*u_TextureScale);
-	FragColor = abs(norm);
+	FragColor = (norm+1.0)*0.5;
 	FragColor.a = 1.0;
-	
+	if(norm.z > 0.0)
+		FragColor = vec4(1,1,1,0);
 	/*
 	vec2 texCoord = fs_texCoord*u_TextureScale;
 	float dxy = 0.002;
