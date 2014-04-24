@@ -787,3 +787,214 @@ __host__ void quadtreeDecimation(int actualWidth, int actualHeight, Float4SOA pl
 	quadtreeDecimationKernel2<<<blocks,threads,sharedSize>>>(actualWidth, actualHeight, quadTreeAssemblyBuffer, textureBufferSize);
 
 }
+
+
+
+#define MAX_BLOCK_SIZE 1024
+#define MAX_GRID_SIZE 65535
+
+#define NUM_BANKS 32
+#define LOG_NUM_BANKS 5 
+
+#define NO_BANK_CONFLICTS
+
+
+#ifdef NO_BANK_CONFLICTS
+#define CONFLICT_FREE_OFFSET(n)    \
+	(((n) >> (2 * LOG_NUM_BANKS)))  
+#else
+#define CONFLICT_FREE_OFFSET(a)    (0)  
+#endif
+
+
+__global__ void quadTreeExclusiveScanKernel(int width, int* input, int* output,  int bufferStride, int* blockResults)
+{
+	extern __shared__ float temp[];
+
+	//Offset pointers to this block's row. Avoids the need for more complex indexing
+	input += bufferStride*blockIdx.x;
+	output += bufferStride*blockIdx.x;
+
+	//Now each row is working with it's own row like a normal exclusive scan of an array length width.
+	int index = threadIdx.x;
+	int offset = 1;
+	int n = 2*blockDim.x;//get actual temp padding
+	
+	int ai = index;
+	int bi = index + n/2;
+	int bankOffsetA = CONFLICT_FREE_OFFSET(ai);
+	int bankOffsetB = CONFLICT_FREE_OFFSET(bi);
+
+	//Bounds checking, load shared mem
+	temp[ai+bankOffsetA] = (ai < width)?input[ai]:0;
+	temp[bi+bankOffsetB] = (bi < width)?input[bi]:0;
+	//Negative vertecies are to be cleared
+	if(temp[ai+bankOffsetA] < 0)
+		temp[ai+bankOffsetA] = 0;
+	if(temp[bi+bankOffsetB] < 0)
+		temp[bi+bankOffsetB] = 0;
+
+
+	//Reduction step
+	for (int d = n>>1; d > 0; d >>= 1)                  
+	{   
+		__syncthreads();  //Make sure previous step has completed
+		if (index < d)  
+		{
+			int ai2 = offset*(2*index+1)-1;  
+			int bi2 = offset*(2*index+2)-1;  
+			ai2 += CONFLICT_FREE_OFFSET(ai2);
+			bi2 += CONFLICT_FREE_OFFSET(bi2);
+
+			temp[bi2] += temp[ai2];
+		}  
+		offset *= 2;  //Adjust offset
+	}
+
+	//Reduction complete
+
+	//Clear last element
+	if(index == 0)
+	{
+		blockResults[blockIdx.x] = temp[(n-1)+CONFLICT_FREE_OFFSET(n-1)];
+		temp[(n-1)+CONFLICT_FREE_OFFSET(n-1)] = 0;
+	}
+
+	//Sweep down
+	for (int d = 1; d < n; d *= 2) // traverse down tree & build scan  
+	{  
+		offset >>= 1;  
+		__syncthreads();  //wait for previous step to finish
+		if (index < d)                       
+		{  
+			int ai2 = offset*(2*index+1)-1;  
+			int bi2 = offset*(2*index+2)-1;  
+			ai2 += CONFLICT_FREE_OFFSET(ai2);
+			bi2 += CONFLICT_FREE_OFFSET(bi2);
+
+			//Swap
+			float t = temp[ai2];  
+			temp[ai2] = temp[bi2];  
+			temp[bi2] += t;   
+		}  
+	}  
+
+	//Sweep complete
+	__syncthreads();
+
+	//Writeback
+	if(ai < width)
+		output[ai] = temp[ai+bankOffsetA];
+	if(bi < width)
+		output[bi] = temp[bi+bankOffsetB];
+
+}
+
+
+__global__ void blockResultsExclusiveScanKernel(int* blockResults, int numBlocks, int* totalSumOut)
+{
+	extern __shared__ float temp[];
+
+	//Now each row is working with it's own row like a normal exclusive scan of an array length width.
+	int index = threadIdx.x;
+	int offset = 1;
+	int n = 2*blockDim.x;//get actual temp padding
+	
+	int ai = index;
+	int bi = index + n/2;
+	int bankOffsetA = CONFLICT_FREE_OFFSET(ai);
+	int bankOffsetB = CONFLICT_FREE_OFFSET(bi);
+
+	//Bounds checking, load shared mem
+	temp[ai+bankOffsetA] = (ai < numBlocks)?blockResults[ai]:0;
+	temp[bi+bankOffsetB] = (bi < numBlocks)?blockResults[bi]:0;
+	
+	//Reduction step
+	for (int d = n>>1; d > 0; d >>= 1)                  
+	{   
+		__syncthreads();  //Make sure previous step has completed
+		if (index < d)  
+		{
+			int ai2 = offset*(2*index+1)-1;  
+			int bi2 = offset*(2*index+2)-1;  
+			ai2 += CONFLICT_FREE_OFFSET(ai2);
+			bi2 += CONFLICT_FREE_OFFSET(bi2);
+
+			temp[bi2] += temp[ai2];
+		}  
+		offset *= 2;  //Adjust offset
+	}
+
+	//Reduction complete
+	//Clear last element
+	if(index == 0)
+	{
+		totalSumOut[0] = temp[(n-1)+CONFLICT_FREE_OFFSET(n-1)];
+		temp[(n-1)+CONFLICT_FREE_OFFSET(n-1)] = 0;
+	}
+
+	//Sweep down
+	for (int d = 1; d < n; d *= 2) // traverse down tree & build scan  
+	{  
+		offset >>= 1;  
+		__syncthreads();  //wait for previous step to finish
+		if (index < d)                       
+		{  
+			int ai2 = offset*(2*index+1)-1;  
+			int bi2 = offset*(2*index+2)-1;  
+			ai2 += CONFLICT_FREE_OFFSET(ai2);
+			bi2 += CONFLICT_FREE_OFFSET(bi2);
+
+			//Swap
+			float t = temp[ai2];  
+			temp[ai2] = temp[bi2];  
+			temp[bi2] += t;   
+		}  
+	}  
+
+	//Sweep complete
+	__syncthreads();
+
+	//Writeback
+	if(ai < numBlocks)
+		blockResults[ai] = temp[ai+bankOffsetA];
+	if(bi < numBlocks)
+		blockResults[bi] = temp[bi+bankOffsetB];
+
+
+}
+
+
+
+__host__ void quadtreeMeshGeneration(int actualWidth, int actualHeight, int* quadTreeAssemblyBuffer,
+									 int* quadTreeScanResults, int textureBufferSize, int* blockResults, int blockResultsBufferSize,
+									 int* indexBuffer, float4* vertexBuffer, int* compactCount, int outputBufferSize)
+{
+	int blockSize = roundupnextpow2(actualWidth);
+	int numBlocks = actualHeight;
+	dim3 threads(blockSize >> 1);//2 elements per thread
+	dim3 blocks(numBlocks);
+	int sharedCount = (blockSize+2)*sizeof(int);
+
+	
+	//Make sure size constraints aren't violated
+	assert(blocks.x <= blockResultsBufferSize);
+	assert(blockResultsBufferSize <= blockSize);
+	
+	//Scan blocks
+	quadTreeExclusiveScanKernel<<<blocks,threads,sharedCount>>>(actualWidth, quadTreeAssemblyBuffer, 
+									quadTreeScanResults, textureBufferSize, blockResults);
+
+	//Scan block results
+	threads = dim3(roundupnextpow2(numBlocks));
+	blocks = dim3(1);
+	assert(threads.x <= blockResultsBufferSize);
+
+	sharedCount = (threads.x + 2)*sizeof(int);
+	//blockResultsExclusiveScanKernel<<<blocks,threads,sharedCount>>>(blockResults, numBlocks, compactCount);
+
+
+	//Reintegrate
+
+	//Scatter (generate meshes and vertecies in the process)
+}

@@ -118,7 +118,7 @@ __host__ void exclusiveScanRows(float* dev_in, float* dev_out, int width, int he
 	int blockArraySize = pow2roundup(width);
 	dim3 threads(blockArraySize >> 1);//2 elements per thread
 	dim3 blocks(height);
-	int sharedCount = (2*blockArraySize+2)*sizeof(float);
+	int sharedCount = (blockArraySize+2)*sizeof(float);
 
 	exclusive_scan_kernel<<<blocks,threads,sharedCount>>>(dev_in, dev_out, width, height);
 }

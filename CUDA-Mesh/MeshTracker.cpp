@@ -111,6 +111,14 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 
 	createFloat4SOA(dev_PlaneTexture, MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE);
 	cudaMalloc((void**) &dev_quadTreeAssembly, MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE*sizeof(int));
+	cudaMalloc((void**) &dev_quadTreeScanResults, MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE*sizeof(int));
+	cudaMalloc((void**) &dev_quadTreeBlockResults, MAX_TEXTURE_BUFFER_SIZE*sizeof(int));
+
+	
+	cudaMalloc((void**) &dev_quadTreeIndexBuffer, QUADTREE_BUFFER_SIZE*6*sizeof(int));//Triangles
+	cudaMalloc((void**) &dev_quadTreeVertexBuffer, QUADTREE_BUFFER_SIZE*sizeof(float4));//verticies
+	cudaMalloc((void**) &dev_compactCount, sizeof(int));//Number of triangles
+
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -180,6 +188,12 @@ void MeshTracker::cleanupBuffers()
 
 	freeFloat4SOA(dev_PlaneTexture);
 	cudaFree(dev_quadTreeAssembly);
+	cudaFree(dev_quadTreeScanResults);
+	cudaFree(dev_quadTreeBlockResults);
+	
+	cudaFree(dev_quadTreeIndexBuffer);
+	cudaFree(dev_quadTreeVertexBuffer);
+	cudaFree(dev_compactCount);
 
 	for(int i = 0; i < NUM_FLOAT1_PYRAMID_BUFFERS; ++i)
 	{
@@ -553,6 +567,13 @@ void MeshTracker::ReprojectPlaneTextures()
 			//Quadtree decimation
 			quadtreeDecimation((host_planeProjectionParameters + i)->destWidth, (host_planeProjectionParameters + i)->destHeight,
 				dev_PlaneTexture, dev_quadTreeAssembly, MAX_TEXTURE_BUFFER_SIZE);
+
+			//Quadtree compression, mesh generation
+			quadtreeMeshGeneration((host_planeProjectionParameters + i)->destWidth, (host_planeProjectionParameters + i)->destHeight,
+				dev_quadTreeAssembly, dev_quadTreeScanResults, MAX_TEXTURE_BUFFER_SIZE, 
+				dev_quadTreeBlockResults, MAX_TEXTURE_BUFFER_SIZE,
+				dev_quadTreeIndexBuffer, dev_quadTreeVertexBuffer, dev_compactCount, QUADTREE_BUFFER_SIZE);
+
 		}else
 		{
 			//Reached last plane, done

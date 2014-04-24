@@ -37,6 +37,9 @@ using namespace rgbd::framework;
 
 #define MAX_TEXTURE_BUFFER_SIZE	1024
 
+//For now, use theoretical max size. Should be able to decimate this considerably
+#define QUADTREE_BUFFER_SIZE	(MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE)
+
 enum FilterMode
 {
 	BILATERAL_FILTER,
@@ -108,6 +111,15 @@ private:
 
 	Float4SOA dev_PlaneTexture;
 	int* dev_quadTreeAssembly;
+	int* dev_quadTreeScanResults;
+	int* dev_quadTreeBlockResults;
+	
+	//Quadtree mesh output
+	int* dev_quadTreeIndexBuffer;
+	float4* dev_quadTreeVertexBuffer;
+	int* dev_compactCount;
+
+
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
 	Float1SOAPyramid dev_float1PyramidBuffers[NUM_FLOAT1_PYRAMID_BUFFERS];
 

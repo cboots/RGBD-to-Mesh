@@ -34,5 +34,6 @@ __host__ void projectTexture(int segmentId, ProjectionParameters* host_projParam
 __host__ void quadtreeDecimation(int actualWidth, int actualHeight, Float4SOA planarTexture, int* quadTreeAssemblyBuffer,
 								 int textureBufferSize);
 
-__host__ void quadtreeMeshGeneration(int actualWidth, int actualHeight, Float4SOA planarTexture, int* quadTreeAssemblyBuffer,
-									 int* quadTreeScanResults1, int textureBufferSize, int* quadTreeScanResults2, int scanResultsBuffer);
+__host__ void quadtreeMeshGeneration(int actualWidth, int actualHeight, int* quadTreeAssemblyBuffer,
+									 int* quadTreeScanResults, int textureBufferSize, int* blockResults, int blockResultsBufferSize,
+									 int* indexBuffer, float4* vertexBuffer, int* compactCount, int outputBufferSize);
