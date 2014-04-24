@@ -986,12 +986,13 @@ __host__ void quadtreeMeshGeneration(int actualWidth, int actualHeight, int* qua
 									quadTreeScanResults, textureBufferSize, blockResults);
 
 	//Scan block results
-	threads = dim3(roundupnextpow2(numBlocks));
+	int pow2 = roundupnextpow2(numBlocks);
+	threads = dim3(pow2>>1);
 	blocks = dim3(1);
-	assert(threads.x <= blockResultsBufferSize);
+	assert(pow2 <= blockResultsBufferSize);
 
-	sharedCount = (threads.x + 2)*sizeof(int);
-	//blockResultsExclusiveScanKernel<<<blocks,threads,sharedCount>>>(blockResults, numBlocks, compactCount);
+	sharedCount = (pow2 + 2)*sizeof(int);
+	blockResultsExclusiveScanKernel<<<blocks,threads,sharedCount>>>(blockResults, numBlocks, compactCount);
 
 
 	//Reintegrate
