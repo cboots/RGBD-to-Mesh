@@ -366,6 +366,7 @@ __global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, 
 	int destWidth  = 0;
 	int destHeight = 0;
 	int maxRatio = 0;
+	glm::vec4 aabb;
 	if(threadIdx.x < planeCount[0])
 	{
 		//In range and valid plane.
@@ -377,7 +378,7 @@ __global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, 
 		glm::vec3 centroid = glm::vec3(planeStats.centroids.x[threadIdx.x],
 			planeStats.centroids.y[threadIdx.x],
 			planeStats.centroids.z[threadIdx.x]);
-		glm::vec4 aabb = aabbs[threadIdx.x];
+		aabb = aabbs[threadIdx.x];
 
 		//Compute camera space coordinates (4 points in clockwise winding from viewpoint)
 		/*   1----2
@@ -457,9 +458,11 @@ __global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, 
 
 		C = A*glm::inverse(B);
 
+		
 	}
 
 	projParams[threadIdx.x].projectionMatrix = C;
+	projParams[threadIdx.x].aabbMeters = aabb;
 	projParams[threadIdx.x].destWidth = destWidth;
 	projParams[threadIdx.x].destHeight = destHeight;
 	projParams[threadIdx.x].textureResolution = maxRatio;
@@ -639,11 +642,11 @@ __global__ void quadtreeDecimationKernel1(int actualWidth, int actualHeight, Flo
 				s_tile[(threadIdx.x+step)	+	(threadIdx.y)  *(blockDim.x+1)] = -1;
 				s_tile[(threadIdx.x		)	+	(threadIdx.y+step)*(blockDim.x+1)] = -1;
 				s_tile[(threadIdx.x+step)	+	(threadIdx.y+step)*(blockDim.x+1)] = -1;
-				
+
 			}
 		}
 		__syncthreads();
-		
+
 	}
 
 	//====================Writeback=========================
@@ -751,11 +754,11 @@ __global__ void quadtreeDecimationKernel2(int actualWidth, int actualHeight, int
 				s_tile[(threadIdx.x+step)	+	(threadIdx.y)  *(blockDim.x+1)] = -1;
 				s_tile[(threadIdx.x		)	+	(threadIdx.y+step)*(blockDim.x+1)] = -1;
 				s_tile[(threadIdx.x+step)	+	(threadIdx.y+step)*(blockDim.x+1)] = -1;
-				
+
 			}
 		}
 		__syncthreads();
-		
+
 	}
 
 	//====================Writeback=========================
@@ -819,7 +822,7 @@ __global__ void quadTreeExclusiveScanKernel(int width, int* input, int* output, 
 	int index = threadIdx.x;
 	int offset = 1;
 	int n = 2*blockDim.x;//get actual temp padding
-	
+
 	int ai = index;
 	int bi = index + n/2;
 	int bankOffsetA = CONFLICT_FREE_OFFSET(ai);
@@ -899,7 +902,7 @@ __global__ void blockResultsExclusiveScanKernel(int* blockResults, int numBlocks
 	int index = threadIdx.x;
 	int offset = 1;
 	int n = 2*blockDim.x;//get actual temp padding
-	
+
 	int ai = index;
 	int bi = index + n/2;
 	int bankOffsetA = CONFLICT_FREE_OFFSET(ai);
@@ -908,7 +911,7 @@ __global__ void blockResultsExclusiveScanKernel(int* blockResults, int numBlocks
 	//Bounds checking, load shared mem
 	temp[ai+bankOffsetA] = (ai < numBlocks)?blockResults[ai]:0;
 	temp[bi+bankOffsetB] = (bi < numBlocks)?blockResults[bi]:0;
-	
+
 	//Reduction step
 	for (int d = n>>1; d > 0; d >>= 1)                  
 	{   
@@ -966,7 +969,57 @@ __global__ void blockResultsExclusiveScanKernel(int* blockResults, int numBlocks
 
 
 
-__host__ void quadtreeMeshGeneration(int actualWidth, int actualHeight, int* quadTreeAssemblyBuffer,
+__global__ void reintegrateResultsKernel(int actualWidth, int textureBufferSize, 
+										 int* quadTreeScanResults,  int* blockResults)
+{
+	int pixelX = threadIdx.x;
+	int pixelY = blockIdx.x;
+
+	if(pixelX < actualWidth)
+	{
+		quadTreeScanResults[pixelX + pixelY*textureBufferSize] += blockResults[pixelY];
+	}
+}
+
+
+__global__ void scatterResultsKernel(glm::vec4 aabbMeters, int actualWidth, int actualHeight, 
+									 int finalTextureWidth, int finalTextureHeight, int textureBufferSize, 
+									 int* quadTreeAssemblyBuffer,  int* quadTreeScanResults,  
+									 int* blockResults,  int* indexBuffer, float4* vertexBuffer)
+{
+	int pixelX = threadIdx.x;
+	int pixelY = blockIdx.x;
+
+	if(pixelX < actualWidth)
+	{
+		int degree = quadTreeAssemblyBuffer[pixelX + pixelY*textureBufferSize];//Load vertex degree
+
+		//Only continue if this is a used vertex in the quadtree
+		if(degree >= 0)
+		{
+			int vertNum = quadTreeScanResults[pixelX + pixelY*textureBufferSize];
+
+			//Compute vertex info.
+			float textureU = float(pixelX)/float(finalTextureWidth);
+			float textureV = float(pixelY)/float(finalTextureHeight);
+
+			//pixelX*(Sxmax-Sxmin)/actualWidth + Sxmin;
+			float posX = (pixelX*(aabbMeters.y-aabbMeters.x))/float(actualWidth) + aabbMeters.x;
+			//pixelY*(Symax-Symin)/actualHeight + Symin;
+			float posY = (pixelY*(aabbMeters.w-aabbMeters.z))/float(actualHeight) + aabbMeters.z;
+
+			float4 vertex;
+			vertex.x = posX;
+			vertex.y = posY;
+			vertex.z = textureU;
+			vertex.w = textureV;
+			vertexBuffer[vertNum] = vertex;
+		}
+	}
+}
+
+
+__host__ void quadtreeMeshGeneration(glm::vec4 aabbMeters, int actualWidth, int actualHeight, int* quadTreeAssemblyBuffer,
 									 int* quadTreeScanResults, int textureBufferSize, int* blockResults, int blockResultsBufferSize,
 									 int* indexBuffer, float4* vertexBuffer, int* compactCount, int* host_compactCount, int outputBufferSize)
 {
@@ -976,14 +1029,14 @@ __host__ void quadtreeMeshGeneration(int actualWidth, int actualHeight, int* qua
 	dim3 blocks(numBlocks);
 	int sharedCount = (blockSize+2)*sizeof(int);
 
-	
+
 	//Make sure size constraints aren't violated
 	assert(blocks.x <= blockResultsBufferSize);
 	assert(blockResultsBufferSize <= blockSize);
-	
+
 	//Scan blocks
 	quadTreeExclusiveScanKernel<<<blocks,threads,sharedCount>>>(actualWidth, quadTreeAssemblyBuffer, 
-									quadTreeScanResults, textureBufferSize, blockResults);
+		quadTreeScanResults, textureBufferSize, blockResults);
 
 	//Scan block results
 	int pow2 = roundupnextpow2(numBlocks);
@@ -995,7 +1048,19 @@ __host__ void quadtreeMeshGeneration(int actualWidth, int actualHeight, int* qua
 	blockResultsExclusiveScanKernel<<<blocks,threads,sharedCount>>>(blockResults, numBlocks, compactCount);
 
 	cudaMemcpy(host_compactCount, compactCount, sizeof(int), cudaMemcpyDeviceToHost);
-	//Reintegrate
 
-	//Scatter (generate meshes and vertecies in the process)
+	//Reintegrate
+	//Also scatter (generate meshes and vertecies in the process)
+	threads = dim3(actualWidth);
+	blocks = dim3(numBlocks);
+	reintegrateResultsKernel<<<blocks,threads>>>(actualWidth, textureBufferSize, quadTreeScanResults, blockResults);
+
+	int finalTextureWidth = roundupnextpow2(actualWidth);
+	int finalTextureHeight = roundupnextpow2(actualHeight);
+	assert(finalTextureWidth <= textureBufferSize);
+	assert(finalTextureHeight <= textureBufferSize);
+
+	scatterResultsKernel<<<blocks,threads>>>(aabbMeters, actualWidth, actualHeight, finalTextureWidth, finalTextureHeight, textureBufferSize, 
+		quadTreeAssemblyBuffer, quadTreeScanResults, blockResults, indexBuffer, vertexBuffer);
+
 }

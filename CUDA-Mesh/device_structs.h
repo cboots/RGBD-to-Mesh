@@ -69,6 +69,7 @@ struct ProjectionParameters{
 	int destHeight;
 	int textureResolution;//pixels/meter
 	glm::mat3 projectionMatrix;
+	glm::vec4 aabbMeters;
 };
 
 typedef struct

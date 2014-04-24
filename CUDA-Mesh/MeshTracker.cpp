@@ -569,7 +569,8 @@ void MeshTracker::ReprojectPlaneTextures()
 				dev_PlaneTexture, dev_quadTreeAssembly, MAX_TEXTURE_BUFFER_SIZE);
 
 			//Quadtree compression, mesh generation
-			quadtreeMeshGeneration((host_planeProjectionParameters + i)->destWidth, (host_planeProjectionParameters + i)->destHeight,
+			quadtreeMeshGeneration((host_planeProjectionParameters + i)->aabbMeters, 
+				(host_planeProjectionParameters + i)->destWidth, (host_planeProjectionParameters + i)->destHeight,
 				dev_quadTreeAssembly, dev_quadTreeScanResults, MAX_TEXTURE_BUFFER_SIZE, 
 				dev_quadTreeBlockResults, MAX_TEXTURE_BUFFER_SIZE,
 				dev_quadTreeIndexBuffer, dev_quadTreeVertexBuffer, dev_compactCount, &host_quadtreeVertexCount, QUADTREE_BUFFER_SIZE);
