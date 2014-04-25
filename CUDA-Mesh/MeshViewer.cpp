@@ -304,11 +304,11 @@ void MeshViewer::initShader()
 
 	projectedsegments_prog = glslUtility::createProgram(pass_vert, NULL, projectedsegments_frag, quadAttributeLocations, 2);
 
-	
-	quadtree_prog = glslUtility::createProgram(qtm_vert, NULL, qtm_color_frag, quadAttributeLocations, 2);
+	quadtree_prog= glslUtility::createProgram(pass_vert, NULL, quadtree_frag, quadAttributeLocations, 2);
 
 
-	qtm_color_prog = glslUtility::createProgram(pass_vert, NULL, quadtree_frag, quadAttributeLocations, 2);
+	//Mesh Programs
+	qtm_color_prog  = glslUtility::createProgram(qtm_vert, NULL, qtm_color_frag, quadAttributeLocations, 2);
 }
 
 void MeshViewer::initTextures()
@@ -1132,12 +1132,12 @@ void MeshViewer::display()
 			drawPlaneProjectedTexturetoTexture(texture1, mMeshTracker->getHostNumDetectedPlanes()-1);
 			
 			drawQuadtreetoTexture(texture2, mMeshTracker->getHostNumDetectedPlanes()-1);
-			drawQuad(quadtree_prog,  -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL
+			drawQuad(quadtree_prog,			-0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL
 
 			//drawQuad(distsegments_prog,  -0.5, -0.5, 0.5, 0.5, 1.0,  &texture0, 1);//LL
-			drawQuad(finalsegments_prog, -0.5, 0.5, 0.5, 0.5, 1.0,  &texture0, 1);//UL
+			drawQuad(finalsegments_prog,	-0.5, 0.5, 0.5, 0.5, 1.0,  &texture0, 1);//UL
 			drawQuad(projectedsegments_prog, 0.5, 0.5, 0.5, 0.5, 1.0,  &texture0, 1);//UR
-			drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR
+			drawQuad(color_prog,			 0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR
 			break;
 		case DISPLAY_MODE_QUADTREE:
 			meshes = mMeshTracker->getQuadTreeMeshes();

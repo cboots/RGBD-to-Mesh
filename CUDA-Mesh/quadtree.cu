@@ -787,6 +787,7 @@ __host__ void quadtreeDecimation(int actualWidth, int actualHeight, Float4SOA pl
 	int sharedSize = (tileSize+1)*(tileSize+1)*sizeof(int);
 	quadtreeDecimationKernel1<<<blocks,threads,sharedSize>>>(actualWidth, actualHeight, planarTexture, quadTreeAssemblyBuffer, textureBufferSize);
 
+
 	blocks = dim3((int)ceil(actualWidth/float(tileSize*tileSize)),
 		(int)ceil(actualHeight/float(tileSize*tileSize)));
 	quadtreeDecimationKernel2<<<blocks,threads,sharedSize>>>(actualWidth, actualHeight, quadTreeAssemblyBuffer, textureBufferSize);
@@ -1087,7 +1088,6 @@ __host__ void quadtreeMeshGeneration(glm::vec4 aabbMeters, int actualWidth, int 
 	dim3 threads(blockSize >> 1);//2 elements per thread
 	dim3 blocks(numBlocks);
 	int sharedCount = (blockSize+2)*sizeof(int);
-
 
 	//Make sure size constraints aren't violated
 	assert(blocks.x <= blockResultsBufferSize);
