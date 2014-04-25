@@ -605,7 +605,7 @@ void MeshViewer::drawQuadTreeMeshToFrameBuffer(QuadTreeMesh mesh, GLuint prog)
 
 	//Setup uniforms
 	mat4 persp = glm::perspective(radians(mCamera.fovy), float(mWidth)/float(mHeight), mCamera.zNear, mCamera.zFar);
-	mat4 viewmat = glm::lookAt(mCamera.eye, mCamera.eye+mCamera.view, -mCamera.up);
+	mat4 viewmat = glm::lookAt(mCamera.eye, mCamera.eye+mCamera.view, mCamera.up);
 	mat4 viewInvTrans = inverse(transpose(viewmat));
 
 
@@ -990,8 +990,8 @@ void MeshViewer::drawFinalSegmentsToTexture(GLuint texture)
 void MeshViewer::resetCamera()
 {
 	mCamera.eye = vec3(0.0f);
-	mCamera.view = vec3(0.0f, 0.0f, -1.0f);
-	mCamera.up = vec3(0.0f, 1.0f, 0.0f);
+	mCamera.view = vec3(0.0f, 0.0f, 1.0f);
+	mCamera.up = vec3(0.0f, -1.0f, 0.0f);
 	mCamera.fovy = 23.5f;
 	mCamera.zFar = 100.0f;
 	mCamera.zNear = 0.01;
