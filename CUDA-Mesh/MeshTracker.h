@@ -12,6 +12,7 @@
 #include "plane_segmentation.h"
 #include "quadtree.h"
 #include <iostream>
+#include <vector>
 
 using namespace std;
 using namespace rgbd::framework;
@@ -45,6 +46,27 @@ enum FilterMode
 	BILATERAL_FILTER,
 	GAUSSIAN_FILTER,
 	NO_FILTER
+};
+
+
+struct QuadTreeMesh
+{
+	shared_ptr<float4> rgbhTexture;
+	shared_ptr<float4> vertices;
+	shared_ptr<int> triangleIndices;
+	glm::mat4 TplaneTocam;
+	int mWidth;
+	int mHeight;
+
+	QuadTreeMesh(int textureWidth, int textureHeight, int numVertices, glm::mat4 transform)
+	{
+		rgbhTexture = shared_ptr<float4>(new float4[textureWidth*textureHeight]);
+		vertices = shared_ptr<float4>(new float4[numVertices]);
+		triangleIndices = shared_ptr<int>(new int[numVertices*6]);
+		TplaneTocam = transform;
+		mWidth = textureWidth;
+		mHeight = textureHeight;
+	}
 };
 
 class MeshTracker
@@ -90,7 +112,8 @@ private:
 	int* dev_distanceHistograms[MAX_2D_PEAKS_PER_ROUND];
 	float* dev_distPeaks[MAX_2D_PEAKS_PER_ROUND];
 
-	PlaneStats dev_planeStats;
+	PlaneStats* dev_planeStats;
+	PlaneStats* host_planeStats;
 
 	int* dev_finalSegmentsBuffer;
 	float* dev_finalDistanceToPlaneBuffer;
@@ -99,15 +122,10 @@ private:
 	int* dev_planeInvIdMap;
 	int* dev_detectedPlaneCount;
 	int host_detectedPlaneCount;
-	glm::vec3* dev_planeTangents;
 	glm::vec4* dev_aabbIntermediateBuffer;
-	glm::vec4* dev_planeAABB;
 
 	float* dev_segmentProjectedSx;
 	float* dev_segmentProjectedSy;
-
-	ProjectionParameters* dev_planeProjectionParameters;
-	ProjectionParameters* host_planeProjectionParameters;
 
 	Float4SOA dev_PlaneTexture;
 	int* dev_quadTreeAssembly;
@@ -127,6 +145,11 @@ private:
 	float* dev_floatImageBuffers[NUM_FLOAT1_IMAGE_SIZE_BUFFERS];
 
 #pragma region
+
+#pragma region Host Results storage
+	vector<QuadTreeMesh> host_quadtrees;
+#pragma endregion
+
 
 #pragma region Private Methods
 	void createFloat1SOAPyramid(Float1SOAPyramid& dev_pyramid, int xRes, int yRes);
@@ -180,6 +203,7 @@ public:
 
 	void ReprojectPlaneTextures();
 	
+	void deleteQuadTreeMeshes();
 #pragma endregion
 
 #pragma region Buffer getters
@@ -197,7 +221,7 @@ public:
 	inline float* getProjectedSy() {return dev_segmentProjectedSy;}
 	inline int* getDistanceHistogram(int peak) {return (peak >= 0 && peak < MAX_2D_PEAKS_PER_ROUND)?dev_distanceHistograms[peak]:NULL;}
 	inline Float4SOA getProjectedTexture(int planeNum){return dev_PlaneTexture;}
-	inline ProjectionParameters getHostProjectionParameters(int planeNum){return host_planeProjectionParameters[planeNum];}
+	inline ProjectionParameters getHostProjectionParameters(int planeNum){return host_planeStats[planeNum].projParams;}
 	inline int getHostNumDetectedPlanes(){return host_detectedPlaneCount;}
 	inline int* getQuadtreeBuffer(int planeNum){return dev_quadTreeAssembly;}
 #pragma endregion

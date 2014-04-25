@@ -985,6 +985,7 @@ void MeshViewer::display()
 		//Push buffers
 		mMeshTracker->pushRGBDFrameToDevice(localColorArray, localDepthArray, mLatestTime);
 
+		mMeshTracker->deleteQuadTreeMeshes();
 		cudaDeviceSynchronize();
 
 		mMeshTracker->buildRGBSOA();

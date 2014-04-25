@@ -36,26 +36,26 @@ __host__ void distanceHistogramPrimaryPeakDetection(int* histogram, int length, 
 												  int exclusionRadius, int minPeakHeight, float minHistDist, float maxHistDist);
 
 __host__ void fineDistanceSegmentation(float* distPeaks, int numNormalPeaks,  int maxDistPeaks, 
-									   Float3SOA positions, PlaneStats planeStats,
+									   Float3SOA positions, PlaneStats* planeStats,
 									   int* normalSegments, float* planeProjectedDistanceMap, 
 									   int xRes, int yRes, float maxDistTolerance, int iteration);
 
 
-__host__ void clearPlaneStats(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks, int maxRounds, int iteration);
+__host__ void clearPlaneStats(PlaneStats* planeStats, int numNormalPeaks, int numDistPeaks, int maxRounds, int iteration);
 
-__host__ void finalizePlanes(PlaneStats planeStats, int numNormalPeaks, int numDistPeaks, 
+__host__ void finalizePlanes(PlaneStats* planeStats, int numNormalPeaks, int numDistPeaks, 
 							 float mergeAngleThresh, float mergeDistThresh,  int iteration);
 
-__host__ void fitFinalPlanes(PlaneStats planeStats, int numPlanes, 
+__host__ void fitFinalPlanes(PlaneStats* planeStats, int numPlanes, 
 							  Float3SOA norms, Float3SOA positions, int* finalSegmentsBuffer, float* distToPlaneBuffer, int xRes, int yRes,
 							 float fitAngleThresh, float fitDistThresh, int iteration);
 
-__host__ void realignPeaks(PlaneStats planeStats, Float3SOA normalPeaks, int numNormPeaks, int numDistPeaks, int xBins, int yBins, int iteration);
+__host__ void realignPeaks(PlaneStats* planeStats, Float3SOA normalPeaks, int numNormPeaks, int numDistPeaks, int xBins, int yBins, int iteration);
 
-__host__ void mergePlanes(PlaneStats planeStats, int numPlanes, float mergeAngleThresh, float mergeDistThresh);
+__host__ void mergePlanes(PlaneStats* planeStats, int numPlanes, float mergeAngleThresh, float mergeDistThresh);
 
-__host__ void generatePlaneCompressionMap(PlaneStats planeStats, int numPlanes, int* planeIdMap, int* planeInvIdMap, int* planeCountOut);
+__host__ void generatePlaneCompressionMap(PlaneStats* planeStats, int numPlanes, int* planeIdMap, int* planeInvIdMap, int* planeCountOut);
 
-__host__ void compactPlaneStats(PlaneStats planeStats, int numPlanes, int* planeIdMap,  int* planeCount);
+__host__ void compactPlaneStats(PlaneStats* planeStats, int numPlanes, int* planeIdMap,  int* planeCount);
 
-__host__ void computePlaneTangents(PlaneStats planeStats, glm::vec3* planeTangents, int numPlanes, int* planeCount);
+__host__ void computePlaneTangents(PlaneStats* planeStats, int numPlanes, int* planeCount);

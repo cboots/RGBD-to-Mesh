@@ -75,17 +75,8 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 
 
 	//Plane stats buffers
-	cudaMalloc((void**) &dev_planeStats.count, MAX_PLANES_TOTAL*sizeof(float));
-	cudaMalloc((void**) &dev_planeStats.Sxx,   MAX_PLANES_TOTAL*sizeof(float));
-	cudaMalloc((void**) &dev_planeStats.Syy,   MAX_PLANES_TOTAL*sizeof(float));
-	cudaMalloc((void**) &dev_planeStats.Szz,   MAX_PLANES_TOTAL*sizeof(float));
-	cudaMalloc((void**) &dev_planeStats.Sxy,   MAX_PLANES_TOTAL*sizeof(float));
-	cudaMalloc((void**) &dev_planeStats.Syz,   MAX_PLANES_TOTAL*sizeof(float));
-	cudaMalloc((void**) &dev_planeStats.Sxz,   MAX_PLANES_TOTAL*sizeof(float));
-	createFloat3SOA(dev_planeStats.centroids,  MAX_PLANES_TOTAL);
-	createFloat3SOA(dev_planeStats.norms,      MAX_PLANES_TOTAL);
-	createFloat3SOA(dev_planeStats.eigs,       MAX_PLANES_TOTAL);
-
+	cudaMalloc((void**) &dev_planeStats, MAX_PLANES_TOTAL*sizeof(PlaneStats));
+	host_planeStats = new PlaneStats[MAX_PLANES_TOTAL];
 
 	cudaMalloc((void**) &dev_finalSegmentsBuffer, xRes*yRes*sizeof(int));
 	cudaMalloc((void**) &dev_finalDistanceToPlaneBuffer, xRes*yRes*sizeof(float));
@@ -94,9 +85,6 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 	cudaMalloc((void**) &dev_planeInvIdMap,  MAX_PLANES_TOTAL*sizeof(int));
 	cudaMalloc((void**) &dev_detectedPlaneCount,  sizeof(int));
 
-	cudaMalloc((void**) &dev_planeTangents, MAX_PLANES_TOTAL*sizeof(glm::vec3));
-	cudaMalloc((void**) &dev_planeAABB, MAX_PLANES_TOTAL*sizeof(glm::vec4));
-
 	int numBlocks = ceil(xRes/float(AABB_COMPUTE_BLOCKWIDTH))*ceil(yRes/float(AABB_COMPUTE_BLOCKHEIGHT));
 	cudaMalloc((void**) &dev_aabbIntermediateBuffer, 
 		numBlocks*MAX_PLANES_TOTAL*sizeof(glm::vec4));
@@ -104,10 +92,6 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 
 	cudaMalloc((void**) &dev_segmentProjectedSx, xRes*yRes*sizeof(float));
 	cudaMalloc((void**) &dev_segmentProjectedSy, xRes*yRes*sizeof(float));
-
-	cudaMalloc((void**) &dev_planeProjectionParameters, 
-		MAX_PLANES_TOTAL*sizeof(ProjectionParameters));
-	host_planeProjectionParameters = new ProjectionParameters[MAX_PLANES_TOTAL];
 
 	createFloat4SOA(dev_PlaneTexture, MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE);
 	createFloat4SOA(dev_finalTextureBuffer, MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE);
@@ -160,16 +144,7 @@ void MeshTracker::cleanupBuffers()
 	cudaFree(dev_distPeaks[0]);
 
 
-	cudaFree(dev_planeStats.count);
-	cudaFree(dev_planeStats.Sxx);
-	cudaFree(dev_planeStats.Syy);
-	cudaFree(dev_planeStats.Szz);
-	cudaFree(dev_planeStats.Sxy);
-	cudaFree(dev_planeStats.Syz);
-	cudaFree(dev_planeStats.Sxz);
-	freeFloat3SOA(dev_planeStats.centroids);
-	freeFloat3SOA(dev_planeStats.norms);
-	freeFloat3SOA(dev_planeStats.eigs);
+	cudaFree(dev_planeStats);
 
 	cudaFree(dev_finalSegmentsBuffer);
 	cudaFree(dev_finalDistanceToPlaneBuffer);
@@ -177,15 +152,10 @@ void MeshTracker::cleanupBuffers()
 	cudaFree(dev_planeIdMap);
 	cudaFree(dev_planeInvIdMap);
 	cudaFree(dev_detectedPlaneCount);
-	cudaFree(dev_planeTangents);
-	cudaFree(dev_planeAABB);
 	cudaFree(dev_aabbIntermediateBuffer);
 
 	cudaFree(dev_segmentProjectedSx);
 	cudaFree(dev_segmentProjectedSy);
-
-	cudaFree(dev_planeProjectionParameters);
-	delete host_planeProjectionParameters;
 
 	freeFloat4SOA(dev_PlaneTexture);
 	freeFloat4SOA(dev_finalTextureBuffer);
@@ -523,8 +493,7 @@ void MeshTracker::GPUSimpleSegmentation()
 	compactPlaneStats(dev_planeStats,  MAX_PLANES_TOTAL, 
 		dev_planeIdMap, dev_detectedPlaneCount);
 
-	computePlaneTangents(dev_planeStats, dev_planeTangents, 
-		MAX_PLANES_TOTAL, dev_detectedPlaneCount);
+	computePlaneTangents(dev_planeStats, MAX_PLANES_TOTAL, dev_detectedPlaneCount);
 }
 
 int roundnextpow2up (int x)
@@ -549,15 +518,15 @@ void MeshTracker::ReprojectPlaneTextures()
 	positions.z = dev_vmapSOA.z[0];
 
 	//Compute bounding boxes and do some other work in the meantime like remapping segments to correct ids and generating plane projected 
-	computeAABBs(dev_planeStats, dev_planeInvIdMap, dev_planeTangents, dev_planeAABB, dev_aabbIntermediateBuffer, dev_detectedPlaneCount,  
+	computeAABBs(dev_planeStats, dev_planeInvIdMap, dev_aabbIntermediateBuffer, dev_detectedPlaneCount,  
 		MAX_PLANES_TOTAL, 
 		positions, dev_segmentProjectedSx, dev_segmentProjectedSy, dev_finalSegmentsBuffer, mXRes, mYRes);
 
-	calculateProjectionData(mIntr, dev_planeStats, dev_planeTangents, dev_planeAABB, dev_planeProjectionParameters, dev_detectedPlaneCount, 
+	calculateProjectionData(mIntr, dev_planeStats, dev_detectedPlaneCount, 
 		MAX_TEXTURE_BUFFER_SIZE, MAX_PLANES_TOTAL, mXRes, mYRes);
 
-	cudaMemcpy(host_planeProjectionParameters, dev_planeProjectionParameters, 
-		MAX_PLANES_TOTAL*sizeof(ProjectionParameters), 
+	cudaMemcpy(host_planeStats, dev_planeStats, 
+		MAX_PLANES_TOTAL*sizeof(PlaneStats), 
 		cudaMemcpyDeviceToHost);
 
 	//Plane projection parameters now on host side. Use to dispatch kernels more efficiently
@@ -569,25 +538,25 @@ void MeshTracker::ReprojectPlaneTextures()
 	host_detectedPlaneCount = 0;
 	//For each detected plane
 	for(int i = 0; i < mMaxPlanesOutput; ++i){
-		if(host_planeProjectionParameters[i].destWidth > 0)
+		if(host_planeStats[i].projParams.destWidth > 0)
 		{
 			host_detectedPlaneCount++;
 			//Offset projections to correct index
-			projectTexture(i, host_planeProjectionParameters + i, dev_planeProjectionParameters + i, 
+			projectTexture(i, (host_planeStats + i), (dev_planeStats + i), 
 				dev_PlaneTexture, MAX_TEXTURE_BUFFER_SIZE, 
 				rgbMap, dev_finalSegmentsBuffer, dev_finalDistanceToPlaneBuffer,
 				mXRes, mYRes);
 
 			//Quadtree decimation
-			quadtreeDecimation((host_planeProjectionParameters + i)->destWidth, (host_planeProjectionParameters + i)->destHeight,
+			quadtreeDecimation((host_planeStats + i)->projParams.destWidth, (host_planeStats + i)->projParams.destHeight,
 				dev_PlaneTexture, dev_quadTreeAssembly, MAX_TEXTURE_BUFFER_SIZE);
 
 			//Quadtree compression, mesh generation
-			int finalTextureWidth = roundnextpow2up((host_planeProjectionParameters + i)->destWidth);
-			int finalTextureHeight = roundnextpow2up((host_planeProjectionParameters + i)->destHeight);
+			int finalTextureWidth = roundnextpow2up((host_planeStats + i)->projParams.destWidth);
+			int finalTextureHeight = roundnextpow2up((host_planeStats + i)->projParams.destHeight);
 
-			quadtreeMeshGeneration((host_planeProjectionParameters + i)->aabbMeters, 
-				(host_planeProjectionParameters + i)->destWidth, (host_planeProjectionParameters + i)->destHeight,
+			quadtreeMeshGeneration((host_planeStats + i)->projParams.aabbMeters, 
+				(host_planeStats + i)->projParams.destWidth, (host_planeStats + i)->projParams.destHeight,
 				dev_quadTreeAssembly, dev_quadTreeScanResults, MAX_TEXTURE_BUFFER_SIZE, 
 				dev_quadTreeBlockResults, MAX_TEXTURE_BUFFER_SIZE,
 				dev_quadTreeIndexBuffer, dev_quadTreeVertexBuffer, dev_compactCount, &host_quadtreeVertexCount, QUADTREE_BUFFER_SIZE,
@@ -597,6 +566,10 @@ void MeshTracker::ReprojectPlaneTextures()
 			//int area = (host_planeProjectionParameters + i)->destWidth*(host_planeProjectionParameters + i)->destHeight;
 			//cout << "Plane " << i << " Num Verticies: "<<host_quadtreeVertexCount<< "/"<<area << endl;
 
+			//Load mesh back
+
+//			QuadTreeMesh resultMesh(finalTextureWidth, finalTextureHeight, host_quadtreeVertexCount, TplaneTocam);
+//			host_quadtrees.push_back(resultMesh);
 		}else
 		{
 			//Reached last plane, done
@@ -606,6 +579,11 @@ void MeshTracker::ReprojectPlaneTextures()
 
 }
 
+
+void MeshTracker::deleteQuadTreeMeshes()
+{
+	host_quadtrees.clear();
+}
 
 void MeshTracker::subsamplePyramids()
 {

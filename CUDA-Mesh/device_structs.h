@@ -49,21 +49,6 @@ struct Float3SOAPyramid{
 };
 
 
-struct PlaneStats{
-	float* count;
-	Float3SOA norms;
-	Float3SOA eigs;
-	Float3SOA centroids;
-	//Scatter matrix decoupled
-	float* Sxx;
-	float* Syy;
-	float* Szz;
-	float* Sxy;
-	float* Syz;
-	float* Sxz;
-};
-
-
 struct ProjectionParameters{
 	int destWidth;
 	int destHeight;
@@ -71,6 +56,24 @@ struct ProjectionParameters{
 	glm::mat3 projectionMatrix;
 	glm::vec4 aabbMeters;
 };
+
+struct PlaneStats{
+	float count;
+	glm::vec3 norm;
+	glm::vec3 tangent;
+	glm::vec3 eigs;
+	glm::vec3 centroid;
+	//Scatter matrix decoupled
+	float Sxx;
+	float Syy;
+	float Szz;
+	float Sxy;
+	float Syz;
+	float Sxz;
+	ProjectionParameters projParams;
+};
+
+
 
 typedef struct
 {

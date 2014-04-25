@@ -14,18 +14,18 @@
 #define AABB_COMPUTE_BLOCKHEIGHT	8
 
 
-__host__ void computeAABBs(PlaneStats planeStats, int* planeInvIdMap, glm::vec3* tangents, glm::vec4* aabbs, glm::vec4* aabbsBlockResults,
+__host__ void computeAABBs(PlaneStats* planeStats, int* planeInvIdMap, glm::vec4* aabbsBlockResults,
 						   int* planeCount, int maxPlanes,
 						   Float3SOA positions, float* segmentProjectedSx, float* segmentProjectedSy, 
 						   int* finalSegmentsBuffer, int xRes, int yRes);
 
 
-__host__ void calculateProjectionData(rgbd::framework::Intrinsics intr, PlaneStats planeStats, glm::vec3* tangents, glm::vec4* aabbs, 
-									  ProjectionParameters* projParams, int* planeCount, int maxTextureSize, int maxPlanes, int xRes, int yRes);
+__host__ void calculateProjectionData(rgbd::framework::Intrinsics intr, PlaneStats* planeStats,
+									  int* planeCount, int maxTextureSize, int maxPlanes, int xRes, int yRes);
 
 
 //Inputs are for a single texture projection, so first few inputs from arrays need to be preoffset to the correct plane
-__host__ void projectTexture(int segmentId, ProjectionParameters* host_projParams, ProjectionParameters* dev_projParams, 
+__host__ void projectTexture(int segmentId, PlaneStats* host_planeStats, PlaneStats* dev_planeStats, 
 							 Float4SOA destTexture, int destTextureSize, 
 							 RGBMapSOA rgbMap, int* dev_finalSegmentsBuffer, float* dev_finalDistanceToPlaneBuffer,
 							 int imageXRes, int imageYRes);

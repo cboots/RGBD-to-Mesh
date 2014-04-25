@@ -177,7 +177,7 @@ __device__ void minmaxreduction(float* s_minSx, float* s_maxSx, float* s_minSy, 
 	}
 }
 
-__global__ void computeAABBsKernel(PlaneStats planeStats, int* planeInvIdMap, glm::vec3* tangents, glm::vec4* aabbs, 
+__global__ void computeAABBsKernel(PlaneStats* planeStats, int* planeInvIdMap, glm::vec4* aabbsBlockResults,
 								   int* planeCount, int maxPlanes,
 								   Float3SOA positions, float* segmentProjectedSx, float* segmentProjectedSy, 
 								   int* finalSegmentsBuffer, int xRes, int yRes)
@@ -206,12 +206,12 @@ __global__ void computeAABBsKernel(PlaneStats planeStats, int* planeInvIdMap, gl
 		if(indexInBlock < numPlanes)
 		{
 			//s_aabb[indexInBlock] = glm::vec4(0.0f);
-			s_tangents[indexInBlock] = tangents[indexInBlock];
-			s_centroidX[indexInBlock] = planeStats.centroids.x[indexInBlock];
-			s_centroidY[indexInBlock] = planeStats.centroids.y[indexInBlock];
-			s_centroidZ[indexInBlock] = planeStats.centroids.z[indexInBlock];
+			s_tangents[indexInBlock] = planeStats[indexInBlock].tangent;
+			s_centroidX[indexInBlock] = planeStats[indexInBlock].centroid.x;
+			s_centroidY[indexInBlock] = planeStats[indexInBlock].centroid.y;
+			s_centroidZ[indexInBlock] = planeStats[indexInBlock].centroid.z;
 			//bitangent = norm cross tangent
-			glm::vec3 norm(planeStats.norms.x[indexInBlock],planeStats.norms.y[indexInBlock],planeStats.norms.z[indexInBlock]);
+			glm::vec3 norm(planeStats[indexInBlock].norm.x,planeStats[indexInBlock].norm.y,planeStats[indexInBlock].norm.z);
 			s_bitangents[indexInBlock] = glm::normalize(glm::cross(norm, s_tangents[indexInBlock]));
 		}
 	}
@@ -268,16 +268,19 @@ __global__ void computeAABBsKernel(PlaneStats planeStats, int* planeInvIdMap, gl
 			//Threads already synced in function
 
 			if(indexInBlock == 0)
-				aabbs[(blockIdx.x + blockIdx.y*gridDim.x) + plane*gridDim.x*gridDim.y] = glm::vec4(s_minSx[0], s_maxSx[0],s_minSy[0],s_maxSy[0]);
+			{
+				aabbsBlockResults[(blockIdx.x + blockIdx.y*gridDim.x) + plane*gridDim.x*gridDim.y] 
+					= glm::vec4(s_minSx[0], s_maxSx[0],s_minSy[0],s_maxSy[0]);
+			}
 		}else{
 			if(indexInBlock == 0)
-				aabbs[(blockIdx.x + blockIdx.y*gridDim.x) + plane*gridDim.x*gridDim.y] = glm::vec4(0.0f);
+				aabbsBlockResults[(blockIdx.x + blockIdx.y*gridDim.x) + plane*gridDim.x*gridDim.y] = glm::vec4(0.0f);
 		}
 	}
 }
 
 
-__global__ void reduceAABBsKernel(glm::vec4* aabbsBlockResults, glm::vec4* aabbs, int numBlocks, int maxPlanes, int* planeCount)
+__global__ void reduceAABBsKernel(PlaneStats* planeStats, glm::vec4* aabbsBlockResults, int numBlocks, int maxPlanes, int* planeCount)
 {
 	extern __shared__ float s_temp[];
 	float* s_minSx = s_temp;
@@ -308,7 +311,7 @@ __global__ void reduceAABBsKernel(glm::vec4* aabbsBlockResults, glm::vec4* aabbs
 		minmaxreduction(s_minSx, s_maxSx, s_minSy, s_maxSy, i, blockDim.x);
 
 		if(threadIdx.x == 0)
-			aabbs[plane] = glm::vec4(s_minSx[0], s_maxSx[0],s_minSy[0],s_maxSy[0]);
+			planeStats[plane].projParams.aabbMeters = glm::vec4(s_minSx[0], s_maxSx[0],s_minSy[0],s_maxSy[0]);
 	}
 }
 
@@ -326,7 +329,7 @@ __host__ __device__ int roundupnextpow2 (int x)
 	return x+1;
 }
 
-__host__ void computeAABBs(PlaneStats planeStats, int* planeInvIdMap, glm::vec3* tangents, glm::vec4* aabbs, glm::vec4* aabbsBlockResults,
+__host__ void computeAABBs(PlaneStats* planeStats, int* planeInvIdMap, glm::vec4* aabbsBlockResults,
 						   int* planeCount, int maxPlanes,
 						   Float3SOA positions, float* segmentProjectedSx, float* segmentProjectedSy, 
 						   int* finalSegmentsBuffer, int xRes, int yRes)
@@ -340,10 +343,9 @@ __host__ void computeAABBs(PlaneStats planeStats, int* planeInvIdMap, glm::vec3*
 	//plane map, tangent, bitangent, centroid and aabb of each plane loaded to shared memory.
 	int sharedMem = maxPlanes*(sizeof(int) + sizeof(float)*3+sizeof(glm::vec3)*2) + blockWidth*blockHeight*4*sizeof(float);
 
-	computeAABBsKernel<<<blocks,threads,sharedMem>>>(planeStats, planeInvIdMap, tangents, aabbsBlockResults, planeCount, maxPlanes,
+	computeAABBsKernel<<<blocks,threads,sharedMem>>>(planeStats, planeInvIdMap, aabbsBlockResults, planeCount, maxPlanes,
 		positions, segmentProjectedSx, segmentProjectedSy, 
 		finalSegmentsBuffer, xRes, yRes);
-
 
 	int numBlocks = blocks.x*blocks.y;
 	int pow2Blocks = roundupnextpow2 (numBlocks) >> 1;//Next lowest power of two
@@ -353,13 +355,13 @@ __host__ void computeAABBs(PlaneStats planeStats, int* planeInvIdMap, glm::vec3*
 	threads = dim3(pow2Blocks);
 	blocks = dim3(1);
 	sharedMem = 4*sizeof(float)*pow2Blocks;
-	reduceAABBsKernel<<<blocks,threads,sharedMem>>>(aabbsBlockResults, aabbs, numBlocks, maxPlanes, planeCount);
+	reduceAABBsKernel<<<blocks,threads,sharedMem>>>(planeStats, aabbsBlockResults, numBlocks, maxPlanes, planeCount);
 
 }
 
 
-__global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, PlaneStats planeStats, glm::vec3* tangents, glm::vec4* aabbs,
-											  ProjectionParameters* projParams, int* planeCount, int maxTextureSize, int xRes, int yRes)
+__global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, PlaneStats* planeStats,
+											  int* planeCount, int maxTextureSize, int xRes, int yRes)
 {
 	glm::mat3 C(1.0f);
 
@@ -371,14 +373,14 @@ __global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, 
 	{
 		//In range and valid plane.
 
-		glm::vec3 tangent = tangents[threadIdx.x];
-		glm::vec3 normal = glm::vec3(planeStats.norms.x[threadIdx.x],planeStats.norms.y[threadIdx.x],planeStats.norms.z[threadIdx.x]);
+		glm::vec3 tangent = planeStats[threadIdx.x].tangent;
+		glm::vec3 normal = glm::vec3(planeStats[threadIdx.x].norm.x,planeStats[threadIdx.x].norm.y,planeStats[threadIdx.x].norm.z);
 		glm::vec3 bitangent = glm::normalize(glm::cross(normal, tangent));
 
-		glm::vec3 centroid = glm::vec3(planeStats.centroids.x[threadIdx.x],
-			planeStats.centroids.y[threadIdx.x],
-			planeStats.centroids.z[threadIdx.x]);
-		aabb = aabbs[threadIdx.x];
+		glm::vec3 centroid = glm::vec3(planeStats[threadIdx.x].centroid.x,
+			planeStats[threadIdx.x].centroid.y,
+			planeStats[threadIdx.x].centroid.z);
+		aabb = planeStats[threadIdx.x].projParams.aabbMeters;
 
 		//Compute camera space coordinates (4 points in clockwise winding from viewpoint)
 		/*   1----2
@@ -461,25 +463,25 @@ __global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, 
 		
 	}
 
-	projParams[threadIdx.x].projectionMatrix = C;
-	projParams[threadIdx.x].aabbMeters = aabb;
-	projParams[threadIdx.x].destWidth = destWidth;
-	projParams[threadIdx.x].destHeight = destHeight;
-	projParams[threadIdx.x].textureResolution = maxRatio;
+	planeStats[threadIdx.x].projParams.projectionMatrix = C;
+	planeStats[threadIdx.x].projParams.aabbMeters = aabb;
+	planeStats[threadIdx.x].projParams.destWidth = destWidth;
+	planeStats[threadIdx.x].projParams.destHeight = destHeight;
+	planeStats[threadIdx.x].projParams.textureResolution = maxRatio;
 }
 
 
-__host__ void calculateProjectionData(rgbd::framework::Intrinsics intr, PlaneStats planeStats, glm::vec3* tangents, glm::vec4* aabbs, 
-									  ProjectionParameters* projParams, int* planeCount, int maxTextureSize, int maxPlanes, int xRes, int yRes)
+__host__ void calculateProjectionData(rgbd::framework::Intrinsics intr, PlaneStats* planeStats,
+									  int* planeCount, int maxTextureSize, int maxPlanes, int xRes, int yRes)
 {
 	dim3 blocks(1);
 	dim3 threads(maxPlanes);
 
-	calculateProjectionDataKernel<<<blocks,threads>>>(intr, planeStats, tangents, aabbs, projParams, planeCount, maxTextureSize, xRes, yRes);
+	calculateProjectionDataKernel<<<blocks,threads>>>(intr, planeStats, planeCount, maxTextureSize, xRes, yRes);
 }
 
 
-__global__ void projectTexture(int segmentId, ProjectionParameters* dev_projParams, 
+__global__ void projectTexture(int segmentId, PlaneStats* dev_planeStats, 
 							   Float4SOA destTexture, int destTextureSize, 
 							   RGBMapSOA rgbMap, int* dev_finalSegmentsBuffer, float* dev_finalDistanceToPlaneBuffer,
 							   int imageXRes, int imageYRes)
@@ -487,8 +489,8 @@ __global__ void projectTexture(int segmentId, ProjectionParameters* dev_projPara
 	int destX = blockIdx.x*blockDim.x+threadIdx.x;
 	int destY = blockIdx.y*blockDim.y+threadIdx.y;
 
-	if(destX < destTextureSize && destX < dev_projParams->destWidth
-		&& destY < destTextureSize && destY < dev_projParams->destHeight)
+	if(destX < destTextureSize && destX < dev_planeStats->projParams.destWidth
+		&& destY < destTextureSize && destY < dev_planeStats->projParams.destHeight)
 	{
 		float r = CUDART_NAN_F;
 		float g = CUDART_NAN_F;
@@ -496,7 +498,7 @@ __global__ void projectTexture(int segmentId, ProjectionParameters* dev_projPara
 		float dist = CUDART_NAN_F;
 
 		//Destination in range
-		glm::mat3 Tds = dev_projParams->projectionMatrix;
+		glm::mat3 Tds = dev_planeStats->projParams.projectionMatrix;
 
 		glm::vec3 sourceCoords = Tds*glm::vec3(destX, destY, 1.0f);
 
@@ -526,7 +528,7 @@ __global__ void projectTexture(int segmentId, ProjectionParameters* dev_projPara
 }
 
 
-__host__ void projectTexture(int segmentId, ProjectionParameters* host_projParams, ProjectionParameters* dev_projParams, 
+__host__ void projectTexture(int segmentId, PlaneStats* host_planeStats, PlaneStats* dev_planeStats,  
 							 Float4SOA destTexture, int destTextureSize, 
 							 RGBMapSOA rgbMap, int* dev_finalSegmentsBuffer, float* dev_finalDistanceToPlaneBuffer,
 							 int imageXRes, int imageYRes)
@@ -534,10 +536,10 @@ __host__ void projectTexture(int segmentId, ProjectionParameters* host_projParam
 	int tileSize = 16;
 
 	dim3 threads(tileSize, tileSize);
-	dim3 blocks((int)ceil(float(host_projParams->destWidth)/float(tileSize)),
-		(int)ceil(float(host_projParams->destHeight)/float(tileSize)));
+	dim3 blocks((int)ceil(float(host_planeStats->projParams.destWidth)/float(tileSize)),
+		(int)ceil(float(host_planeStats->projParams.destHeight)/float(tileSize)));
 
-	projectTexture<<<blocks,threads>>>(segmentId, dev_projParams, destTexture, destTextureSize, 
+	projectTexture<<<blocks,threads>>>(segmentId, dev_planeStats, destTexture, destTextureSize, 
 		rgbMap, dev_finalSegmentsBuffer, dev_finalDistanceToPlaneBuffer, imageXRes, imageYRes);
 }
 
