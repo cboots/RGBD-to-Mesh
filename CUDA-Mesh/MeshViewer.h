@@ -162,7 +162,7 @@ private:
 
 	//=========Rendering Variables==========
 #pragma region Shader Programs
-	//Shader programs
+	//Quad Shader programs
 	GLuint depth_prog;
 	GLuint color_prog;
 	GLuint abs_prog;//Useful for debuging normals or world space coords
@@ -175,6 +175,8 @@ private:
 	GLuint projectedsegments_prog;
 	GLuint distsegments_prog;
 	GLuint quadtree_prog;
+	//Mesh programs
+	GLuint qtm_color_prog;
 #pragma endregion
 
 #pragma region Buffer Object Indecies

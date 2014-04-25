@@ -273,6 +273,10 @@ void MeshViewer::initShader()
 	const char * projectedsegments_frag = "shaders/projectedsegmentsFS.glsl";
 	const char * quadtree_frag = "shaders/quadtreeFS.glsl";
 
+	//Quad Tree Buffer
+	const char * qtm_vert = "shaders/qtmVS.glsl";
+	const char * qtm_color_frag = "shaders/qtmColorFS.glsl";
+
 	//Color image shader
 	color_prog = glslUtility::createProgram(pass_vert, NULL, color_frag, quadAttributeLocations, 2);
 
@@ -301,8 +305,10 @@ void MeshViewer::initShader()
 	projectedsegments_prog = glslUtility::createProgram(pass_vert, NULL, projectedsegments_frag, quadAttributeLocations, 2);
 
 	
-	quadtree_prog = glslUtility::createProgram(pass_vert, NULL, quadtree_frag, quadAttributeLocations, 2);
+	quadtree_prog = glslUtility::createProgram(qtm_vert, NULL, qtm_color_frag, quadAttributeLocations, 2);
 
+
+	qtm_color_prog = glslUtility::createProgram(pass_vert, NULL, quadtree_frag, quadAttributeLocations, 2);
 }
 
 void MeshViewer::initTextures()
