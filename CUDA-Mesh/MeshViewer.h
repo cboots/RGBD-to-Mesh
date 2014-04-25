@@ -132,6 +132,7 @@ private:
 	Camera mCamera;
 	DisplayModes mViewState;
 	bool hairyPoints;
+	bool mMeshWireframeMode;
 #pragma endregion
 
 	//===========Open GL stuff==============
@@ -149,15 +150,11 @@ private:
 	static const char * MeshViewer::vboAttributeLocations[];
 #pragma endregion
 
-#pragma region Screen Space VBO Attributes
-	static const GLuint PCVBOPositionLocation;//vec3
-	static const GLuint PCVBOColorLocation;//vec3
-	static const GLuint PCVBONormalLocation;//vec3
+#pragma region QuadTreeMesh VBO Attributes
+	static const GLuint QTMVBOPositionLocation;//vec4
 
-	static const GLuint PCVBOStride;//3*vec3
-	static const GLuint PCVBO_PositionOffset;
-	static const GLuint PCVBO_ColorOffset;
-	static const GLuint PCVBO_NormalOffset;
+	static const GLuint QTMVBOStride;//1*vec4
+	static const GLuint QTMVBO_PositionOffset;
 #pragma endregion
 
 	//=========Rendering Variables==========
@@ -189,7 +186,12 @@ private:
 
 	//FBO
 	GLuint fullscreenFBO;
+	
+	GLuint qtm_VBO; 
+	GLuint qtm_triangleIBO;
 #pragma endregion
+
+
 
 #pragma region Textures
 	//Textures
@@ -198,6 +200,9 @@ private:
 	GLuint texture1;
 	GLuint texture2;
 	GLuint texture3;
+
+	//QTM Texture
+	GLuint qtmTexture;
 
 	//Screen space textures
 	GLuint FBODepthTexture;
@@ -242,6 +247,7 @@ private:
 	void initFullScreenPBO();
 	void initFBO();
 	void cleanupFBO();
+	void initQuadtreeMeshVBO();
 
 	virtual void initRenderingCuda();
 	virtual void cleanupRenderingCuda();
@@ -283,6 +289,7 @@ private:
 	void drawPlaneProjectedTexturetoTexture(GLuint texture, int planeNum);
 	void drawQuadtreetoTexture(GLuint texture, int planeNum);
 
+	void drawQuadTreeMeshToFrameBuffer(QuadTreeMesh mesh, GLuint prog);
 #pragma endregion
 
 

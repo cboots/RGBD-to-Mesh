@@ -51,14 +51,11 @@ const GLuint MeshViewer::vbocolorLocation = 1;
 const GLuint MeshViewer::vbonormalLocation = 2;
 const char * MeshViewer::vboAttributeLocations[] = { "Position", "Color", "Normal" };
 
-const GLuint MeshViewer::PCVBOPositionLocation = 0;//vec3
-const GLuint MeshViewer::PCVBOColorLocation = 1;//vec3
-const GLuint MeshViewer::PCVBONormalLocation = 2;//vec3
 
-const GLuint MeshViewer::PCVBOStride = 9;//3*float3
-const GLuint MeshViewer::PCVBO_PositionOffset = 0;
-const GLuint MeshViewer::PCVBO_ColorOffset = 3;
-const GLuint MeshViewer::PCVBO_NormalOffset = 6;
+const GLuint MeshViewer::QTMVBOPositionLocation = 0;//vec4
+const GLuint MeshViewer::QTMVBOStride = 4;//1*vec4
+const GLuint MeshViewer::QTMVBO_PositionOffset = 0;
+
 
 MeshViewer* MeshViewer::msSelf = NULL;
 #pragma endregion
@@ -80,6 +77,7 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	mNormalMode = AVERAGE_GRADIENT_NORMALS;
 	mViewState = DISPLAY_MODE_OVERLAY;
 	hairyPoints = false;
+	mMeshWireframeMode = false;
 	mSpatialSigma = 2.0f;
 	mDepthSigma = 0.005f;
 	mMaxDepth = 5.0f;
@@ -367,7 +365,17 @@ void MeshViewer::initTextures()
 
 	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F , mXRes, mYRes, 0, GL_RGBA, GL_FLOAT,0);
 
+	//Setup QTM Texture
+	glBindTexture(GL_TEXTURE_2D, qtmTexture);
 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+
+	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F , mMeshTracker->getProjectedTextureBufferWidth(), 
+		mMeshTracker->getProjectedTextureBufferWidth(), 0, GL_RGBA, GL_FLOAT,0);
 
 }
 
@@ -421,7 +429,7 @@ void MeshViewer::initFBO()
 	glBindFramebuffer(GL_FRAMEBUFFER, fullscreenFBO);
 	glViewport(0,0,(GLsizei)mWidth, (GLsizei)mHeight);
 
-	
+
 	glReadBuffer(GL_NONE);
 	GLint color_loc = glGetFragDataLocation(qtm_color_prog,"FragColor");
 	GLenum draws [1];
@@ -555,10 +563,72 @@ void MeshViewer::initQuad() {
 	glBindVertexArray(0);
 }
 
+void MeshViewer::initQuadtreeMeshVBO()
+{
+	glGenBuffers(1,&qtm_VBO);
+	glGenBuffers(1,&qtm_triangleIBO);
+
+	cudaGLRegisterBufferObject( qtm_VBO);
+	cudaGLRegisterBufferObject( qtm_triangleIBO);
+
+}
 
 #pragma endregion
 
 #pragma region Rendering Helper Functions
+
+void MeshViewer::drawQuadTreeMeshToFrameBuffer(QuadTreeMesh mesh, GLuint prog)
+{
+	if(mMeshWireframeMode){
+		glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+	}else{
+		glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+	}
+
+	//Setup VBO
+	glUseProgram(prog);
+
+	glEnableVertexAttribArray(QTMVBOPositionLocation);
+
+	glBindBuffer(GL_ARRAY_BUFFER, qtm_VBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, qtm_triangleIBO);
+
+	//Setup interleaved buffer
+	glVertexAttribPointer(QTMVBOPositionLocation, 4, GL_FLOAT, GL_FALSE, QTMVBOStride*sizeof(GLfloat), 
+		(void*)(QTMVBO_PositionOffset*sizeof(GLfloat))); 
+
+
+	//Setup uniforms
+	mat4 persp = glm::perspective(radians(mCamera.fovy), float(mWidth)/float(mHeight), mCamera.zNear, mCamera.zFar);
+	mat4 viewmat = glm::lookAt(mCamera.eye, mCamera.eye+mCamera.view, -mCamera.up);
+	mat4 viewInvTrans = inverse(transpose(viewmat));
+
+
+	glUniformMatrix4fv(glGetUniformLocation(prog, "u_projMatrix"),1, GL_FALSE, &persp[0][0] );
+	glUniformMatrix4fv(glGetUniformLocation(prog, "u_viewMatrix"),1, GL_FALSE, &viewmat[0][0] );
+	glUniformMatrix4fv(glGetUniformLocation(prog, "u_viewInvTrans"),1, GL_FALSE, &viewInvTrans[0][0] );
+	glUniformMatrix4fv(glGetUniformLocation(prog, "u_modelTransform"),1, GL_FALSE, &mesh.TplaneTocam[0][0] );
+
+	//Bind texture
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, qtmTexture);
+	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F , mesh.mWidth, mesh.mHeight, 0, GL_RGBA, GL_FLOAT, mesh.rgbhTexture.get());
+
+	glUniform1i(glGetUniformLocation(prog, "u_Texture0"),0);
+	
+
+
+	if(mesh.numVerts > 0){
+		glDrawElements(GL_TRIANGLES, mesh.numVerts*2*3, GL_UNSIGNED_INT, NULL);
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+}
+
+
 //Normalized device coordinates (-1 : 1, -1 : 1) center of viewport, and scale being 
 void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale, float heightScale, float textureScale, GLuint* textures, int numTextures)
 {
@@ -1130,7 +1200,7 @@ void MeshViewer::display()
 			//Draw final segmentation
 			drawFinalSegmentsToTexture(texture0);
 			drawPlaneProjectedTexturetoTexture(texture1, mMeshTracker->getHostNumDetectedPlanes()-1);
-			
+
 			drawQuadtreetoTexture(texture2, mMeshTracker->getHostNumDetectedPlanes()-1);
 			drawQuad(quadtree_prog,			-0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL
 
@@ -1144,6 +1214,15 @@ void MeshViewer::display()
 			numMeshes = meshes->size();
 			cout << numMeshes << endl;
 			cout << meshes->at(0).numVerts << endl;
+
+			//Bind FBO
+			glDisable(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D,0); //Bad mojo to unbind the framebuffer using the texture
+			glBindFramebuffer(GL_FRAMEBUFFER, fullscreenFBO);
+			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+			glEnable(GL_DEPTH_TEST);
+			drawQuadTreeMeshToFrameBuffer(meshes->at(0),qtm_color_prog);
+
 			break;
 		case DISPLAY_MODE_NONE:
 		default:
