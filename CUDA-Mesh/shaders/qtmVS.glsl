@@ -15,5 +15,5 @@ void main(void)
 {
 	vec4 position = vec4(vs_position.x, vs_position.y, 0.0, 1.0);
 	fs_texCoord = vs_position.zw;
-	gl_Position = position;
+	gl_Position = u_modelTransform*position;
 }

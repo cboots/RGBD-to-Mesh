@@ -22,7 +22,7 @@ MeshTracker::MeshTracker(int xResolution, int yResolution, Intrinsics intr)
 	mMinDistPeakCount = 800;
 	mMinNormalPeakCout = 800;
 
-	mMaxPlanesOutput = 1;
+	mMaxPlanesOutput = MAX_PLANES_TOTAL;
 
 	initBuffers(mXRes, mYRes);
 
@@ -564,8 +564,6 @@ void MeshTracker::ReprojectPlaneTextures()
 				finalTextureWidth, finalTextureHeight, dev_PlaneTexture, dev_finalTextureBuffer);
 
 			//TODO: Collect data on decimation
-			//int area = (host_planeProjectionParameters + i)->destWidth*(host_planeProjectionParameters + i)->destHeight;
-			//cout << "Plane " << i << " Num Verticies: "<<host_quadtreeVertexCount<< "/"<<area << endl;
 
 			//Load mesh back
 			glm::mat4 Ttrans = glm::translate(glm::mat4(1.f), host_planeStats[i].centroid);
@@ -576,7 +574,7 @@ void MeshTracker::ReprojectPlaneTextures()
 				glm::vec4(host_planeStats[i].norm, 0.0f),
 				glm::vec4(0.0f,0.0f,0.0f, 1.0f));
 
-			QuadTreeMesh resultMesh(finalTextureWidth, finalTextureHeight, host_quadtreeVertexCount, host_planeStats[i], Ttrans*Trot);
+			QuadTreeMesh resultMesh(finalTextureWidth, finalTextureHeight, host_quadtreeVertexCount, host_planeStats[i], Trot);
 			//Pull data
 			cudaMemcpy(resultMesh.rgbhTexture.get(), dev_finalTextureBuffer, 
 				finalTextureWidth*finalTextureHeight*sizeof(float4), cudaMemcpyDeviceToHost);
