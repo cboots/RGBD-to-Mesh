@@ -1055,32 +1055,32 @@ __global__ void scatterResultsKernel(glm::vec4 aabbMeters, int actualWidth, int 
 }
 
 __global__ void reshapeTextureKernel(int actualWidth, int actualHeight, int finalTextureWidth, int finalTextureHeight, int textureBufferSize, 
-		Float4SOA planarTexture, Float4SOA finalTexture)
+		Float4SOA planarTexture, float4* finalTexture)
 {
 	int x = threadIdx.x;
 	int y = blockIdx.x;
 	int destIndex = x + y * finalTextureWidth;
 	int sourceIndex = x + y * textureBufferSize;
 
-	glm::vec4 textureValue(CUDART_NAN_F);
+	float4 textureValue = {CUDART_NAN_F,CUDART_NAN_F,CUDART_NAN_F,CUDART_NAN_F};
 
 	if(x < actualWidth && y < actualHeight)
 	{
-		textureValue = glm::vec4(planarTexture.x[sourceIndex],planarTexture.y[sourceIndex],
-			planarTexture.z[sourceIndex],planarTexture.w[sourceIndex]);
+		textureValue.x = planarTexture.x[sourceIndex];
+		textureValue.y = planarTexture.y[sourceIndex];
+		textureValue.z = planarTexture.z[sourceIndex];
+		textureValue.w = planarTexture.w[sourceIndex];
 	}
 
-	finalTexture.x[destIndex] = textureValue.x;
-	finalTexture.y[destIndex] = textureValue.y;
-	finalTexture.z[destIndex] = textureValue.z;
-	finalTexture.w[destIndex] = textureValue.w;
+	
+	finalTexture[destIndex] = textureValue;
 }
 
 
 __host__ void quadtreeMeshGeneration(glm::vec4 aabbMeters, int actualWidth, int actualHeight, int* quadTreeAssemblyBuffer,
 									 int* quadTreeScanResults, int textureBufferSize, int* blockResults, int blockResultsBufferSize,
 									 int* indexBuffer, float4* vertexBuffer, int* compactCount, int* host_compactCount, int outputBufferSize,
-									 int finalTextureWidth, int finalTextureHeight, Float4SOA planarTexture, Float4SOA finalTexture)
+									 int finalTextureWidth, int finalTextureHeight, Float4SOA planarTexture, float4* finalTexture)
 {
 	int blockSize = roundupnextpow2(actualWidth);
 	int numBlocks = actualHeight;

@@ -1455,7 +1455,7 @@ __global__ void computePlaneTangentsKernels(PlaneStats* planeStats,  int* planeC
 		tangent /= length;
 
 		//Compute alignment
-		glm::vec3 normal(planeStats[index].norm.x,planeStats[index].norm.y,planeStats[index].norm.z);
+		glm::vec3 normal(planeStats[index].norm.x, planeStats[index].norm.y, planeStats[index].norm.z);
 		glm::vec3 bitangent = glm::normalize(glm::cross(normal, tangent));
 
 

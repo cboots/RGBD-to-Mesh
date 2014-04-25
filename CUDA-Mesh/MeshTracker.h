@@ -11,6 +11,10 @@
 #include "CudaUtils.h"
 #include "plane_segmentation.h"
 #include "quadtree.h"
+
+// glm::translate, glm::rotate, glm::scale
+#include "glm/gtc/matrix_transform.hpp"
+
 #include <iostream>
 #include <vector>
 
@@ -54,18 +58,31 @@ struct QuadTreeMesh
 	shared_ptr<float4> rgbhTexture;
 	shared_ptr<float4> vertices;
 	shared_ptr<int> triangleIndices;
+	PlaneStats stats;
 	glm::mat4 TplaneTocam;
 	int mWidth;
 	int mHeight;
 
-	QuadTreeMesh(int textureWidth, int textureHeight, int numVertices, glm::mat4 transform)
+	QuadTreeMesh(int textureWidth, int textureHeight, int numVertices, PlaneStats planeStats, glm::mat4 transform)
 	{
-		rgbhTexture = shared_ptr<float4>(new float4[textureWidth*textureHeight]);
-		vertices = shared_ptr<float4>(new float4[numVertices]);
-		triangleIndices = shared_ptr<int>(new int[numVertices*6]);
+		float4* textureMem;
+		cudaMallocHost((void**) &textureMem, textureWidth*textureHeight*sizeof(float4));
+		rgbhTexture = shared_ptr<float4>(textureMem, [](float4* p){cudaFreeHost(p);});
+
+
+		float4* vertMem;
+		cudaMallocHost((void**) &vertMem, numVertices*sizeof(float4));
+		vertices = shared_ptr<float4>(vertMem, [](float4* p){cudaFreeHost(p);});
+
+		int* triangleMem;
+		cudaMallocHost((void**) &triangleMem, numVertices*6*sizeof(int));
+		triangleIndices = shared_ptr<int>(triangleMem, [](int* p){cudaFreeHost(p);});
+
+
 		TplaneTocam = transform;
 		mWidth = textureWidth;
 		mHeight = textureHeight;
+		stats = planeStats;
 	}
 };
 
@@ -137,7 +154,7 @@ private:
 	float4* dev_quadTreeVertexBuffer;
 	int* dev_compactCount;
 	int host_quadtreeVertexCount;
-	Float4SOA dev_finalTextureBuffer;
+	float4* dev_finalTextureBuffer;
 
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
 	Float1SOAPyramid dev_float1PyramidBuffers[NUM_FLOAT1_PYRAMID_BUFFERS];

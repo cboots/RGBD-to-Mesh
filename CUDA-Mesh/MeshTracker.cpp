@@ -94,7 +94,8 @@ void MeshTracker::initBuffers(int xRes, int yRes)
 	cudaMalloc((void**) &dev_segmentProjectedSy, xRes*yRes*sizeof(float));
 
 	createFloat4SOA(dev_PlaneTexture, MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE);
-	createFloat4SOA(dev_finalTextureBuffer, MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE);
+	cudaMalloc((void**) &dev_finalTextureBuffer, MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE*sizeof(float4));
+
 	cudaMalloc((void**) &dev_quadTreeAssembly, MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE*sizeof(int));
 	cudaMalloc((void**) &dev_quadTreeScanResults, MAX_TEXTURE_BUFFER_SIZE*MAX_TEXTURE_BUFFER_SIZE*sizeof(int));
 	cudaMalloc((void**) &dev_quadTreeBlockResults, MAX_TEXTURE_BUFFER_SIZE*sizeof(int));
@@ -158,7 +159,7 @@ void MeshTracker::cleanupBuffers()
 	cudaFree(dev_segmentProjectedSy);
 
 	freeFloat4SOA(dev_PlaneTexture);
-	freeFloat4SOA(dev_finalTextureBuffer);
+	cudaFree(dev_finalTextureBuffer);
 	cudaFree(dev_quadTreeAssembly);
 	cudaFree(dev_quadTreeScanResults);
 	cudaFree(dev_quadTreeBlockResults);
@@ -567,8 +568,24 @@ void MeshTracker::ReprojectPlaneTextures()
 			//cout << "Plane " << i << " Num Verticies: "<<host_quadtreeVertexCount<< "/"<<area << endl;
 
 			//Load mesh back
+			glm::mat4 Ttrans = glm::translate(glm::mat4(1.f), host_planeStats[i].centroid);
+			//Build rotation matrix from basis vectors in camera space
+			glm::vec3 bitan = glm::normalize(glm::cross(host_planeStats[i].norm, host_planeStats[i].tangent));
+			glm::mat4 Trot = glm::mat4(glm::vec4(bitan, 0.0f),
+				glm::vec4(host_planeStats[i].tangent, 0.0f),
+				glm::vec4(host_planeStats[i].norm, 0.0f),
+				glm::vec4(0.0f,0.0f,0.0f, 1.0f));
 
-//			QuadTreeMesh resultMesh(finalTextureWidth, finalTextureHeight, host_quadtreeVertexCount, TplaneTocam);
+			QuadTreeMesh resultMesh(finalTextureWidth, finalTextureHeight, host_quadtreeVertexCount, host_planeStats[i], Ttrans*Trot);
+			//Pull data
+			cudaMemcpy(resultMesh.rgbhTexture.get(), dev_finalTextureBuffer, 
+				finalTextureWidth*finalTextureHeight*sizeof(float4), cudaMemcpyDeviceToHost);
+			
+			cudaMemcpy(resultMesh.vertices.get(), dev_quadTreeVertexBuffer, 
+				host_quadtreeVertexCount*sizeof(float4), cudaMemcpyDeviceToHost);
+			
+			cudaMemcpy(resultMesh.triangleIndices.get(), dev_quadTreeIndexBuffer, 
+				host_quadtreeVertexCount*6*sizeof(int), cudaMemcpyDeviceToHost);
 //			host_quadtrees.push_back(resultMesh);
 		}else
 		{
