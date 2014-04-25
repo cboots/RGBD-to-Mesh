@@ -586,7 +586,8 @@ void MeshTracker::ReprojectPlaneTextures()
 			
 			cudaMemcpy(resultMesh.triangleIndices.get(), dev_quadTreeIndexBuffer, 
 				host_quadtreeVertexCount*6*sizeof(int), cudaMemcpyDeviceToHost);
-//			host_quadtrees.push_back(resultMesh);
+
+			host_quadtrees.push_back(resultMesh);
 		}else
 		{
 			//Reached last plane, done

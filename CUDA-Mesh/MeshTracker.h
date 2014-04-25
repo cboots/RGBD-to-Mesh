@@ -241,6 +241,7 @@ public:
 	inline ProjectionParameters getHostProjectionParameters(int planeNum){return host_planeStats[planeNum].projParams;}
 	inline int getHostNumDetectedPlanes(){return host_detectedPlaneCount;}
 	inline int* getQuadtreeBuffer(int planeNum){return dev_quadTreeAssembly;}
+	inline vector<QuadTreeMesh>* getQuadTreeMeshes(){return &host_quadtrees;}
 #pragma endregion
 
 #pragma region Property Getters

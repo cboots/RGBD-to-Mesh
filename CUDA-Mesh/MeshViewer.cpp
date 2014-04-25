@@ -1040,6 +1040,8 @@ void MeshViewer::display()
 	if(!mPauseVisulization)
 	{
 		glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		int numMeshes = 0;
+		vector<QuadTreeMesh>* meshes  = NULL;
 		switch(mViewState)
 		{
 		case DISPLAY_MODE_DEPTH:
@@ -1133,6 +1135,11 @@ void MeshViewer::display()
 			drawQuad(projectedsegments_prog, 0.5, 0.5, 0.5, 0.5, 1.0,  &texture0, 1);//UR
 			drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR
 			break;
+		case DISPLAY_MODE_QUADTREE:
+			meshes = mMeshTracker->getQuadTreeMeshes();
+			numMeshes = meshes->size();
+			cout << numMeshes << endl;
+			break;
 		case DISPLAY_MODE_NONE:
 		default:
 			break;
@@ -1192,6 +1199,9 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		break;
 	case '8':
 		mViewState = DISPLAY_MODE_PROJECTION_DEBUG;
+		break;
+	case '9':
+		mViewState = DISPLAY_MODE_QUADTREE;
 		break;
 	case '0':
 		mViewState = DISPLAY_MODE_NONE;
