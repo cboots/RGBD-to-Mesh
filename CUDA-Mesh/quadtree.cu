@@ -832,8 +832,8 @@ __global__ void quadTreeExclusiveScanKernel(int width, int* input, int* output, 
 	int bankOffsetB = CONFLICT_FREE_OFFSET(bi);
 
 	//Bounds checking, load shared mem
-	temp[ai+bankOffsetA] = (ai < width)?input[ai]:0;
-	temp[bi+bankOffsetB] = (bi < width)?input[bi]:0;
+	temp[ai+bankOffsetA] = (ai < width)?(input[ai]>=0?1:0):0;
+	temp[bi+bankOffsetB] = (bi < width)?(input[bi]>=0?1:0):0;
 	//Negative vertecies are to be cleared
 	if(temp[ai+bankOffsetA] < 0)
 		temp[ai+bankOffsetA] = 0;
@@ -1004,13 +1004,13 @@ __global__ void scatterResultsKernel(glm::vec4 aabbMeters, int actualWidth, int 
 
 			//Compute vertex info.
 			float textureU = float(pixelX)/float(finalTextureWidth);
-			float textureV = float(pixelY)/float(finalTextureHeight);
+			float textureV = float(finalTextureHeight-pixelY)/float(finalTextureHeight);
 
 			//pixelX*(Sxmax-Sxmin)/actualWidth + Sxmin;
 			float posX = (pixelX*(aabbMeters.y-aabbMeters.x))/float(actualWidth) + aabbMeters.x;
 			//pixelY*(Symax-Symin)/actualHeight + Symin;
-			float posY = (pixelY*(aabbMeters.w-aabbMeters.z))/float(actualHeight) + aabbMeters.z;
-
+			float posY = ((finalTextureHeight-pixelY)*(aabbMeters.w-aabbMeters.z))/float(actualHeight) + aabbMeters.z;
+			
 			float4 vertex;
 			vertex.x = posX;
 			vertex.y = posY;
