@@ -1139,6 +1139,7 @@ void MeshViewer::display()
 			meshes = mMeshTracker->getQuadTreeMeshes();
 			numMeshes = meshes->size();
 			cout << numMeshes << endl;
+			cout << meshes->at(0).numVerts << endl;
 			break;
 		case DISPLAY_MODE_NONE:
 		default:

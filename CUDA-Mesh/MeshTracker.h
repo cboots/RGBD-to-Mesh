@@ -62,6 +62,7 @@ struct QuadTreeMesh
 	glm::mat4 TplaneTocam;
 	int mWidth;
 	int mHeight;
+	int numVerts;
 
 	QuadTreeMesh(int textureWidth, int textureHeight, int numVertices, PlaneStats planeStats, glm::mat4 transform)
 	{
@@ -83,6 +84,7 @@ struct QuadTreeMesh
 		mWidth = textureWidth;
 		mHeight = textureHeight;
 		stats = planeStats;
+		numVerts = numVertices;
 	}
 };
 
