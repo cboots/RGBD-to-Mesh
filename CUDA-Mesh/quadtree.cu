@@ -1004,12 +1004,12 @@ __global__ void scatterResultsKernel(glm::vec4 aabbMeters, int actualWidth, int 
 
 			//Compute vertex info.
 			float textureU = float(pixelX)/float(finalTextureWidth);
-			float textureV = float(finalTextureHeight-pixelY)/float(finalTextureHeight);
+			float textureV = float(pixelY)/float(finalTextureHeight);
 
 			//pixelX*(Sxmax-Sxmin)/actualWidth + Sxmin;
 			float posX = (pixelX*(aabbMeters.y-aabbMeters.x))/float(actualWidth) + aabbMeters.x;
 			//pixelY*(Symax-Symin)/actualHeight + Symin;
-			float posY = ((finalTextureHeight-pixelY)*(aabbMeters.w-aabbMeters.z))/float(actualHeight) + aabbMeters.z;
+			float posY = (pixelY*(aabbMeters.w-aabbMeters.z))/float(actualHeight) + aabbMeters.z;
 			
 			float4 vertex;
 			vertex.x = posX;
