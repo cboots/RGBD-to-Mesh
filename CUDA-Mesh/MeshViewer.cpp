@@ -1212,17 +1212,16 @@ void MeshViewer::display()
 		case DISPLAY_MODE_QUADTREE:
 			meshes = mMeshTracker->getQuadTreeMeshes();
 			numMeshes = meshes->size();
-			cout << numMeshes << endl;
-			cout << meshes->at(0).numVerts << endl;
-
 			//Bind FBO
 			glDisable(GL_TEXTURE_2D);
 			glBindTexture(GL_TEXTURE_2D,0); //Bad mojo to unbind the framebuffer using the texture
 			glBindFramebuffer(GL_FRAMEBUFFER, fullscreenFBO);
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 			glEnable(GL_DEPTH_TEST);
-			drawQuadTreeMeshToFrameBuffer(meshes->at(0),qtm_color_prog);
-
+			for(int i = 0; i < numMeshes; i++)
+			{
+				drawQuadTreeMeshToFrameBuffer(meshes->at(i),qtm_color_prog);
+			}
 			break;
 		case DISPLAY_MODE_NONE:
 		default:
