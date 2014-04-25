@@ -597,6 +597,11 @@ void MeshViewer::drawQuadTreeMeshToFrameBuffer(QuadTreeMesh mesh, GLuint prog)
 	glVertexAttribPointer(QTMVBOPositionLocation, 4, GL_FLOAT, GL_FALSE, QTMVBOStride*sizeof(GLfloat), 
 		(void*)(QTMVBO_PositionOffset*sizeof(GLfloat))); 
 
+	//Fill buffer with data
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float4)*mesh.numVerts, mesh.vertices.get(), GL_DYNAMIC_DRAW);//Initialize
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2*3*mesh.numVerts*sizeof(GLuint), mesh.triangleIndices.get(), GL_DYNAMIC_DRAW);
+
+
 
 	//Setup uniforms
 	mat4 persp = glm::perspective(radians(mCamera.fovy), float(mWidth)/float(mHeight), mCamera.zNear, mCamera.zFar);
@@ -609,14 +614,15 @@ void MeshViewer::drawQuadTreeMeshToFrameBuffer(QuadTreeMesh mesh, GLuint prog)
 	glUniformMatrix4fv(glGetUniformLocation(prog, "u_viewInvTrans"),1, GL_FALSE, &viewInvTrans[0][0] );
 	glUniformMatrix4fv(glGetUniformLocation(prog, "u_modelTransform"),1, GL_FALSE, &mesh.TplaneTocam[0][0] );
 
+
 	//Bind texture
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, qtmTexture);
 	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F , mesh.mWidth, mesh.mHeight, 0, GL_RGBA, GL_FLOAT, mesh.rgbhTexture.get());
 
 	glUniform1i(glGetUniformLocation(prog, "u_Texture0"),0);
-	
 
+	
 
 	if(mesh.numVerts > 0){
 		glDrawElements(GL_TRIANGLES, mesh.numVerts*2*3, GL_UNSIGNED_INT, NULL);
@@ -624,8 +630,6 @@ void MeshViewer::drawQuadTreeMeshToFrameBuffer(QuadTreeMesh mesh, GLuint prog)
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
 }
 
 
@@ -1115,6 +1119,7 @@ void MeshViewer::display()
 	{
 		glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		int numMeshes = 0;
+		int* elementArray;
 		vector<QuadTreeMesh>* meshes  = NULL;
 		switch(mViewState)
 		{
@@ -1216,12 +1221,19 @@ void MeshViewer::display()
 			glDisable(GL_TEXTURE_2D);
 			glBindTexture(GL_TEXTURE_2D,0); //Bad mojo to unbind the framebuffer using the texture
 			glBindFramebuffer(GL_FRAMEBUFFER, fullscreenFBO);
+			glClearColor(1.0,0.0,1.0,1.0);
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+			glClearColor(0.0,0.0,0.0,0.0);
 			glEnable(GL_DEPTH_TEST);
 			for(int i = 0; i < numMeshes; i++)
 			{
 				drawQuadTreeMeshToFrameBuffer(meshes->at(i),qtm_color_prog);
 			}
+
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+			drawQuad(color_prog, 0.0, 0.0, 1.0, 1.0, 1.0, &FBOColorTexture, 1);//Fill Screen
 			break;
 		case DISPLAY_MODE_NONE:
 		default:

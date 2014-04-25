@@ -16,4 +16,5 @@ void main()
 	vec4 rgbd = texture(u_Texture0, fs_texCoord);
 	//Just pass through for now
 	FragColor = vec4(rgbd.rgb, 1.0);
+	//FragColor = vec4(1.0);
 }
