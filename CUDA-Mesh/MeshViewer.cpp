@@ -421,10 +421,9 @@ void MeshViewer::initFBO()
 	glBindFramebuffer(GL_FRAMEBUFFER, fullscreenFBO);
 	glViewport(0,0,(GLsizei)mWidth, (GLsizei)mHeight);
 
-	//TODO: Bind FBO to programs
-	/*
+	
 	glReadBuffer(GL_NONE);
-	GLint color_loc = glGetFragDataLocation(pcvbo_prog,"out_Color");
+	GLint color_loc = glGetFragDataLocation(qtm_color_prog,"FragColor");
 	GLenum draws [1];
 	draws[color_loc] = GL_COLOR_ATTACHMENT0;
 	glDrawBuffers(1, draws);
@@ -434,7 +433,6 @@ void MeshViewer::initFBO()
 	glBindTexture(GL_TEXTURE_2D, FBOColorTexture);    
 	glFramebufferTexture(GL_FRAMEBUFFER, draws[color_loc], FBOColorTexture, 0);
 
-	*/
 	FBOstatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if(FBOstatus != GL_FRAMEBUFFER_COMPLETE) {
 		printf("GL_FRAMEBUFFER_COMPLETE failed, CANNOT use FBO[0]\n");

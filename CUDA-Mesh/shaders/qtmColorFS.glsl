@@ -7,12 +7,12 @@ uniform sampler2D u_Texture0;
 
 in vec2 fs_texCoord;
 
-out vec4 out_Color;
+out vec4 FragColor;
 
 void main()
 {
 
 	vec4 rgbd = texture(u_Texture0, fs_texCoord);
 	//Just pass through for now
-	out_Color = vec4(rgbd.rgb, 1.0);
+	FragColor = vec4(rgbd.rgb, 1.0);
 }

@@ -1091,7 +1091,6 @@ __host__ void quadtreeMeshGeneration(glm::vec4 aabbMeters, int actualWidth, int 
 
 	//Make sure size constraints aren't violated
 	assert(blocks.x <= blockResultsBufferSize);
-	assert(blockResultsBufferSize <= blockSize);
 
 	//Scan blocks
 	quadTreeExclusiveScanKernel<<<blocks,threads,sharedCount>>>(actualWidth, quadTreeAssemblyBuffer, 
