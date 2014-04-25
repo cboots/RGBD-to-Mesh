@@ -1225,7 +1225,7 @@ void MeshViewer::display()
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 			glClearColor(0.0,0.0,0.0,0.0);
 			glEnable(GL_DEPTH_TEST);
-			for(int i = 0; i < numMeshes; i++)
+			for(int i = 1; i < numMeshes; i++)
 			{
 				drawQuadTreeMeshToFrameBuffer(meshes->at(i),qtm_color_prog);
 			}
