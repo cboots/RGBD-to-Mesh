@@ -275,6 +275,7 @@ void MeshViewer::initShader()
 	//Quad Tree Buffer
 	const char * qtm_vert = "shaders/qtmVS.glsl";
 	const char * qtm_color_frag = "shaders/qtmColorFS.glsl";
+	const char * qtm_dist_frag = "shaders/qtmDistFS.glsl";
 	const char * green_frag = "shaders/greenFS.glsl";
 	const char * blue_frag = "shaders/blueFS.glsl";
 
@@ -311,6 +312,7 @@ void MeshViewer::initShader()
 
 	//Mesh Programs
 	qtm_color_prog  = glslUtility::createProgram(qtm_vert, NULL, qtm_color_frag, quadAttributeLocations, 2);
+	qtm_dist_prog  = glslUtility::createProgram(qtm_vert, NULL, qtm_dist_frag, quadAttributeLocations, 2);
 	qtm_highlight_blue_prog  = glslUtility::createProgram(qtm_vert, NULL, blue_frag, quadAttributeLocations, 2);
 	qtm_highlight_green_prog  = glslUtility::createProgram(qtm_vert, NULL, green_frag, quadAttributeLocations, 2);
 }
@@ -1243,7 +1245,22 @@ void MeshViewer::display()
 
 			glDisable(GL_CULL_FACE);
 
+				
 			if(mMeshWireframeMode){
+				glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+				glLineWidth(2.0f);
+				for(int i = 0; i < numMeshes; i++)
+				{
+					drawQuadTreeMeshToFrameBuffer(meshes->at(i),qtm_highlight_green_prog);
+					//cout << "{" << meshes->at(i).stats.centroid.x << ',' << 
+					//	meshes->at(i).stats.centroid.y << ',' << meshes->at(i).stats.centroid.z << '}' << endl;
+				}
+				glLineWidth(1.0f);
+				glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+			}
+
+			
+			if(mMeshPointMode){
 				glPointSize(5.0f);
 				glPolygonMode( GL_FRONT_AND_BACK, GL_POINT );
 				for(int i = 0; i < numMeshes; i++)
@@ -1256,19 +1273,6 @@ void MeshViewer::display()
 				glPointSize(1.0f);
 			}
 			
-				
-			if(mMeshPointMode){
-				glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
-				glLineWidth(2.0f);
-				for(int i = 0; i < numMeshes; i++)
-				{
-					drawQuadTreeMeshToFrameBuffer(meshes->at(i),qtm_highlight_green_prog);
-					//cout << "{" << meshes->at(i).stats.centroid.x << ',' << 
-					//	meshes->at(i).stats.centroid.y << ',' << meshes->at(i).stats.centroid.z << '}' << endl;
-				}
-				glLineWidth(1.0f);
-				glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-			}
 
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);

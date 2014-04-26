@@ -515,7 +515,7 @@ __global__ void projectTexture(int segmentId, PlaneStats* dev_planeStats,
 				r = rgbMap.r[linIndex];
 				g = rgbMap.g[linIndex];
 				b = rgbMap.b[linIndex];
-				dist = dev_finalSegmentsBuffer[linIndex];
+				dist = dev_finalDistanceToPlaneBuffer[linIndex];
 			}
 		}
 
