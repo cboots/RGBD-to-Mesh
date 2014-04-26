@@ -574,7 +574,8 @@ void MeshTracker::ReprojectPlaneTextures()
 				glm::vec4(host_planeStats[i].norm, 0.0f),
 				glm::vec4(0.0f,0.0f,0.0f, 1.0f));
 
-			QuadTreeMesh resultMesh(finalTextureWidth, finalTextureHeight, host_quadtreeVertexCount, host_planeStats[i], Trot);
+
+			QuadTreeMesh resultMesh(finalTextureWidth, finalTextureHeight, host_quadtreeVertexCount, host_planeStats[i], Ttrans*Trot);
 			//Pull data
 			cudaMemcpy(resultMesh.rgbhTexture.get(), dev_finalTextureBuffer, 
 				finalTextureWidth*finalTextureHeight*sizeof(float4), cudaMemcpyDeviceToHost);

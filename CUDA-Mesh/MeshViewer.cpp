@@ -579,11 +579,6 @@ void MeshViewer::initQuadtreeMeshVBO()
 
 void MeshViewer::drawQuadTreeMeshToFrameBuffer(QuadTreeMesh mesh, GLuint prog)
 {
-	if(mMeshWireframeMode){
-		glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
-	}else{
-		glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-	}
 
 	//Setup VBO
 	glUseProgram(prog);
@@ -604,7 +599,7 @@ void MeshViewer::drawQuadTreeMeshToFrameBuffer(QuadTreeMesh mesh, GLuint prog)
 
 
 	//Setup uniforms
-	mat4 persp = glm::perspective(radians(mCamera.fovy), float(mWidth)/float(mHeight), mCamera.zNear, mCamera.zFar);
+	mat4 persp = glm::perspective(mCamera.fovy, float(mWidth)/float(mHeight), mCamera.zNear, mCamera.zFar);
 	mat4 viewmat = glm::lookAt(mCamera.eye, mCamera.eye+mCamera.view, mCamera.up);
 	mat4 viewInvTrans = inverse(transpose(viewmat));
 
@@ -622,7 +617,7 @@ void MeshViewer::drawQuadTreeMeshToFrameBuffer(QuadTreeMesh mesh, GLuint prog)
 
 	glUniform1i(glGetUniformLocation(prog, "u_Texture0"),0);
 
-	
+
 
 	if(mesh.numVerts > 0){
 		glDrawElements(GL_TRIANGLES, mesh.numVerts*2*3, GL_UNSIGNED_INT, NULL);
@@ -992,7 +987,13 @@ void MeshViewer::resetCamera()
 	mCamera.eye = vec3(0.0f);
 	mCamera.view = vec3(0.0f, 0.0f, 1.0f);
 	mCamera.up = vec3(0.0f, -1.0f, 0.0f);
-	mCamera.fovy = 23.5f;
+
+	
+//theta_x/2 = tan_inv( (width/2) / fx ) 
+//theta_y/2 = tan_inv( (height/2) / fy ) 
+	Intrinsics intr = mDevice->getDepthIntrinsics();
+	float fovy2 = atan2(mDevice->getDepthResolutionY(), intr.fy);
+	mCamera.fovy = degrees(2*fovy2);
 	mCamera.zFar = 100.0f;
 	mCamera.zNear = 0.01;
 }
@@ -1225,15 +1226,23 @@ void MeshViewer::display()
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 			glClearColor(0.0,0.0,0.0,0.0);
 			glEnable(GL_DEPTH_TEST);
+			if(mMeshWireframeMode){
+				glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+			}else{
+				glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+			}
+
 			for(int i = 0; i < numMeshes; i++)
 			{
 				drawQuadTreeMeshToFrameBuffer(meshes->at(i),qtm_color_prog);
+				//cout << "{" << meshes->at(i).stats.centroid.x << ',' << 
+				//	meshes->at(i).stats.centroid.y << ',' << meshes->at(i).stats.centroid.z << '}' << endl;
 			}
 
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
 			glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-			drawQuad(color_prog, 0.0, 0.0, 1.0, 1.0, 1.0, &FBOColorTexture, 1);//Fill Screen
+			drawQuad(color_prog, 0.0, 0.0, 1.0, -1.0, 1.0, &FBOColorTexture, 1);//Fill Screen
 			break;
 		case DISPLAY_MODE_NONE:
 		default:
@@ -1365,12 +1374,12 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
 		break;
 	case 'D':
-		right = normalize(cross(mCamera.view, -mCamera.up));
+		right = normalize(cross(mCamera.view, mCamera.up));
 		mCamera.eye += cameraLowSpeed*right;
 		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
 		break;
 	case 'A':
-		right = normalize(cross(mCamera.view, -mCamera.up));
+		right = normalize(cross(mCamera.view, mCamera.up));
 		mCamera.eye -= cameraLowSpeed*right;
 		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
 		break;
@@ -1392,12 +1401,12 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
 		break;
 	case 'd':
-		right = normalize(cross(mCamera.view, -mCamera.up));
+		right = normalize(cross(mCamera.view, mCamera.up));
 		mCamera.eye += cameraHighSpeed*right;
 		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
 		break;
 	case 'a':
-		right = normalize(cross(mCamera.view, -mCamera.up));
+		right = normalize(cross(mCamera.view, mCamera.up));
 		mCamera.eye -= cameraHighSpeed*right;
 		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
 		break;
