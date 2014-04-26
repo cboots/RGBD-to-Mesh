@@ -1,7 +1,7 @@
 from __future__ import division
 from __future__ import print_function
 import numpy as np
-from numpy import sqrt, cos, arccos, pi
+from math import sqrt, cos, acos, pi
 
 def eig_symm(A):
     # Given a real symmetric 3x3 matrix A, compute the eigenvalues
@@ -12,7 +12,7 @@ def eig_symm(A):
     else:
         q = np.trace(A)/3
         p2 = np.sum((np.diag(A)-q)**2) + 2*p1
-        p = np.sqrt(p2/6)
+        p = sqrt(p2/6)
         B = (1/p) * (A - q*np.eye(3))
         r = np.linalg.det(B) / 2
         # In exact arithmetic for a symmetric matrix  -1 <= r <= 1
@@ -22,7 +22,7 @@ def eig_symm(A):
         elif (r >= 1):
             phi = 0
         else:
-            phi = arccos(r) / 3
+            phi = acos(r) / 3
         # the eigenvalues satisfy eig3 <= eig2 <= eig1
         eig1 = q + 2 * p * cos(phi)
         eig3 = q + 2 * p * cos(phi + (2*pi/3))
@@ -37,14 +37,17 @@ def eig_symm(A):
     return np.array([eig1, eig2, eig3]), np.array([eigv1, eigv2, eigv3]).transpose()
 
 if __name__ == '__main__':
-    v = np.array([1, 1, 0.001])
-    A = v[:, np.newaxis] * v[np.newaxis, :]
+    #v = np.array([1, 1, 0.001])
+    #A = v[:, np.newaxis] * v[np.newaxis, :]
     #A = np.array([[  2.63783090e-06,  -2.03845602e-07,   1.82752444e-06],
     #              [ -2.03845602e-07,   2.79856908e-06,   2.13257385e-06],
     #              [  1.82752444e-06,   2.13257385e-06,   8.06261323e-06]])
     #A = np.array([[ 3,  2,  6],
     #              [ 2,  2,  5],
     #              [-2, -1,  4]])
+    A = np.array([[ 7, -2,  0],
+                  [-2,  6, -2],
+                  [ 0, -2,  5]])
     print(A)
     print("eigsymm(A):")
     eigvals, eigvecs = eig_symm(A)
