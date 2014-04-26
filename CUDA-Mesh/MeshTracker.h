@@ -11,7 +11,12 @@
 #include "CudaUtils.h"
 #include "plane_segmentation.h"
 #include "quadtree.h"
+
+// glm::translate, glm::rotate, glm::scale
+#include "glm/gtc/matrix_transform.hpp"
+
 #include <iostream>
+#include <vector>
 
 using namespace std;
 using namespace rgbd::framework;
@@ -45,6 +50,42 @@ enum FilterMode
 	BILATERAL_FILTER,
 	GAUSSIAN_FILTER,
 	NO_FILTER
+};
+
+
+struct QuadTreeMesh
+{
+	shared_ptr<float4> rgbhTexture;
+	shared_ptr<float4> vertices;
+	shared_ptr<int> triangleIndices;
+	PlaneStats stats;
+	glm::mat4 TplaneTocam;
+	int mWidth;
+	int mHeight;
+	int numVerts;
+
+	QuadTreeMesh(int textureWidth, int textureHeight, int numVertices, PlaneStats planeStats, glm::mat4 transform)
+	{
+		float4* textureMem;
+		cudaMallocHost((void**) &textureMem, textureWidth*textureHeight*sizeof(float4));
+		rgbhTexture = shared_ptr<float4>(textureMem, [](float4* p){cudaFreeHost(p);});
+
+
+		float4* vertMem;
+		cudaMallocHost((void**) &vertMem, numVertices*sizeof(float4));
+		vertices = shared_ptr<float4>(vertMem, [](float4* p){cudaFreeHost(p);});
+
+		int* triangleMem;
+		cudaMallocHost((void**) &triangleMem, numVertices*6*sizeof(int));
+		triangleIndices = shared_ptr<int>(triangleMem, [](int* p){cudaFreeHost(p);});
+
+
+		TplaneTocam = transform;
+		mWidth = textureWidth;
+		mHeight = textureHeight;
+		stats = planeStats;
+		numVerts = numVertices;
+	}
 };
 
 class MeshTracker
@@ -90,7 +131,8 @@ private:
 	int* dev_distanceHistograms[MAX_2D_PEAKS_PER_ROUND];
 	float* dev_distPeaks[MAX_2D_PEAKS_PER_ROUND];
 
-	PlaneStats dev_planeStats;
+	PlaneStats* dev_planeStats;
+	PlaneStats* host_planeStats;
 
 	int* dev_finalSegmentsBuffer;
 	float* dev_finalDistanceToPlaneBuffer;
@@ -99,15 +141,10 @@ private:
 	int* dev_planeInvIdMap;
 	int* dev_detectedPlaneCount;
 	int host_detectedPlaneCount;
-	glm::vec3* dev_planeTangents;
 	glm::vec4* dev_aabbIntermediateBuffer;
-	glm::vec4* dev_planeAABB;
 
 	float* dev_segmentProjectedSx;
 	float* dev_segmentProjectedSy;
-
-	ProjectionParameters* dev_planeProjectionParameters;
-	ProjectionParameters* host_planeProjectionParameters;
 
 	Float4SOA dev_PlaneTexture;
 	int* dev_quadTreeAssembly;
@@ -119,7 +156,7 @@ private:
 	float4* dev_quadTreeVertexBuffer;
 	int* dev_compactCount;
 	int host_quadtreeVertexCount;
-	Float4SOA dev_finalTextureBuffer;
+	float4* dev_finalTextureBuffer;
 
 	Float3SOAPyramid dev_float3PyramidBuffers[NUM_FLOAT3_PYRAMID_BUFFERS];
 	Float1SOAPyramid dev_float1PyramidBuffers[NUM_FLOAT1_PYRAMID_BUFFERS];
@@ -127,6 +164,11 @@ private:
 	float* dev_floatImageBuffers[NUM_FLOAT1_IMAGE_SIZE_BUFFERS];
 
 #pragma region
+
+#pragma region Host Results storage
+	vector<QuadTreeMesh> host_quadtrees;
+#pragma endregion
+
 
 #pragma region Private Methods
 	void createFloat1SOAPyramid(Float1SOAPyramid& dev_pyramid, int xRes, int yRes);
@@ -180,6 +222,7 @@ public:
 
 	void ReprojectPlaneTextures();
 	
+	void deleteQuadTreeMeshes();
 #pragma endregion
 
 #pragma region Buffer getters
@@ -197,9 +240,10 @@ public:
 	inline float* getProjectedSy() {return dev_segmentProjectedSy;}
 	inline int* getDistanceHistogram(int peak) {return (peak >= 0 && peak < MAX_2D_PEAKS_PER_ROUND)?dev_distanceHistograms[peak]:NULL;}
 	inline Float4SOA getProjectedTexture(int planeNum){return dev_PlaneTexture;}
-	inline ProjectionParameters getHostProjectionParameters(int planeNum){return host_planeProjectionParameters[planeNum];}
+	inline ProjectionParameters getHostProjectionParameters(int planeNum){return host_planeStats[planeNum].projParams;}
 	inline int getHostNumDetectedPlanes(){return host_detectedPlaneCount;}
 	inline int* getQuadtreeBuffer(int planeNum){return dev_quadTreeAssembly;}
+	inline vector<QuadTreeMesh>* getQuadTreeMeshes(){return &host_quadtrees;}
 #pragma endregion
 
 #pragma region Property Getters

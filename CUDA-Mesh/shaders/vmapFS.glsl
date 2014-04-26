@@ -20,7 +20,7 @@ void main()
 	FragColor = step(0.0001, depth)*vec4(shade, 1.0-step(0.0001,shade), 1.0-shade, 0.7);
 	*/
 	vec3 pos = texture(u_Texture0, fs_texCoord*u_TextureScale).xyz;
-	FragColor.xyz = pos.xyz*5;
+	FragColor.xyz = pos.xyz*2;
 	if(isnan(pos.x))
 	{
 		FragColor = vec4(1.0, 1.0, 0.0, 1.0);

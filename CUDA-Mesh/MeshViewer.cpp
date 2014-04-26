@@ -51,14 +51,11 @@ const GLuint MeshViewer::vbocolorLocation = 1;
 const GLuint MeshViewer::vbonormalLocation = 2;
 const char * MeshViewer::vboAttributeLocations[] = { "Position", "Color", "Normal" };
 
-const GLuint MeshViewer::PCVBOPositionLocation = 0;//vec3
-const GLuint MeshViewer::PCVBOColorLocation = 1;//vec3
-const GLuint MeshViewer::PCVBONormalLocation = 2;//vec3
 
-const GLuint MeshViewer::PCVBOStride = 9;//3*float3
-const GLuint MeshViewer::PCVBO_PositionOffset = 0;
-const GLuint MeshViewer::PCVBO_ColorOffset = 3;
-const GLuint MeshViewer::PCVBO_NormalOffset = 6;
+const GLuint MeshViewer::QTMVBOPositionLocation = 0;//vec4
+const GLuint MeshViewer::QTMVBOStride = 4;//1*vec4
+const GLuint MeshViewer::QTMVBO_PositionOffset = 0;
+
 
 MeshViewer* MeshViewer::msSelf = NULL;
 #pragma endregion
@@ -80,6 +77,8 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	mNormalMode = AVERAGE_GRADIENT_NORMALS;
 	mViewState = DISPLAY_MODE_OVERLAY;
 	hairyPoints = false;
+	mMeshWireframeMode = false;
+	mMeshPointMode = false;
 	mSpatialSigma = 2.0f;
 	mDepthSigma = 0.005f;
 	mMaxDepth = 5.0f;
@@ -273,6 +272,14 @@ void MeshViewer::initShader()
 	const char * projectedsegments_frag = "shaders/projectedsegmentsFS.glsl";
 	const char * quadtree_frag = "shaders/quadtreeFS.glsl";
 
+	//Quad Tree Buffer
+	const char * qtm_vert = "shaders/qtmVS.glsl";
+	const char * qtm_color_frag = "shaders/qtmColorFS.glsl";
+	const char * qtm_dist_frag = "shaders/qtmDistFS.glsl";
+	const char * green_frag = "shaders/greenFS.glsl";
+	const char * blue_frag = "shaders/blueFS.glsl";
+
+
 	//Color image shader
 	color_prog = glslUtility::createProgram(pass_vert, NULL, color_frag, quadAttributeLocations, 2);
 
@@ -300,9 +307,14 @@ void MeshViewer::initShader()
 
 	projectedsegments_prog = glslUtility::createProgram(pass_vert, NULL, projectedsegments_frag, quadAttributeLocations, 2);
 
-	
-	quadtree_prog = glslUtility::createProgram(pass_vert, NULL, quadtree_frag, quadAttributeLocations, 2);
+	quadtree_prog= glslUtility::createProgram(pass_vert, NULL, quadtree_frag, quadAttributeLocations, 2);
 
+
+	//Mesh Programs
+	qtm_color_prog  = glslUtility::createProgram(qtm_vert, NULL, qtm_color_frag, quadAttributeLocations, 2);
+	qtm_dist_prog  = glslUtility::createProgram(qtm_vert, NULL, qtm_dist_frag, quadAttributeLocations, 2);
+	qtm_highlight_blue_prog  = glslUtility::createProgram(qtm_vert, NULL, blue_frag, quadAttributeLocations, 2);
+	qtm_highlight_green_prog  = glslUtility::createProgram(qtm_vert, NULL, green_frag, quadAttributeLocations, 2);
 }
 
 void MeshViewer::initTextures()
@@ -361,7 +373,17 @@ void MeshViewer::initTextures()
 
 	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F , mXRes, mYRes, 0, GL_RGBA, GL_FLOAT,0);
 
+	//Setup QTM Texture
+	glBindTexture(GL_TEXTURE_2D, qtmTexture);
 
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+
+	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F , mMeshTracker->getProjectedTextureBufferWidth(), 
+		mMeshTracker->getProjectedTextureBufferWidth(), 0, GL_RGBA, GL_FLOAT,0);
 
 }
 
@@ -415,10 +437,9 @@ void MeshViewer::initFBO()
 	glBindFramebuffer(GL_FRAMEBUFFER, fullscreenFBO);
 	glViewport(0,0,(GLsizei)mWidth, (GLsizei)mHeight);
 
-	//TODO: Bind FBO to programs
-	/*
+
 	glReadBuffer(GL_NONE);
-	GLint color_loc = glGetFragDataLocation(pcvbo_prog,"out_Color");
+	GLint color_loc = glGetFragDataLocation(qtm_color_prog,"FragColor");
 	GLenum draws [1];
 	draws[color_loc] = GL_COLOR_ATTACHMENT0;
 	glDrawBuffers(1, draws);
@@ -428,7 +449,6 @@ void MeshViewer::initFBO()
 	glBindTexture(GL_TEXTURE_2D, FBOColorTexture);    
 	glFramebufferTexture(GL_FRAMEBUFFER, draws[color_loc], FBOColorTexture, 0);
 
-	*/
 	FBOstatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if(FBOstatus != GL_FRAMEBUFFER_COMPLETE) {
 		printf("GL_FRAMEBUFFER_COMPLETE failed, CANNOT use FBO[0]\n");
@@ -551,10 +571,71 @@ void MeshViewer::initQuad() {
 	glBindVertexArray(0);
 }
 
+void MeshViewer::initQuadtreeMeshVBO()
+{
+	glGenBuffers(1,&qtm_VBO);
+	glGenBuffers(1,&qtm_triangleIBO);
+
+	cudaGLRegisterBufferObject( qtm_VBO);
+	cudaGLRegisterBufferObject( qtm_triangleIBO);
+
+}
 
 #pragma endregion
 
 #pragma region Rendering Helper Functions
+
+void MeshViewer::drawQuadTreeMeshToFrameBuffer(QuadTreeMesh mesh, GLuint prog)
+{
+
+	//Setup VBO
+	glUseProgram(prog);
+
+	glEnableVertexAttribArray(QTMVBOPositionLocation);
+
+	glBindBuffer(GL_ARRAY_BUFFER, qtm_VBO);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, qtm_triangleIBO);
+
+	//Setup interleaved buffer
+	glVertexAttribPointer(QTMVBOPositionLocation, 4, GL_FLOAT, GL_FALSE, QTMVBOStride*sizeof(GLfloat), 
+		(void*)(QTMVBO_PositionOffset*sizeof(GLfloat))); 
+
+	//Fill buffer with data
+	glBufferData(GL_ARRAY_BUFFER, sizeof(float4)*mesh.numVerts, mesh.vertices.get(), GL_DYNAMIC_DRAW);//Initialize
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 2*3*mesh.numVerts*sizeof(GLuint), mesh.triangleIndices.get(), GL_DYNAMIC_DRAW);
+
+
+
+	//Setup uniforms
+	mat4 persp = glm::perspective(mCamera.fovy, float(mWidth)/float(mHeight), mCamera.zNear, mCamera.zFar);
+	mat4 viewmat = glm::lookAt(mCamera.eye, mCamera.eye+mCamera.view, mCamera.up);
+	mat4 viewInvTrans = inverse(transpose(viewmat));
+
+
+	glUniformMatrix4fv(glGetUniformLocation(prog, "u_projMatrix"),1, GL_FALSE, &persp[0][0] );
+	glUniformMatrix4fv(glGetUniformLocation(prog, "u_viewMatrix"),1, GL_FALSE, &viewmat[0][0] );
+	glUniformMatrix4fv(glGetUniformLocation(prog, "u_viewInvTrans"),1, GL_FALSE, &viewInvTrans[0][0] );
+	glUniformMatrix4fv(glGetUniformLocation(prog, "u_modelTransform"),1, GL_FALSE, &mesh.TplaneTocam[0][0] );
+
+
+	//Bind texture
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, qtmTexture);
+	glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA32F , mesh.mWidth, mesh.mHeight, 0, GL_RGBA, GL_FLOAT, mesh.rgbhTexture.get());
+
+	glUniform1i(glGetUniformLocation(prog, "u_Texture0"),0);
+
+
+
+	if(mesh.numVerts > 0){
+		glDrawElements(GL_TRIANGLES, mesh.numVerts*2*3, GL_UNSIGNED_INT, NULL);
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+}
+
+
 //Normalized device coordinates (-1 : 1, -1 : 1) center of viewport, and scale being 
 void MeshViewer::drawQuad(GLuint prog, float xNDC, float yNDC, float widthScale, float heightScale, float textureScale, GLuint* textures, int numTextures)
 {
@@ -912,9 +993,15 @@ void MeshViewer::drawFinalSegmentsToTexture(GLuint texture)
 void MeshViewer::resetCamera()
 {
 	mCamera.eye = vec3(0.0f);
-	mCamera.view = vec3(0.0f, 0.0f, -1.0f);
-	mCamera.up = vec3(0.0f, 1.0f, 0.0f);
-	mCamera.fovy = 23.5f;
+	mCamera.view = vec3(0.0f, 0.0f, 1.0f);
+	mCamera.up = vec3(0.0f, -1.0f, 0.0f);
+
+
+	//theta_x/2 = tan_inv( (width/2) / fx ) 
+	//theta_y/2 = tan_inv( (height/2) / fy ) 
+	Intrinsics intr = mDevice->getDepthIntrinsics();
+	float fovy2 = atan2(mDevice->getDepthResolutionY(), intr.fy);
+	mCamera.fovy = degrees(2*fovy2);
 	mCamera.zFar = 100.0f;
 	mCamera.zNear = 0.01;
 }
@@ -985,6 +1072,7 @@ void MeshViewer::display()
 		//Push buffers
 		mMeshTracker->pushRGBDFrameToDevice(localColorArray, localDepthArray, mLatestTime);
 
+		mMeshTracker->deleteQuadTreeMeshes();
 		cudaDeviceSynchronize();
 
 		mMeshTracker->buildRGBSOA();
@@ -1039,6 +1127,9 @@ void MeshViewer::display()
 	if(!mPauseVisulization)
 	{
 		glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		int numMeshes = 0;
+		int* elementArray;
+		vector<QuadTreeMesh>* meshes  = NULL;
 		switch(mViewState)
 		{
 		case DISPLAY_MODE_DEPTH:
@@ -1123,14 +1214,70 @@ void MeshViewer::display()
 			//Draw final segmentation
 			drawFinalSegmentsToTexture(texture0);
 			drawPlaneProjectedTexturetoTexture(texture1, mMeshTracker->getHostNumDetectedPlanes()-1);
-			
+
 			drawQuadtreetoTexture(texture2, mMeshTracker->getHostNumDetectedPlanes()-1);
-			drawQuad(quadtree_prog,  -0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL
+			drawQuad(quadtree_prog,			-0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LL
 
 			//drawQuad(distsegments_prog,  -0.5, -0.5, 0.5, 0.5, 1.0,  &texture0, 1);//LL
-			drawQuad(finalsegments_prog, -0.5, 0.5, 0.5, 0.5, 1.0,  &texture0, 1);//UL
+			drawQuad(finalsegments_prog,	-0.5, 0.5, 0.5, 0.5, 1.0,  &texture0, 1);//UL
 			drawQuad(projectedsegments_prog, 0.5, 0.5, 0.5, 0.5, 1.0,  &texture0, 1);//UR
-			drawQuad(color_prog,  0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR
+			drawQuad(color_prog,			 0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR
+			break;
+		case DISPLAY_MODE_QUADTREE:
+			meshes = mMeshTracker->getQuadTreeMeshes();
+			numMeshes = meshes->size();
+			//Bind FBO
+			glDisable(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D,0); //Bad mojo to unbind the framebuffer using the texture
+			glBindFramebuffer(GL_FRAMEBUFFER, fullscreenFBO);
+			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+			glEnable(GL_DEPTH_TEST);
+
+
+
+			glEnable(GL_CULL_FACE);
+			for(int i = 0; i < numMeshes; i++)
+			{
+				drawQuadTreeMeshToFrameBuffer(meshes->at(i),qtm_color_prog);
+				//cout << "{" << meshes->at(i).stats.centroid.x << ',' << 
+				//	meshes->at(i).stats.centroid.y << ',' << meshes->at(i).stats.centroid.z << '}' << endl;
+			}
+
+			glDisable(GL_CULL_FACE);
+
+				
+			if(mMeshWireframeMode){
+				glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+				glLineWidth(2.0f);
+				for(int i = 0; i < numMeshes; i++)
+				{
+					drawQuadTreeMeshToFrameBuffer(meshes->at(i),qtm_highlight_green_prog);
+					//cout << "{" << meshes->at(i).stats.centroid.x << ',' << 
+					//	meshes->at(i).stats.centroid.y << ',' << meshes->at(i).stats.centroid.z << '}' << endl;
+				}
+				glLineWidth(1.0f);
+				glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+			}
+
+			
+			if(mMeshPointMode){
+				glPointSize(5.0f);
+				glPolygonMode( GL_FRONT_AND_BACK, GL_POINT );
+				for(int i = 0; i < numMeshes; i++)
+				{
+					drawQuadTreeMeshToFrameBuffer(meshes->at(i),qtm_highlight_blue_prog);
+					//cout << "{" << meshes->at(i).stats.centroid.x << ',' << 
+					//	meshes->at(i).stats.centroid.y << ',' << meshes->at(i).stats.centroid.z << '}' << endl;
+				}
+				glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+				glPointSize(1.0f);
+			}
+			
+
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+			glBindFramebuffer(GL_FRAMEBUFFER, 0);
+			glDisable(GL_CULL_FACE);
+			drawQuad(color_prog, 0.0, 0.0, 1.0, -1.0, 1.0, &FBOColorTexture, 1);//Fill Screen
 			break;
 		case DISPLAY_MODE_NONE:
 		default:
@@ -1192,9 +1339,19 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	case '8':
 		mViewState = DISPLAY_MODE_PROJECTION_DEBUG;
 		break;
+	case '9':
+		mViewState = DISPLAY_MODE_QUADTREE;
+		break;
 	case '0':
 		mViewState = DISPLAY_MODE_NONE;
 		break;
+	case 'v':
+		mMeshWireframeMode = !mMeshWireframeMode;
+		cout << "Wireframe mode: " << mMeshWireframeMode << endl;
+		break;
+	case 'V':
+		mMeshPointMode = !mMeshPointMode;
+		cout << "Point mode: " << mMeshPointMode << endl;
 	case('r'):
 		cout << "Reloading Shaders" <<endl;
 		initShader();
@@ -1259,12 +1416,12 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
 		break;
 	case 'D':
-		right = normalize(cross(mCamera.view, -mCamera.up));
+		right = normalize(cross(mCamera.view, mCamera.up));
 		mCamera.eye += cameraLowSpeed*right;
 		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
 		break;
 	case 'A':
-		right = normalize(cross(mCamera.view, -mCamera.up));
+		right = normalize(cross(mCamera.view, mCamera.up));
 		mCamera.eye -= cameraLowSpeed*right;
 		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
 		break;
@@ -1286,12 +1443,12 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
 		break;
 	case 'd':
-		right = normalize(cross(mCamera.view, -mCamera.up));
+		right = normalize(cross(mCamera.view, mCamera.up));
 		mCamera.eye += cameraHighSpeed*right;
 		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
 		break;
 	case 'a':
-		right = normalize(cross(mCamera.view, -mCamera.up));
+		right = normalize(cross(mCamera.view, mCamera.up));
 		mCamera.eye -= cameraHighSpeed*right;
 		cout << "Camera Eye: " << mCamera.eye.x << " " << mCamera.eye.y << " " << mCamera.eye.z << endl;
 		break;
@@ -1493,10 +1650,11 @@ void MeshViewer::mouse_move(int x, int y) {
 		float delX = x-drag_x_last;
 		float delY = y-drag_y_last;
 
-		float rotSpeed = 0.1f*PI_F/180.0f;
+		//Degrees/pixel
+		float rotSpeed = 0.1f;
 
 		vec3 Up = mCamera.up;
-		vec3 Right = normalize(cross(mCamera.view, -mCamera.up));
+		vec3 Right = normalize(cross(mCamera.view, mCamera.up));
 
 		if(rightclick)
 		{

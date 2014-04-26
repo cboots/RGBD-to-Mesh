@@ -177,7 +177,7 @@ __device__ void minmaxreduction(float* s_minSx, float* s_maxSx, float* s_minSy, 
 	}
 }
 
-__global__ void computeAABBsKernel(PlaneStats planeStats, int* planeInvIdMap, glm::vec3* tangents, glm::vec4* aabbs, 
+__global__ void computeAABBsKernel(PlaneStats* planeStats, int* planeInvIdMap, glm::vec4* aabbsBlockResults,
 								   int* planeCount, int maxPlanes,
 								   Float3SOA positions, float* segmentProjectedSx, float* segmentProjectedSy, 
 								   int* finalSegmentsBuffer, int xRes, int yRes)
@@ -206,12 +206,12 @@ __global__ void computeAABBsKernel(PlaneStats planeStats, int* planeInvIdMap, gl
 		if(indexInBlock < numPlanes)
 		{
 			//s_aabb[indexInBlock] = glm::vec4(0.0f);
-			s_tangents[indexInBlock] = tangents[indexInBlock];
-			s_centroidX[indexInBlock] = planeStats.centroids.x[indexInBlock];
-			s_centroidY[indexInBlock] = planeStats.centroids.y[indexInBlock];
-			s_centroidZ[indexInBlock] = planeStats.centroids.z[indexInBlock];
+			s_tangents[indexInBlock] = planeStats[indexInBlock].tangent;
+			s_centroidX[indexInBlock] = planeStats[indexInBlock].centroid.x;
+			s_centroidY[indexInBlock] = planeStats[indexInBlock].centroid.y;
+			s_centroidZ[indexInBlock] = planeStats[indexInBlock].centroid.z;
 			//bitangent = norm cross tangent
-			glm::vec3 norm(planeStats.norms.x[indexInBlock],planeStats.norms.y[indexInBlock],planeStats.norms.z[indexInBlock]);
+			glm::vec3 norm(planeStats[indexInBlock].norm.x,planeStats[indexInBlock].norm.y,planeStats[indexInBlock].norm.z);
 			s_bitangents[indexInBlock] = glm::normalize(glm::cross(norm, s_tangents[indexInBlock]));
 		}
 	}
@@ -268,16 +268,19 @@ __global__ void computeAABBsKernel(PlaneStats planeStats, int* planeInvIdMap, gl
 			//Threads already synced in function
 
 			if(indexInBlock == 0)
-				aabbs[(blockIdx.x + blockIdx.y*gridDim.x) + plane*gridDim.x*gridDim.y] = glm::vec4(s_minSx[0], s_maxSx[0],s_minSy[0],s_maxSy[0]);
+			{
+				aabbsBlockResults[(blockIdx.x + blockIdx.y*gridDim.x) + plane*gridDim.x*gridDim.y] 
+				= glm::vec4(s_minSx[0], s_maxSx[0],s_minSy[0],s_maxSy[0]);
+			}
 		}else{
 			if(indexInBlock == 0)
-				aabbs[(blockIdx.x + blockIdx.y*gridDim.x) + plane*gridDim.x*gridDim.y] = glm::vec4(0.0f);
+				aabbsBlockResults[(blockIdx.x + blockIdx.y*gridDim.x) + plane*gridDim.x*gridDim.y] = glm::vec4(0.0f);
 		}
 	}
 }
 
 
-__global__ void reduceAABBsKernel(glm::vec4* aabbsBlockResults, glm::vec4* aabbs, int numBlocks, int maxPlanes, int* planeCount)
+__global__ void reduceAABBsKernel(PlaneStats* planeStats, glm::vec4* aabbsBlockResults, int numBlocks, int maxPlanes, int* planeCount)
 {
 	extern __shared__ float s_temp[];
 	float* s_minSx = s_temp;
@@ -308,7 +311,7 @@ __global__ void reduceAABBsKernel(glm::vec4* aabbsBlockResults, glm::vec4* aabbs
 		minmaxreduction(s_minSx, s_maxSx, s_minSy, s_maxSy, i, blockDim.x);
 
 		if(threadIdx.x == 0)
-			aabbs[plane] = glm::vec4(s_minSx[0], s_maxSx[0],s_minSy[0],s_maxSy[0]);
+			planeStats[plane].projParams.aabbMeters = glm::vec4(s_minSx[0], s_maxSx[0],s_minSy[0],s_maxSy[0]);
 	}
 }
 
@@ -326,7 +329,7 @@ __host__ __device__ int roundupnextpow2 (int x)
 	return x+1;
 }
 
-__host__ void computeAABBs(PlaneStats planeStats, int* planeInvIdMap, glm::vec3* tangents, glm::vec4* aabbs, glm::vec4* aabbsBlockResults,
+__host__ void computeAABBs(PlaneStats* planeStats, int* planeInvIdMap, glm::vec4* aabbsBlockResults,
 						   int* planeCount, int maxPlanes,
 						   Float3SOA positions, float* segmentProjectedSx, float* segmentProjectedSy, 
 						   int* finalSegmentsBuffer, int xRes, int yRes)
@@ -340,10 +343,9 @@ __host__ void computeAABBs(PlaneStats planeStats, int* planeInvIdMap, glm::vec3*
 	//plane map, tangent, bitangent, centroid and aabb of each plane loaded to shared memory.
 	int sharedMem = maxPlanes*(sizeof(int) + sizeof(float)*3+sizeof(glm::vec3)*2) + blockWidth*blockHeight*4*sizeof(float);
 
-	computeAABBsKernel<<<blocks,threads,sharedMem>>>(planeStats, planeInvIdMap, tangents, aabbsBlockResults, planeCount, maxPlanes,
+	computeAABBsKernel<<<blocks,threads,sharedMem>>>(planeStats, planeInvIdMap, aabbsBlockResults, planeCount, maxPlanes,
 		positions, segmentProjectedSx, segmentProjectedSy, 
 		finalSegmentsBuffer, xRes, yRes);
-
 
 	int numBlocks = blocks.x*blocks.y;
 	int pow2Blocks = roundupnextpow2 (numBlocks) >> 1;//Next lowest power of two
@@ -353,13 +355,13 @@ __host__ void computeAABBs(PlaneStats planeStats, int* planeInvIdMap, glm::vec3*
 	threads = dim3(pow2Blocks);
 	blocks = dim3(1);
 	sharedMem = 4*sizeof(float)*pow2Blocks;
-	reduceAABBsKernel<<<blocks,threads,sharedMem>>>(aabbsBlockResults, aabbs, numBlocks, maxPlanes, planeCount);
+	reduceAABBsKernel<<<blocks,threads,sharedMem>>>(planeStats, aabbsBlockResults, numBlocks, maxPlanes, planeCount);
 
 }
 
 
-__global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, PlaneStats planeStats, glm::vec3* tangents, glm::vec4* aabbs,
-											  ProjectionParameters* projParams, int* planeCount, int maxTextureSize, int xRes, int yRes)
+__global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, PlaneStats* planeStats,
+											  int* planeCount, int maxTextureSize, int xRes, int yRes)
 {
 	glm::mat3 C(1.0f);
 
@@ -371,14 +373,14 @@ __global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, 
 	{
 		//In range and valid plane.
 
-		glm::vec3 tangent = tangents[threadIdx.x];
-		glm::vec3 normal = glm::vec3(planeStats.norms.x[threadIdx.x],planeStats.norms.y[threadIdx.x],planeStats.norms.z[threadIdx.x]);
+		glm::vec3 tangent = planeStats[threadIdx.x].tangent;
+		glm::vec3 normal = glm::vec3(planeStats[threadIdx.x].norm.x,planeStats[threadIdx.x].norm.y,planeStats[threadIdx.x].norm.z);
 		glm::vec3 bitangent = glm::normalize(glm::cross(normal, tangent));
 
-		glm::vec3 centroid = glm::vec3(planeStats.centroids.x[threadIdx.x],
-			planeStats.centroids.y[threadIdx.x],
-			planeStats.centroids.z[threadIdx.x]);
-		aabb = aabbs[threadIdx.x];
+		glm::vec3 centroid = glm::vec3(planeStats[threadIdx.x].centroid.x,
+			planeStats[threadIdx.x].centroid.y,
+			planeStats[threadIdx.x].centroid.z);
+		aabb = planeStats[threadIdx.x].projParams.aabbMeters;
 
 		//Compute camera space coordinates (4 points in clockwise winding from viewpoint)
 		/*   1----2
@@ -458,28 +460,28 @@ __global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, 
 
 		C = A*glm::inverse(B);
 
-		
+
 	}
 
-	projParams[threadIdx.x].projectionMatrix = C;
-	projParams[threadIdx.x].aabbMeters = aabb;
-	projParams[threadIdx.x].destWidth = destWidth;
-	projParams[threadIdx.x].destHeight = destHeight;
-	projParams[threadIdx.x].textureResolution = maxRatio;
+	planeStats[threadIdx.x].projParams.projectionMatrix = C;
+	planeStats[threadIdx.x].projParams.aabbMeters = aabb;
+	planeStats[threadIdx.x].projParams.destWidth = destWidth;
+	planeStats[threadIdx.x].projParams.destHeight = destHeight;
+	planeStats[threadIdx.x].projParams.textureResolution = maxRatio;
 }
 
 
-__host__ void calculateProjectionData(rgbd::framework::Intrinsics intr, PlaneStats planeStats, glm::vec3* tangents, glm::vec4* aabbs, 
-									  ProjectionParameters* projParams, int* planeCount, int maxTextureSize, int maxPlanes, int xRes, int yRes)
+__host__ void calculateProjectionData(rgbd::framework::Intrinsics intr, PlaneStats* planeStats,
+									  int* planeCount, int maxTextureSize, int maxPlanes, int xRes, int yRes)
 {
 	dim3 blocks(1);
 	dim3 threads(maxPlanes);
 
-	calculateProjectionDataKernel<<<blocks,threads>>>(intr, planeStats, tangents, aabbs, projParams, planeCount, maxTextureSize, xRes, yRes);
+	calculateProjectionDataKernel<<<blocks,threads>>>(intr, planeStats, planeCount, maxTextureSize, xRes, yRes);
 }
 
 
-__global__ void projectTexture(int segmentId, ProjectionParameters* dev_projParams, 
+__global__ void projectTexture(int segmentId, PlaneStats* dev_planeStats, 
 							   Float4SOA destTexture, int destTextureSize, 
 							   RGBMapSOA rgbMap, int* dev_finalSegmentsBuffer, float* dev_finalDistanceToPlaneBuffer,
 							   int imageXRes, int imageYRes)
@@ -487,8 +489,8 @@ __global__ void projectTexture(int segmentId, ProjectionParameters* dev_projPara
 	int destX = blockIdx.x*blockDim.x+threadIdx.x;
 	int destY = blockIdx.y*blockDim.y+threadIdx.y;
 
-	if(destX < destTextureSize && destX < dev_projParams->destWidth
-		&& destY < destTextureSize && destY < dev_projParams->destHeight)
+	if(destX < destTextureSize && destX < dev_planeStats->projParams.destWidth
+		&& destY < destTextureSize && destY < dev_planeStats->projParams.destHeight)
 	{
 		float r = CUDART_NAN_F;
 		float g = CUDART_NAN_F;
@@ -496,7 +498,7 @@ __global__ void projectTexture(int segmentId, ProjectionParameters* dev_projPara
 		float dist = CUDART_NAN_F;
 
 		//Destination in range
-		glm::mat3 Tds = dev_projParams->projectionMatrix;
+		glm::mat3 Tds = dev_planeStats->projParams.projectionMatrix;
 
 		glm::vec3 sourceCoords = Tds*glm::vec3(destX, destY, 1.0f);
 
@@ -513,7 +515,7 @@ __global__ void projectTexture(int segmentId, ProjectionParameters* dev_projPara
 				r = rgbMap.r[linIndex];
 				g = rgbMap.g[linIndex];
 				b = rgbMap.b[linIndex];
-				dist = dev_finalSegmentsBuffer[linIndex];
+				dist = dev_finalDistanceToPlaneBuffer[linIndex];
 			}
 		}
 
@@ -526,7 +528,7 @@ __global__ void projectTexture(int segmentId, ProjectionParameters* dev_projPara
 }
 
 
-__host__ void projectTexture(int segmentId, ProjectionParameters* host_projParams, ProjectionParameters* dev_projParams, 
+__host__ void projectTexture(int segmentId, PlaneStats* host_planeStats, PlaneStats* dev_planeStats,  
 							 Float4SOA destTexture, int destTextureSize, 
 							 RGBMapSOA rgbMap, int* dev_finalSegmentsBuffer, float* dev_finalDistanceToPlaneBuffer,
 							 int imageXRes, int imageYRes)
@@ -534,10 +536,10 @@ __host__ void projectTexture(int segmentId, ProjectionParameters* host_projParam
 	int tileSize = 16;
 
 	dim3 threads(tileSize, tileSize);
-	dim3 blocks((int)ceil(float(host_projParams->destWidth)/float(tileSize)),
-		(int)ceil(float(host_projParams->destHeight)/float(tileSize)));
+	dim3 blocks((int)ceil(float(host_planeStats->projParams.destWidth)/float(tileSize)),
+		(int)ceil(float(host_planeStats->projParams.destHeight)/float(tileSize)));
 
-	projectTexture<<<blocks,threads>>>(segmentId, dev_projParams, destTexture, destTextureSize, 
+	projectTexture<<<blocks,threads>>>(segmentId, dev_planeStats, destTexture, destTextureSize, 
 		rgbMap, dev_finalSegmentsBuffer, dev_finalDistanceToPlaneBuffer, imageXRes, imageYRes);
 }
 
@@ -772,6 +774,32 @@ __global__ void quadtreeDecimationKernel2(int actualWidth, int actualHeight, int
 
 }
 
+__global__ void quadtreeDecimationHolePatchingKernel(int actualWidth, int actualHeight, int* quadTreeAssemblyBuffer, int textureBufferSize)
+{
+	//TODO: Load shared memory to avoid redundant reads
+
+	int gx = threadIdx.x + blockDim.x*blockIdx.x;
+	int gy = threadIdx.y + blockDim.y*blockIdx.y;
+
+	if(gx < actualWidth && gy < actualHeight)
+	{
+		int degree = quadTreeAssemblyBuffer[gx + gy*textureBufferSize];
+		if(degree > 0)
+		{
+			//Make sure each corner is flagged as 0 or higher
+			int cornerDegree = quadTreeAssemblyBuffer[(gx+degree) + (gy)*textureBufferSize];
+			if(cornerDegree < 0) quadTreeAssemblyBuffer[(gx+degree) + (gy)*textureBufferSize] = 0;
+
+			cornerDegree = quadTreeAssemblyBuffer[(gx) + (gy+degree)*textureBufferSize];
+			if(cornerDegree < 0) quadTreeAssemblyBuffer[(gx) + (gy+degree)*textureBufferSize] = 0;
+
+			cornerDegree = quadTreeAssemblyBuffer[(gx+degree) + (gy+degree)*textureBufferSize];
+			if(cornerDegree < 0) quadTreeAssemblyBuffer[(gx+degree) + (gy+degree)*textureBufferSize] = 0;
+		}
+	}
+}
+
+
 __host__ void quadtreeDecimation(int actualWidth, int actualHeight, Float4SOA planarTexture, int* quadTreeAssemblyBuffer,
 								 int textureBufferSize)
 {
@@ -785,10 +813,17 @@ __host__ void quadtreeDecimation(int actualWidth, int actualHeight, Float4SOA pl
 	int sharedSize = (tileSize+1)*(tileSize+1)*sizeof(int);
 	quadtreeDecimationKernel1<<<blocks,threads,sharedSize>>>(actualWidth, actualHeight, planarTexture, quadTreeAssemblyBuffer, textureBufferSize);
 
+
 	blocks = dim3((int)ceil(actualWidth/float(tileSize*tileSize)),
 		(int)ceil(actualHeight/float(tileSize*tileSize)));
 	quadtreeDecimationKernel2<<<blocks,threads,sharedSize>>>(actualWidth, actualHeight, quadTreeAssemblyBuffer, textureBufferSize);
 
+
+	//Fill in holes
+	
+	blocks= dim3((int)ceil(actualWidth/float(tileSize)),
+		(int)ceil(actualHeight/float(tileSize)));
+	quadtreeDecimationHolePatchingKernel<<<blocks,threads>>>(actualWidth, actualHeight, quadTreeAssemblyBuffer, textureBufferSize);
 }
 
 
@@ -829,8 +864,8 @@ __global__ void quadTreeExclusiveScanKernel(int width, int* input, int* output, 
 	int bankOffsetB = CONFLICT_FREE_OFFSET(bi);
 
 	//Bounds checking, load shared mem
-	temp[ai+bankOffsetA] = (ai < width)?input[ai]:0;
-	temp[bi+bankOffsetB] = (bi < width)?input[bi]:0;
+	temp[ai+bankOffsetA] = (ai < width)?(input[ai]>=0?1:0):0;
+	temp[bi+bankOffsetB] = (bi < width)?(input[bi]>=0?1:0):0;
 	//Negative vertecies are to be cleared
 	if(temp[ai+bankOffsetA] < 0)
 		temp[ai+bankOffsetA] = 0;
@@ -977,7 +1012,7 @@ __global__ void reintegrateResultsKernel(int actualWidth, int textureBufferSize,
 
 	if(pixelX < actualWidth)
 	{
-		quadTreeScanResults[pixelX + pixelY*textureBufferSize] += blockResults[pixelY];
+			quadTreeScanResults[pixelX + pixelY*textureBufferSize] += blockResults[pixelY];
 	}
 }
 
@@ -1021,7 +1056,7 @@ __global__ void scatterResultsKernel(glm::vec4 aabbMeters, int actualWidth, int 
 			// 0-1
 			// |/|
 			// 2-3
-			// Index order: 0 - 1 - 2, 2 - 1 -3
+			// Index order: 0-2-1, 1-2-3
 			//Already loaded vertnum for 0
 			int vertNum0 = 0;
 			int vertNum1 = 0;
@@ -1039,13 +1074,13 @@ __global__ void scatterResultsKernel(glm::vec4 aabbMeters, int actualWidth, int 
 			}
 
 			//Always fill buffer
-			// Index order: 0 - 1 - 2, 2 - 1 -3
+			// Index order: 0-2-1, 1-2-3
 			int offset = vertNum*6;
 			indexBuffer[offset+0] = vertNum0;
-			indexBuffer[offset+1] = vertNum1;
-			indexBuffer[offset+2] = vertNum2;
-			indexBuffer[offset+3] = vertNum2;
-			indexBuffer[offset+4] = vertNum1;
+			indexBuffer[offset+1] = vertNum2;
+			indexBuffer[offset+2] = vertNum1;
+			indexBuffer[offset+3] = vertNum1;
+			indexBuffer[offset+4] = vertNum2;
 			indexBuffer[offset+5] = vertNum3;
 
 		}
@@ -1053,32 +1088,32 @@ __global__ void scatterResultsKernel(glm::vec4 aabbMeters, int actualWidth, int 
 }
 
 __global__ void reshapeTextureKernel(int actualWidth, int actualHeight, int finalTextureWidth, int finalTextureHeight, int textureBufferSize, 
-		Float4SOA planarTexture, Float4SOA finalTexture)
+									 Float4SOA planarTexture, float4* finalTexture)
 {
 	int x = threadIdx.x;
 	int y = blockIdx.x;
 	int destIndex = x + y * finalTextureWidth;
 	int sourceIndex = x + y * textureBufferSize;
 
-	glm::vec4 textureValue(CUDART_NAN_F);
+	float4 textureValue = {CUDART_NAN_F,CUDART_NAN_F,CUDART_NAN_F,CUDART_NAN_F};
 
 	if(x < actualWidth && y < actualHeight)
 	{
-		textureValue = glm::vec4(planarTexture.x[sourceIndex],planarTexture.y[sourceIndex],
-			planarTexture.z[sourceIndex],planarTexture.w[sourceIndex]);
+		textureValue.x = planarTexture.x[sourceIndex];
+		textureValue.y = planarTexture.y[sourceIndex];
+		textureValue.z = planarTexture.z[sourceIndex];
+		textureValue.w = planarTexture.w[sourceIndex];
 	}
 
-	finalTexture.x[destIndex] = textureValue.x;
-	finalTexture.y[destIndex] = textureValue.y;
-	finalTexture.z[destIndex] = textureValue.z;
-	finalTexture.w[destIndex] = textureValue.w;
+
+	finalTexture[destIndex] = textureValue;
 }
 
 
 __host__ void quadtreeMeshGeneration(glm::vec4 aabbMeters, int actualWidth, int actualHeight, int* quadTreeAssemblyBuffer,
 									 int* quadTreeScanResults, int textureBufferSize, int* blockResults, int blockResultsBufferSize,
 									 int* indexBuffer, float4* vertexBuffer, int* compactCount, int* host_compactCount, int outputBufferSize,
-									 int finalTextureWidth, int finalTextureHeight, Float4SOA planarTexture, Float4SOA finalTexture)
+									 int finalTextureWidth, int finalTextureHeight, Float4SOA planarTexture, float4* finalTexture)
 {
 	int blockSize = roundupnextpow2(actualWidth);
 	int numBlocks = actualHeight;
@@ -1086,10 +1121,8 @@ __host__ void quadtreeMeshGeneration(glm::vec4 aabbMeters, int actualWidth, int 
 	dim3 blocks(numBlocks);
 	int sharedCount = (blockSize+2)*sizeof(int);
 
-
 	//Make sure size constraints aren't violated
 	assert(blocks.x <= blockResultsBufferSize);
-	assert(blockResultsBufferSize <= blockSize);
 
 	//Scan blocks
 	quadTreeExclusiveScanKernel<<<blocks,threads,sharedCount>>>(actualWidth, quadTreeAssemblyBuffer, 
