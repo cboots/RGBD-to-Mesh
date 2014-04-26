@@ -175,7 +175,8 @@ private:
 	GLuint quadtree_prog;
 	//Mesh programs
 	GLuint qtm_color_prog;
-	GLuint qtm_highlight_prog;
+	GLuint qtm_highlight_blue_prog;
+	GLuint qtm_highlight_green_prog;
 #pragma endregion
 
 #pragma region Buffer Object Indecies

@@ -275,7 +275,9 @@ void MeshViewer::initShader()
 	//Quad Tree Buffer
 	const char * qtm_vert = "shaders/qtmVS.glsl";
 	const char * qtm_color_frag = "shaders/qtmColorFS.glsl";
-	const char * qtm_highlight_frag = "shaders/qtmHighlightFS.glsl";
+	const char * green_frag = "shaders/greenFS.glsl";
+	const char * blue_frag = "shaders/blueFS.glsl";
+
 
 	//Color image shader
 	color_prog = glslUtility::createProgram(pass_vert, NULL, color_frag, quadAttributeLocations, 2);
@@ -309,7 +311,8 @@ void MeshViewer::initShader()
 
 	//Mesh Programs
 	qtm_color_prog  = glslUtility::createProgram(qtm_vert, NULL, qtm_color_frag, quadAttributeLocations, 2);
-	qtm_highlight_prog  = glslUtility::createProgram(qtm_vert, NULL, qtm_highlight_frag, quadAttributeLocations, 2);
+	qtm_highlight_blue_prog  = glslUtility::createProgram(qtm_vert, NULL, blue_frag, quadAttributeLocations, 2);
+	qtm_highlight_green_prog  = glslUtility::createProgram(qtm_vert, NULL, green_frag, quadAttributeLocations, 2);
 }
 
 void MeshViewer::initTextures()
@@ -1245,7 +1248,7 @@ void MeshViewer::display()
 				glPolygonMode( GL_FRONT_AND_BACK, GL_POINT );
 				for(int i = 0; i < numMeshes; i++)
 				{
-					drawQuadTreeMeshToFrameBuffer(meshes->at(i),qtm_highlight_prog);
+					drawQuadTreeMeshToFrameBuffer(meshes->at(i),qtm_highlight_blue_prog);
 					//cout << "{" << meshes->at(i).stats.centroid.x << ',' << 
 					//	meshes->at(i).stats.centroid.y << ',' << meshes->at(i).stats.centroid.z << '}' << endl;
 				}
@@ -1256,12 +1259,14 @@ void MeshViewer::display()
 				
 			if(mMeshPointMode){
 				glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+				glLineWidth(2.0f);
 				for(int i = 0; i < numMeshes; i++)
 				{
-					drawQuadTreeMeshToFrameBuffer(meshes->at(i),qtm_highlight_prog);
+					drawQuadTreeMeshToFrameBuffer(meshes->at(i),qtm_highlight_green_prog);
 					//cout << "{" << meshes->at(i).stats.centroid.x << ',' << 
 					//	meshes->at(i).stats.centroid.y << ',' << meshes->at(i).stats.centroid.z << '}' << endl;
 				}
+				glLineWidth(1.0f);
 				glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
 			}
 
