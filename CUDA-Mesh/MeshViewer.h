@@ -133,6 +133,7 @@ private:
 	DisplayModes mViewState;
 	bool hairyPoints;
 	bool mMeshWireframeMode;
+	bool mMeshPointMode;
 #pragma endregion
 
 	//===========Open GL stuff==============
@@ -174,6 +175,7 @@ private:
 	GLuint quadtree_prog;
 	//Mesh programs
 	GLuint qtm_color_prog;
+	GLuint qtm_highlight_prog;
 #pragma endregion
 
 #pragma region Buffer Object Indecies

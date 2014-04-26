@@ -78,6 +78,7 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	mViewState = DISPLAY_MODE_OVERLAY;
 	hairyPoints = false;
 	mMeshWireframeMode = false;
+	mMeshPointMode = false;
 	mSpatialSigma = 2.0f;
 	mDepthSigma = 0.005f;
 	mMaxDepth = 5.0f;
@@ -274,6 +275,7 @@ void MeshViewer::initShader()
 	//Quad Tree Buffer
 	const char * qtm_vert = "shaders/qtmVS.glsl";
 	const char * qtm_color_frag = "shaders/qtmColorFS.glsl";
+	const char * qtm_highlight_frag = "shaders/qtmHighlightFS.glsl";
 
 	//Color image shader
 	color_prog = glslUtility::createProgram(pass_vert, NULL, color_frag, quadAttributeLocations, 2);
@@ -307,6 +309,7 @@ void MeshViewer::initShader()
 
 	//Mesh Programs
 	qtm_color_prog  = glslUtility::createProgram(qtm_vert, NULL, qtm_color_frag, quadAttributeLocations, 2);
+	qtm_highlight_prog  = glslUtility::createProgram(qtm_vert, NULL, qtm_highlight_frag, quadAttributeLocations, 2);
 }
 
 void MeshViewer::initTextures()
@@ -988,9 +991,9 @@ void MeshViewer::resetCamera()
 	mCamera.view = vec3(0.0f, 0.0f, 1.0f);
 	mCamera.up = vec3(0.0f, -1.0f, 0.0f);
 
-	
-//theta_x/2 = tan_inv( (width/2) / fx ) 
-//theta_y/2 = tan_inv( (height/2) / fy ) 
+
+	//theta_x/2 = tan_inv( (width/2) / fx ) 
+	//theta_y/2 = tan_inv( (height/2) / fy ) 
 	Intrinsics intr = mDevice->getDepthIntrinsics();
 	float fovy2 = atan2(mDevice->getDepthResolutionY(), intr.fy);
 	mCamera.fovy = degrees(2*fovy2);
@@ -1224,12 +1227,10 @@ void MeshViewer::display()
 			glBindFramebuffer(GL_FRAMEBUFFER, fullscreenFBO);
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 			glEnable(GL_DEPTH_TEST);
-			if(mMeshWireframeMode){
-				glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
-			}else{
-				glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-			}
 
+
+
+			glEnable(GL_CULL_FACE);
 			for(int i = 0; i < numMeshes; i++)
 			{
 				drawQuadTreeMeshToFrameBuffer(meshes->at(i),qtm_color_prog);
@@ -1237,9 +1238,36 @@ void MeshViewer::display()
 				//	meshes->at(i).stats.centroid.y << ',' << meshes->at(i).stats.centroid.z << '}' << endl;
 			}
 
+			glDisable(GL_CULL_FACE);
+
+			if(mMeshWireframeMode){
+				glPointSize(5.0f);
+				glPolygonMode( GL_FRONT_AND_BACK, GL_POINT );
+				for(int i = 0; i < numMeshes; i++)
+				{
+					drawQuadTreeMeshToFrameBuffer(meshes->at(i),qtm_highlight_prog);
+					//cout << "{" << meshes->at(i).stats.centroid.x << ',' << 
+					//	meshes->at(i).stats.centroid.y << ',' << meshes->at(i).stats.centroid.z << '}' << endl;
+				}
+				glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+				glPointSize(1.0f);
+			}
+			
+				
+			if(mMeshPointMode){
+				glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+				for(int i = 0; i < numMeshes; i++)
+				{
+					drawQuadTreeMeshToFrameBuffer(meshes->at(i),qtm_highlight_prog);
+					//cout << "{" << meshes->at(i).stats.centroid.x << ',' << 
+					//	meshes->at(i).stats.centroid.y << ',' << meshes->at(i).stats.centroid.z << '}' << endl;
+				}
+				glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+			}
+
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
 			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+			glDisable(GL_CULL_FACE);
 			drawQuad(color_prog, 0.0, 0.0, 1.0, -1.0, 1.0, &FBOColorTexture, 1);//Fill Screen
 			break;
 		case DISPLAY_MODE_NONE:
@@ -1308,6 +1336,13 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	case '0':
 		mViewState = DISPLAY_MODE_NONE;
 		break;
+	case 'v':
+		mMeshWireframeMode = !mMeshWireframeMode;
+		cout << "Wireframe mode: " << mMeshWireframeMode << endl;
+		break;
+	case 'V':
+		mMeshPointMode = !mMeshPointMode;
+		cout << "Point mode: " << mMeshPointMode << endl;
 	case('r'):
 		cout << "Reloading Shaders" <<endl;
 		initShader();

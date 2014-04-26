@@ -270,7 +270,7 @@ __global__ void computeAABBsKernel(PlaneStats* planeStats, int* planeInvIdMap, g
 			if(indexInBlock == 0)
 			{
 				aabbsBlockResults[(blockIdx.x + blockIdx.y*gridDim.x) + plane*gridDim.x*gridDim.y] 
-					= glm::vec4(s_minSx[0], s_maxSx[0],s_minSy[0],s_maxSy[0]);
+				= glm::vec4(s_minSx[0], s_maxSx[0],s_minSy[0],s_maxSy[0]);
 			}
 		}else{
 			if(indexInBlock == 0)
@@ -460,7 +460,7 @@ __global__ void calculateProjectionDataKernel(rgbd::framework::Intrinsics intr, 
 
 		C = A*glm::inverse(B);
 
-		
+
 	}
 
 	planeStats[threadIdx.x].projParams.projectionMatrix = C;
@@ -774,6 +774,32 @@ __global__ void quadtreeDecimationKernel2(int actualWidth, int actualHeight, int
 
 }
 
+__global__ void quadtreeDecimationHolePatchingKernel(int actualWidth, int actualHeight, int* quadTreeAssemblyBuffer, int textureBufferSize)
+{
+	//TODO: Load shared memory to avoid redundant reads
+
+	int gx = threadIdx.x + blockDim.x*blockIdx.x;
+	int gy = threadIdx.y + blockDim.y*blockIdx.y;
+
+	if(gx < actualWidth && gy < actualHeight)
+	{
+		int degree = quadTreeAssemblyBuffer[gx + gy*textureBufferSize];
+		if(degree > 0)
+		{
+			//Make sure each corner is flagged as 0 or higher
+			int cornerDegree = quadTreeAssemblyBuffer[(gx+degree) + (gy)*textureBufferSize];
+			if(cornerDegree < 0) quadTreeAssemblyBuffer[(gx+degree) + (gy)*textureBufferSize] = 0;
+
+			cornerDegree = quadTreeAssemblyBuffer[(gx) + (gy+degree)*textureBufferSize];
+			if(cornerDegree < 0) quadTreeAssemblyBuffer[(gx) + (gy+degree)*textureBufferSize] = 0;
+
+			cornerDegree = quadTreeAssemblyBuffer[(gx+degree) + (gy+degree)*textureBufferSize];
+			if(cornerDegree < 0) quadTreeAssemblyBuffer[(gx+degree) + (gy+degree)*textureBufferSize] = 0;
+		}
+	}
+}
+
+
 __host__ void quadtreeDecimation(int actualWidth, int actualHeight, Float4SOA planarTexture, int* quadTreeAssemblyBuffer,
 								 int textureBufferSize)
 {
@@ -792,6 +818,12 @@ __host__ void quadtreeDecimation(int actualWidth, int actualHeight, Float4SOA pl
 		(int)ceil(actualHeight/float(tileSize*tileSize)));
 	quadtreeDecimationKernel2<<<blocks,threads,sharedSize>>>(actualWidth, actualHeight, quadTreeAssemblyBuffer, textureBufferSize);
 
+
+	//Fill in holes
+	
+	blocks= dim3((int)ceil(actualWidth/float(tileSize)),
+		(int)ceil(actualHeight/float(tileSize)));
+	quadtreeDecimationHolePatchingKernel<<<blocks,threads>>>(actualWidth, actualHeight, quadTreeAssemblyBuffer, textureBufferSize);
 }
 
 
@@ -980,7 +1012,7 @@ __global__ void reintegrateResultsKernel(int actualWidth, int textureBufferSize,
 
 	if(pixelX < actualWidth)
 	{
-		quadTreeScanResults[pixelX + pixelY*textureBufferSize] += blockResults[pixelY];
+			quadTreeScanResults[pixelX + pixelY*textureBufferSize] += blockResults[pixelY];
 	}
 }
 
@@ -1010,7 +1042,7 @@ __global__ void scatterResultsKernel(glm::vec4 aabbMeters, int actualWidth, int 
 			float posX = (pixelX*(aabbMeters.y-aabbMeters.x))/float(actualWidth) + aabbMeters.x;
 			//pixelY*(Symax-Symin)/actualHeight + Symin;
 			float posY = (pixelY*(aabbMeters.w-aabbMeters.z))/float(actualHeight) + aabbMeters.z;
-			
+
 			float4 vertex;
 			vertex.x = posX;
 			vertex.y = posY;
@@ -1024,7 +1056,7 @@ __global__ void scatterResultsKernel(glm::vec4 aabbMeters, int actualWidth, int 
 			// 0-1
 			// |/|
 			// 2-3
-			// Index order: 0 - 1 - 2, 2 - 1 -3
+			// Index order: 0-2-1, 1-2-3
 			//Already loaded vertnum for 0
 			int vertNum0 = 0;
 			int vertNum1 = 0;
@@ -1042,13 +1074,13 @@ __global__ void scatterResultsKernel(glm::vec4 aabbMeters, int actualWidth, int 
 			}
 
 			//Always fill buffer
-			// Index order: 0 - 1 - 2, 2 - 1 -3
+			// Index order: 0-2-1, 1-2-3
 			int offset = vertNum*6;
 			indexBuffer[offset+0] = vertNum0;
-			indexBuffer[offset+1] = vertNum1;
-			indexBuffer[offset+2] = vertNum2;
-			indexBuffer[offset+3] = vertNum2;
-			indexBuffer[offset+4] = vertNum1;
+			indexBuffer[offset+1] = vertNum2;
+			indexBuffer[offset+2] = vertNum1;
+			indexBuffer[offset+3] = vertNum1;
+			indexBuffer[offset+4] = vertNum2;
 			indexBuffer[offset+5] = vertNum3;
 
 		}
@@ -1056,7 +1088,7 @@ __global__ void scatterResultsKernel(glm::vec4 aabbMeters, int actualWidth, int 
 }
 
 __global__ void reshapeTextureKernel(int actualWidth, int actualHeight, int finalTextureWidth, int finalTextureHeight, int textureBufferSize, 
-		Float4SOA planarTexture, float4* finalTexture)
+									 Float4SOA planarTexture, float4* finalTexture)
 {
 	int x = threadIdx.x;
 	int y = blockIdx.x;
@@ -1073,7 +1105,7 @@ __global__ void reshapeTextureKernel(int actualWidth, int actualHeight, int fina
 		textureValue.w = planarTexture.w[sourceIndex];
 	}
 
-	
+
 	finalTexture[destIndex] = textureValue;
 }
 
