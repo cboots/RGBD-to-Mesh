@@ -1222,9 +1222,7 @@ void MeshViewer::display()
 			glDisable(GL_TEXTURE_2D);
 			glBindTexture(GL_TEXTURE_2D,0); //Bad mojo to unbind the framebuffer using the texture
 			glBindFramebuffer(GL_FRAMEBUFFER, fullscreenFBO);
-			glClearColor(1.0,0.0,1.0,1.0);
 			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-			glClearColor(0.0,0.0,0.0,0.0);
 			glEnable(GL_DEPTH_TEST);
 			if(mMeshWireframeMode){
 				glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
@@ -1608,10 +1606,11 @@ void MeshViewer::mouse_move(int x, int y) {
 		float delX = x-drag_x_last;
 		float delY = y-drag_y_last;
 
-		float rotSpeed = 0.1f*PI_F/180.0f;
+		//Degrees/pixel
+		float rotSpeed = 0.1f;
 
 		vec3 Up = mCamera.up;
-		vec3 Right = normalize(cross(mCamera.view, -mCamera.up));
+		vec3 Right = normalize(cross(mCamera.view, mCamera.up));
 
 		if(rightclick)
 		{
