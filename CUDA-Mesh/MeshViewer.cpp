@@ -999,8 +999,8 @@ void MeshViewer::resetCamera()
 
 	//theta_x/2 = tan_inv( (width/2) / fx ) 
 	//theta_y/2 = tan_inv( (height/2) / fy ) 
-	Intrinsics intr = mDevice->getDepthIntrinsics();
-	float fovy2 = atan2(mDevice->getDepthResolutionY(), intr.fy);
+	Intrinsics intr = mDevice->getColorIntrinsics();
+	float fovy2 = atan2(mDevice->getColorResolutionY()/2.0f, intr.fy);
 	mCamera.fovy = degrees(2*fovy2);
 	mCamera.zFar = 100.0f;
 	mCamera.zNear = 0.01;
