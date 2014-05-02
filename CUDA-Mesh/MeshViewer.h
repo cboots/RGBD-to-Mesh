@@ -95,6 +95,7 @@ private:
 	//Connected modules
 	RGBDDevice* mDevice;
 	MeshTracker* mMeshTracker;
+	FrameLogger mLogger;
 
 	//Camera resolution
 	int mXRes, mYRes;

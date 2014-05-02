@@ -1345,6 +1345,23 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	case '0':
 		mViewState = DISPLAY_MODE_NONE;
 		break;
+	case 'L':
+		//Start recording
+		mLogger.setDepthCompressionMethod(LZ4_COMPRESSION);
+		mLogger.setColorCompressionMethod(NO_COMPRESSION);
+		if(!mLogger.setOutputDirectory("logs/recording"))
+			cout<<"Could not set output directory"<<endl;
+
+		if(!mLogger.startRecording(mDevice))
+			cout << "Could not start recording" <<endl;
+		else
+			cout<<"Recording to :" << mLogger.getOutputDirectory() << endl;
+		break;
+	case 'l':
+		//Stop recording
+		mLogger.stopRecording();
+		cout<<"Recording stopped" <<endl;
+		break;
 	case 'v':
 		mMeshWireframeMode = !mMeshWireframeMode;
 		cout << "Wireframe mode: " << mMeshWireframeMode << endl;

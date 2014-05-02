@@ -19,8 +19,8 @@ MeshTracker::MeshTracker(int xResolution, int yResolution, Intrinsics intr)
 	mPlaneFinalDistThresh = 0.015;
 
 	mDistPeakThresholdTight = 0.025;
-	mMinDistPeakCount = 800;
-	mMinNormalPeakCout = 800;
+	mMinDistPeakCount = 400;
+	mMinNormalPeakCout = 400;
 
 	mMaxPlanesOutput = MAX_PLANES_TOTAL;
 

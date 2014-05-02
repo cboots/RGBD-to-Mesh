@@ -14,7 +14,20 @@ void main()
 	//Just pass through for now
 	vec4 segments = texture(u_Texture0, fs_texCoord*u_TextureScale);
 	
-	int seg = int(segments.x+1.0);
-	FragColor = vec4(seg & 1, seg & 2, seg & 4, 1.0);
+	int seg = int(segments.x);
+	switch(seg)
+	{
+	case 0:
+		FragColor = vec4(1,0,0,1);
+		break;
+	case 8:
+		FragColor = vec4(0,1,0,1);
+		break;
+	case 16:
+		FragColor = vec4(1,1,0,1);
+		break;
+	default:
+		FragColor = vec4(0,0,0,1);
+	}		
 	//FragColor = vec4(seg);
 }
