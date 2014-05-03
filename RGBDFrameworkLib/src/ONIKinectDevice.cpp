@@ -120,16 +120,17 @@ namespace rgbd
 				{
 
 					std::ostringstream out; 
-					out << "Couldn't create depth stream\n\n" << OpenNI::getExtendedError() << "\n";
+					out << "Couldn't create depth stream" << rc << "\n\n" << OpenNI::getExtendedError() << "\n";
 					onMessage(out.str());
 					return false;
 				}
 			}
+			
 			rc = mDepthStream.start();
 			if (rc != STATUS_OK)
 			{
 				std::ostringstream out; 
-				out << "Couldn't start the depth stream\n\n" << OpenNI::getExtendedError() << "\n";
+				out << "Couldn't start the depth stream" << rc << "\n\n" << OpenNI::getExtendedError() << "\n";
 				onMessage(out.str());
 				return false;
 			}

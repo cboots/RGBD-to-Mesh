@@ -50,6 +50,7 @@ enum DisplayModes
 	DISPLAY_MODE_SEGMENTATION_DEBUG,
 	DISPLAY_MODE_PROJECTION_DEBUG,
 	DISPLAY_MODE_QUADTREE,
+	DISPLAY_MODE_OVERVIEW,
 	DISPLAY_MODE_NONE
 };
 
@@ -296,6 +297,7 @@ private:
 	void drawQuadtreetoTexture(GLuint texture, int planeNum);
 
 	void drawQuadTreeMeshToFrameBuffer(QuadTreeMesh mesh, GLuint prog);
+	void drawMeshesToFBO();
 #pragma endregion
 
 

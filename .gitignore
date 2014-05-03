@@ -101,3 +101,15 @@
 /docs/samplehistogramdata/*.asv
 /CUDA-Mesh.psess
 /CUDA-Mesh/CUDA-Mesh.vcxproj.collin.nvuser
+/CUDA-Mesh/Debug
+
+/RGBDFrameworkLib/Debug
+/Samples/Bin
+/Samples/ClosestPointViewer/GL
+/Samples/ClosestPointViewer/glh
+
+/Samples
+/docs/diagrams/*.tmp
+/docs/diagrams/*.tmp
+/docs/diagrams/*.tmp
+/docs/diagrams/*.tmp

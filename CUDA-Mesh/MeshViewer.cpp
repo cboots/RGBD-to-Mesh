@@ -991,6 +991,64 @@ void MeshViewer::drawFinalSegmentsToTexture(GLuint texture)
 	glActiveTexture(GL_TEXTURE0);
 }
 
+void MeshViewer::drawMeshesToFBO()
+{
+	
+	vector<QuadTreeMesh>*  meshes = mMeshTracker->getQuadTreeMeshes();
+	int numMeshes = meshes->size();
+	//Bind FBO
+	glDisable(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D,0); //Bad mojo to unbind the framebuffer using the texture
+	glBindFramebuffer(GL_FRAMEBUFFER, fullscreenFBO);
+	glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_DEPTH_TEST);
+
+
+
+	glEnable(GL_CULL_FACE);
+	for(int i = 0; i < numMeshes; i++)
+	{
+		drawQuadTreeMeshToFrameBuffer(meshes->at(i),qtm_color_prog);
+		//cout << "{" << meshes->at(i).stats.centroid.x << ',' << 
+		//	meshes->at(i).stats.centroid.y << ',' << meshes->at(i).stats.centroid.z << '}' << endl;
+	}
+
+	glDisable(GL_CULL_FACE);
+
+
+	if(mMeshWireframeMode){
+		glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+		glLineWidth(2.0f);
+		for(int i = 0; i < numMeshes; i++)
+		{
+			drawQuadTreeMeshToFrameBuffer(meshes->at(i),qtm_highlight_green_prog);
+			//cout << "{" << meshes->at(i).stats.centroid.x << ',' << 
+			//	meshes->at(i).stats.centroid.y << ',' << meshes->at(i).stats.centroid.z << '}' << endl;
+		}
+		glLineWidth(1.0f);
+		glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+	}
+
+
+	if(mMeshPointMode){
+		glPointSize(5.0f);
+		glPolygonMode( GL_FRONT_AND_BACK, GL_POINT );
+		for(int i = 0; i < numMeshes; i++)
+		{
+			drawQuadTreeMeshToFrameBuffer(meshes->at(i),qtm_highlight_blue_prog);
+			//cout << "{" << meshes->at(i).stats.centroid.x << ',' << 
+			//	meshes->at(i).stats.centroid.y << ',' << meshes->at(i).stats.centroid.z << '}' << endl;
+		}
+		glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+		glPointSize(1.0f);
+	}
+
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glDisable(GL_CULL_FACE);
+}
+
 void MeshViewer::resetCamera()
 {
 	mCamera.eye = vec3(0.0f);
@@ -1108,12 +1166,12 @@ void MeshViewer::display()
 
 		//Launch kernels for subsampling
 		mMeshTracker->subsamplePyramids();
-		
+
 		cudaDeviceSynchronize();
 		preprocessingEndUS = t.elapsed().wall / 1000;
 
 		mMeshTracker->GPUSimpleSegmentation();
-		
+
 		cudaDeviceSynchronize();
 		segmentationEndUS = t.elapsed().wall / 1000;
 
@@ -1128,19 +1186,19 @@ void MeshViewer::display()
 		title << "RGBD to Mesh Visualization | (" << millisec << " ms)  " << (int)fps  << "FPS";
 		glutSetWindowTitle(title.str().c_str());
 
-		
+
 		//Logging code
 		if(mLogPerformanceStats)
 		{
 			std::ofstream ofs;
 			ofs.open ("performancestats.csv", std::ofstream::out | std::ofstream::app);
 
-			
+
 
 			vector<QuadTreeMesh>* meshes = mMeshTracker->getQuadTreeMeshes();
 			int numMeshes = meshes->size();
 			int largestPlaneCount = 0, averagePlaneCount = 0, averageVertsPerPlane = 0, averageTextureSize = 0;
-			
+
 			for(int i = 0; i < numMeshes; i++)
 			{
 				largestPlaneCount = MAX(meshes->at(i).stats.count, largestPlaneCount);
@@ -1172,9 +1230,6 @@ void MeshViewer::display()
 	if(!mPauseVisulization)
 	{
 		glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		int numMeshes = 0;
-		int* elementArray;
-		vector<QuadTreeMesh>* meshes  = NULL;
 		switch(mViewState)
 		{
 		case DISPLAY_MODE_DEPTH:
@@ -1216,7 +1271,7 @@ void MeshViewer::display()
 			drawNMaptoTexture(texture1, 1);
 			drawNMaptoTexture(texture2, 2);
 			drawColorImageBufferToTexture(texture3);
-
+			
 			drawQuad(nmap_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR Level0 NMap
 			drawQuad(nmap_prog,  0.5, -0.5, 0.5, 0.5, 0.5,  &texture1, 1);//LR Level1 NMap
 			drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 NMap
@@ -1269,60 +1324,20 @@ void MeshViewer::display()
 			drawQuad(color_prog,			 0.5, -0.5, 0.5, 0.5, 1.0, &texture1, 1);//LR
 			break;
 		case DISPLAY_MODE_QUADTREE:
-			meshes = mMeshTracker->getQuadTreeMeshes();
-			numMeshes = meshes->size();
-			//Bind FBO
-			glDisable(GL_TEXTURE_2D);
-			glBindTexture(GL_TEXTURE_2D,0); //Bad mojo to unbind the framebuffer using the texture
-			glBindFramebuffer(GL_FRAMEBUFFER, fullscreenFBO);
-			glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-			glEnable(GL_DEPTH_TEST);
-
-
-
-			glEnable(GL_CULL_FACE);
-			for(int i = 0; i < numMeshes; i++)
-			{
-				drawQuadTreeMeshToFrameBuffer(meshes->at(i),qtm_color_prog);
-				//cout << "{" << meshes->at(i).stats.centroid.x << ',' << 
-				//	meshes->at(i).stats.centroid.y << ',' << meshes->at(i).stats.centroid.z << '}' << endl;
-			}
-
-			glDisable(GL_CULL_FACE);
-
-				
-			if(mMeshWireframeMode){
-				glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
-				glLineWidth(2.0f);
-				for(int i = 0; i < numMeshes; i++)
-				{
-					drawQuadTreeMeshToFrameBuffer(meshes->at(i),qtm_highlight_green_prog);
-					//cout << "{" << meshes->at(i).stats.centroid.x << ',' << 
-					//	meshes->at(i).stats.centroid.y << ',' << meshes->at(i).stats.centroid.z << '}' << endl;
-				}
-				glLineWidth(1.0f);
-				glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-			}
-
-			
-			if(mMeshPointMode){
-				glPointSize(5.0f);
-				glPolygonMode( GL_FRONT_AND_BACK, GL_POINT );
-				for(int i = 0; i < numMeshes; i++)
-				{
-					drawQuadTreeMeshToFrameBuffer(meshes->at(i),qtm_highlight_blue_prog);
-					//cout << "{" << meshes->at(i).stats.centroid.x << ',' << 
-					//	meshes->at(i).stats.centroid.y << ',' << meshes->at(i).stats.centroid.z << '}' << endl;
-				}
-				glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
-				glPointSize(1.0f);
-			}
-			
-
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
-			glBindFramebuffer(GL_FRAMEBUFFER, 0);
-			glDisable(GL_CULL_FACE);
+			drawMeshesToFBO();
 			drawQuad(color_prog, 0.0, 0.0, 1.0, -1.0, 1.0, &FBOColorTexture, 1);//Fill Screen
+			break;
+		case DISPLAY_MODE_OVERVIEW:
+			drawMeshesToFBO();
+			drawRGBMaptoTexture(texture0, 0);
+			drawNMaptoTexture(texture1, 0);
+			drawFinalSegmentsToTexture(texture2);
+
+			
+			drawQuad(color_prog, -0.5, 0.5, 0.5,  0.5, 1.0, &texture0, 1);//UL
+			drawQuad(nmap_prog,   0.5, 0.5, 0.5, 0.5, 1.0, &texture1, 1);//UR
+			drawQuad(finalsegments_prog, 0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LR
+			drawQuad(color_prog, -0.5,-0.5, 0.5, -0.5, 1.0, &FBOColorTexture, 1);//LL
 			break;
 		case DISPLAY_MODE_NONE:
 		default:
@@ -1347,7 +1362,7 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	float edgeLengthStep = 0.001f;
 	float angle;
 	std::ofstream ofs;
-	 
+
 
 	switch (key)
 	{
@@ -1391,7 +1406,7 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		mViewState = DISPLAY_MODE_QUADTREE;
 		break;
 	case '0':
-		mViewState = DISPLAY_MODE_NONE;
+		mViewState = DISPLAY_MODE_OVERVIEW;
 		break;
 	case 'L':
 		//Start recording
