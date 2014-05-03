@@ -227,6 +227,8 @@ __global__ void computeAABBsKernel(PlaneStats* planeStats, int* planeInvIdMap, g
 		segment = s_InvMap[segment];
 		finalSegmentsBuffer[imageX + imageY*xRes] = segment;
 
+		atomicAdd(&(planeStats[segment].count), 1);
+
 		//Compute Sx and Sy
 		glm::vec3 dp = glm::vec3(positions.x[imageX + imageY*xRes] - s_centroidX[segment], 
 			positions.y[imageX + imageY*xRes] - s_centroidY[segment],
@@ -329,11 +331,21 @@ __host__ __device__ int roundupnextpow2 (int x)
 	return x+1;
 }
 
+__global__ void zeroCounts(PlaneStats* stats, int* planeCount)
+{
+	if(threadIdx.x < planeCount[0])
+	{
+		stats[threadIdx.x].count = 0;
+	}
+}
+
 __host__ void computeAABBs(PlaneStats* planeStats, int* planeInvIdMap, glm::vec4* aabbsBlockResults,
 						   int* planeCount, int maxPlanes,
 						   Float3SOA positions, float* segmentProjectedSx, float* segmentProjectedSy, 
 						   int* finalSegmentsBuffer, int xRes, int yRes)
 {
+	zeroCounts<<<1,maxPlanes>>>(planeStats, planeCount);
+
 	int blockWidth = AABB_COMPUTE_BLOCKWIDTH;
 	int blockHeight = AABB_COMPUTE_BLOCKHEIGHT;
 
@@ -538,7 +550,7 @@ __host__ void projectTexture(int segmentId, PlaneStats* host_planeStats, PlaneSt
 	dim3 threads(tileSize, tileSize);
 	dim3 blocks((int)ceil(float(host_planeStats->projParams.destWidth)/float(tileSize)),
 		(int)ceil(float(host_planeStats->projParams.destHeight)/float(tileSize)));
-
+	
 	projectTexture<<<blocks,threads>>>(segmentId, dev_planeStats, destTexture, destTextureSize, 
 		rgbMap, dev_finalSegmentsBuffer, dev_finalDistanceToPlaneBuffer, imageXRes, imageYRes);
 }

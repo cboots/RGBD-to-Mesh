@@ -112,6 +112,7 @@ private:
 	timestamp mLastSubmittedTime;
 
 	bool mPauseVisulization;
+	bool mLogPerformanceStats;
 
 	//FPS Tracking
 	time_t seconds;

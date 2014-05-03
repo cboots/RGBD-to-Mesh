@@ -71,6 +71,7 @@ MeshViewer::MeshViewer(RGBDDevice* device, int screenwidth, int screenheight)
 	mHeight = screenheight;
 
 	mPauseVisulization = false;
+	mLogPerformanceStats = false;
 
 	//Setup default rendering/pipeline settings
 	mFilterMode = BILATERAL_FILTER;
@@ -1057,6 +1058,8 @@ void MeshViewer::display()
 		mLastSubmittedTime = 0;
 	}
 
+	int totalPipelineTotalUS = 0, memManagementEndUS = 0, preprocessingEndUS = 0, segmentationEndUS = 0;
+
 	//Check if we have a new frame
 	if(mLatestTime > mLastSubmittedTime)
 	{
@@ -1074,7 +1077,7 @@ void MeshViewer::display()
 
 		mMeshTracker->deleteQuadTreeMeshes();
 		cudaDeviceSynchronize();
-
+		memManagementEndUS = t.elapsed().wall / 1000;
 		mMeshTracker->buildRGBSOA();
 
 		switch(mFilterMode)
@@ -1105,18 +1108,60 @@ void MeshViewer::display()
 
 		//Launch kernels for subsampling
 		mMeshTracker->subsamplePyramids();
+		
+		cudaDeviceSynchronize();
+		preprocessingEndUS = t.elapsed().wall / 1000;
 
 		mMeshTracker->GPUSimpleSegmentation();
+		
+		cudaDeviceSynchronize();
+		segmentationEndUS = t.elapsed().wall / 1000;
 
 		mMeshTracker->ReprojectPlaneTextures();
 
 		cudaDeviceSynchronize();
 
-		int millisec = t.elapsed().wall / 1000000;
+		totalPipelineTotalUS = t.elapsed().wall / 1000;
+		int millisec = totalPipelineTotalUS/1000;
 		//Update title
 		stringstream title;
 		title << "RGBD to Mesh Visualization | (" << millisec << " ms)  " << (int)fps  << "FPS";
 		glutSetWindowTitle(title.str().c_str());
+
+		
+		//Logging code
+		if(mLogPerformanceStats)
+		{
+			std::ofstream ofs;
+			ofs.open ("performancestats.csv", std::ofstream::out | std::ofstream::app);
+
+			
+
+			vector<QuadTreeMesh>* meshes = mMeshTracker->getQuadTreeMeshes();
+			int numMeshes = meshes->size();
+			int largestPlaneCount = 0, averagePlaneCount = 0, averageVertsPerPlane = 0, averageTextureSize = 0;
+			
+			for(int i = 0; i < numMeshes; i++)
+			{
+				largestPlaneCount = MAX(meshes->at(i).stats.count, largestPlaneCount);
+				averagePlaneCount += meshes->at(i).stats.count;
+				averageVertsPerPlane += meshes->at(i).numVerts;
+				averageTextureSize += meshes->at(i).mWidth*meshes->at(i).mHeight;
+			}
+			if(numMeshes > 0)
+			{
+				averagePlaneCount /= numMeshes;
+				averageVertsPerPlane /= numMeshes;
+				averageTextureSize /= numMeshes;
+			}	
+			//"NumPlanes,LargestPlaneCount,AveragePlaneCount,AverageNumVertsPerPlane,AverageTextureSize,memManagementUS,preprocessingUS,segmentationUS,quadtreeUS,PipelineUS"
+			ofs << numMeshes << ',' << largestPlaneCount << ',' 
+				<<  averagePlaneCount << ',' << averageVertsPerPlane << ',' << averageTextureSize <<',' << memManagementEndUS << ',' << (preprocessingEndUS-memManagementEndUS) << ',' 
+				<< (segmentationEndUS-preprocessingEndUS) << ',' << (totalPipelineTotalUS - segmentationEndUS) << ',' << totalPipelineTotalUS <<  endl;
+
+			ofs.close();
+		}
+
 
 	}//=====End of pipeline code=====
 
@@ -1301,6 +1346,9 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 	float cameraLowSpeed = 0.025f;
 	float edgeLengthStep = 0.001f;
 	float angle;
+	std::ofstream ofs;
+	 
+
 	switch (key)
 	{
 	case 27://ESC
@@ -1361,6 +1409,19 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 		//Stop recording
 		mLogger.stopRecording();
 		cout<<"Recording stopped" <<endl;
+		break;
+	case 'T':
+		//toggle logging stats
+		mLogPerformanceStats = !mLogPerformanceStats;
+		cout << "Performance stats logging mode: " << mLogPerformanceStats << endl;
+		if(mLogPerformanceStats)
+		{
+			ofs.open ("performancestats.csv", std::ofstream::out);
+
+			//Column Headings
+			ofs << "NumPlanes,LargestPlaneCount,AveragePlaneCount,AverageNumVertsPerPlane,AverageTextureSize,memManagementUS,preprocessingUS,segmentationUS,quadtreeUS,PipelineUS" << endl;
+			ofs.close();
+		}
 		break;
 	case 'v':
 		mMeshWireframeMode = !mMeshWireframeMode;

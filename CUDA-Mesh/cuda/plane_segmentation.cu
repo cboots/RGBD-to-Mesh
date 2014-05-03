@@ -1151,7 +1151,7 @@ __global__ void fitFinalPlanesKernel(PlaneStats* planeStats, int numPlanes,
 	int index = threadIdx.x + blockIdx.x*blockDim.x;
 
 	float minDist = 1000000.0f;
-	float bestPlane = -1;
+	int bestPlane = -1;
 	if(iteration > 0)
 	{
 		//If not first iteration, load previous values from segment buffer
@@ -1184,14 +1184,11 @@ __global__ void fitFinalPlanesKernel(PlaneStats* planeStats, int numPlanes,
 		}
 	}
 
-
-
 	//WRITEBACK
 	finalSegmentsBuffer[index] = bestPlane;
 	distToPlaneBuffer[index] = minDist;
 
 }
-
 
 __host__ void fitFinalPlanes(PlaneStats* planeStats, int numPlanes, 
 							 Float3SOA norms, Float3SOA positions, int* finalSegmentsBuffer, float* distToPlaneBuffer, int xRes, int yRes,
@@ -1204,7 +1201,7 @@ __host__ void fitFinalPlanes(PlaneStats* planeStats, int numPlanes,
 	dim3 blocks((int)ceil(float(xRes*yRes)/float(blockLength)));
 	dim3 threads(blockLength);
 
-
+	
 	fitFinalPlanesKernel<<<blocks,threads,sharedCount>>>(planeStats, numPlanes, 
 		norms, positions, finalSegmentsBuffer, distToPlaneBuffer, xRes, yRes,
 		cos(fitAngleThresh), fitDistThresh, iteration);
