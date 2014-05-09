@@ -18,6 +18,7 @@
 #include "FileUtils.h"
 #include "FrameLogger.h"
 #include "LogDevice.h"
+#include <string>
 
 //RGBD Framework includes, device code, and mesh tracking modules
 #include "device_structs.h"
@@ -299,7 +300,7 @@ private:
 	void drawQuadTreeMeshToFrameBuffer(QuadTreeMesh mesh, GLuint prog);
 	void drawMeshesToFBO();
 #pragma endregion
-
+	void saveNormalDebugFiles();
 
 #pragma endregion
 

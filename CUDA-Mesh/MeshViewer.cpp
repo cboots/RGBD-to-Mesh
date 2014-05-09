@@ -993,7 +993,7 @@ void MeshViewer::drawFinalSegmentsToTexture(GLuint texture)
 
 void MeshViewer::drawMeshesToFBO()
 {
-	
+
 	vector<QuadTreeMesh>*  meshes = mMeshTracker->getQuadTreeMeshes();
 	int numMeshes = meshes->size();
 	//Bind FBO
@@ -1212,8 +1212,8 @@ void MeshViewer::display()
 				averageVertsPerPlane /= numMeshes;
 				averageTextureSize /= numMeshes;
 			}	
-			//"NumPlanes,LargestPlaneCount,AveragePlaneCount,AverageNumVertsPerPlane,AverageTextureSize,memManagementUS,preprocessingUS,segmentationUS,quadtreeUS,PipelineUS"
-			ofs << numMeshes << ',' << largestPlaneCount << ',' 
+			//"NumPlanes,FilterMode,NormalMode,LargestPlaneCount,AveragePlaneCount,AverageNumVertsPerPlane,AverageTextureSize,memManagementUS,preprocessingUS,segmentationUS,quadtreeUS,PipelineUS"
+			ofs << numMeshes << ',' << mFilterMode << ','  << mNormalMode << ',' << largestPlaneCount << ',' 
 				<<  averagePlaneCount << ',' << averageVertsPerPlane << ',' << averageTextureSize <<',' << memManagementEndUS << ',' << (preprocessingEndUS-memManagementEndUS) << ',' 
 				<< (segmentationEndUS-preprocessingEndUS) << ',' << (totalPipelineTotalUS - segmentationEndUS) << ',' << totalPipelineTotalUS <<  endl;
 
@@ -1271,7 +1271,7 @@ void MeshViewer::display()
 			drawNMaptoTexture(texture1, 1);
 			drawNMaptoTexture(texture2, 2);
 			drawColorImageBufferToTexture(texture3);
-			
+
 			drawQuad(nmap_prog,  0.5,  0.5, 0.5, 0.5, 1.0, &texture0, 1);//UR Level0 NMap
 			drawQuad(nmap_prog,  0.5, -0.5, 0.5, 0.5, 0.5,  &texture1, 1);//LR Level1 NMap
 			drawQuad(nmap_prog, -0.5, -0.5, 0.5, 0.5, 0.25,  &texture2, 1);//LL Level2 NMap
@@ -1333,7 +1333,7 @@ void MeshViewer::display()
 			drawNMaptoTexture(texture1, 0);
 			drawFinalSegmentsToTexture(texture2);
 
-			
+
 			drawQuad(color_prog, -0.5, 0.5, 0.5,  0.5, 1.0, &texture0, 1);//UL
 			drawQuad(nmap_prog,   0.5, 0.5, 0.5, 0.5, 1.0, &texture1, 1);//UR
 			drawQuad(finalsegments_prog, 0.5, -0.5, 0.5, 0.5, 1.0,  &texture2, 1);//LR
@@ -1346,6 +1346,63 @@ void MeshViewer::display()
 
 		glutSwapBuffers();
 	}
+}
+
+void MeshViewer::saveNormalDebugFiles()
+{
+	//Save detected normals
+	std::ofstream ofs;
+	string id = std::to_string((unsigned long long)mFilterMode) + '_' + std::to_string((unsigned long long)mNormalMode);
+	ofs.open ("normData/planeNormals" +id + ".csv", std::ofstream::out);
+	ofs << "NormalX,NormalY,NormalZ" << endl;
+	for(int i = 0; i < mMeshTracker->getHostNumDetectedPlanes(); ++i)
+	{
+		glm::vec3 norm = mMeshTracker->getQuadTreeMeshes()->at(i).stats.norm;
+		ofs << norm.x << ',' << norm.y << ',' << norm.z << endl;
+	}
+	ofs.close();
+
+	float* tempBufferF = new float[mXRes*mYRes*3];
+	int* tempBufferI = new int[mXRes*mYRes];
+	//Save rgb data
+	cudaMemcpy(tempBufferF, mMeshTracker->getRGBMapSOA().x[0], mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(&tempBufferF[mXRes*mYRes], mMeshTracker->getRGBMapSOA().y[0], mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(&tempBufferF[mXRes*mYRes*2], mMeshTracker->getRGBMapSOA().z[0], mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+	cudaDeviceSynchronize();
+	cout << tempBufferF[0] << endl;
+	ofs.open("normData/rgbData" + id + ".bin", std::ofstream::out | std::ofstream::binary);
+	ofs.write((char*)tempBufferF, mXRes*mYRes*3*sizeof(float));
+	ofs.close();
+
+
+	//Save vmap data
+	cudaMemcpy(tempBufferF, mMeshTracker->getVMapPyramid().x[0], mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(&tempBufferF[mXRes*mYRes], mMeshTracker->getVMapPyramid().y[0], mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(&tempBufferF[mXRes*mYRes*2], mMeshTracker->getVMapPyramid().z[0], mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+	cudaDeviceSynchronize();
+	ofs.open("normData/vmapData" + id + ".bin", std::ofstream::out | std::ofstream::binary);
+	ofs.write((char*)tempBufferF, mXRes*mYRes*3*sizeof(float));
+	ofs.close();
+
+
+	//Save normal data
+	cudaMemcpy(tempBufferF, mMeshTracker->getNMapPyramid().x[0], mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(&tempBufferF[mXRes*mYRes], mMeshTracker->getNMapPyramid().y[0], mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+	cudaMemcpy(&tempBufferF[mXRes*mYRes*2], mMeshTracker->getNMapPyramid().z[0], mXRes*mYRes*sizeof(float), cudaMemcpyDeviceToHost);
+	ofs.open("normData/normalData" + id + ".bin", std::ofstream::out | std::ofstream::binary);
+	ofs.write((char*)tempBufferF, mXRes*mYRes*3*sizeof(float));
+	ofs.close();
+
+
+	//Save segementation
+	cudaMemcpy(tempBufferI, mMeshTracker->getFinalSegments(), mXRes*mYRes*sizeof(int), cudaMemcpyDeviceToHost);
+	ofs.open("normData/segmentation" + id + ".bin", std::ofstream::out | std::ofstream::binary);
+	ofs.write((char*)tempBufferI, mXRes*mYRes*sizeof(int));
+	ofs.close();
+
+
+	delete tempBufferF;
+	delete tempBufferI;
 }
 
 #pragma region OpenGL Callbacks
@@ -1434,9 +1491,14 @@ void MeshViewer::onKey(unsigned char key, int /*x*/, int /*y*/)
 			ofs.open ("performancestats.csv", std::ofstream::out);
 
 			//Column Headings
-			ofs << "NumPlanes,LargestPlaneCount,AveragePlaneCount,AverageNumVertsPerPlane,AverageTextureSize,memManagementUS,preprocessingUS,segmentationUS,quadtreeUS,PipelineUS" << endl;
+			ofs << "NumPlanes,FilterMode,NormalMode,LargestPlaneCount,AveragePlaneCount,AverageNumVertsPerPlane,AverageTextureSize,memManagementUS,preprocessingUS,segmentationUS,quadtreeUS,PipelineUS" << endl;
 			ofs.close();
 		}
+		break;
+	case 'N':
+		//Normal debug save.
+		saveNormalDebugFiles();
+
 		break;
 	case 'v':
 		mMeshWireframeMode = !mMeshWireframeMode;
